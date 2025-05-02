@@ -32,7 +32,12 @@ func main() {
     downloadFolder := "./downloads/"
 
     for rows.Next() {
+
         var link string
+        if !strings.HasPrefix(link, "..") {
+            link = "https://radio.iranseda.ir" + link // افزودن دامنه اصلی در صورت ناقص بودن لینک
+        }
+        
         if err := rows.Scan(&link); err != nil {
             fmt.Println("Error scanning row:", err)
             continue
