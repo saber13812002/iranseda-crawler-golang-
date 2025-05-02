@@ -2,12 +2,14 @@ package main
 
 import (
 	"database/sql"
-	"flag"
+	// "flag"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	// "strconv"
 	"strings"
+
 	"github.com/PuerkitoBio/goquery"
 
 	_ "github.com/go-sql-driver/mysql"
@@ -15,13 +17,13 @@ import (
 
 func main() {
 	// دریافت پارامتر از خط فرمان برای آی دی برنامه
-	programID := flag.String("programID", "", "Program ID to fetch and download")
-	flag.Parse()
+	// programID := flag.String("programID", "", "Program ID to fetch and download")
+	// flag.Parse()
 
-	// اگر programID مشخص نشده باشد، مقدار آن به "1" تنظیم می‌شود
-	if *programID == "" {
-		*programID = "1"
-	}
+	// // اگر programID مشخص نشده باشد، مقدار آن به "1" تنظیم می‌شود
+	// if *programID == "" {
+	// 	*programID = "1"
+	// }
 
 	// اتصال به دیتابیس
 	db, err := sql.Open("mysql", "root@tcp(127.0.0.1:3306)/radio")
@@ -31,34 +33,63 @@ func main() {
 	}
 	defer db.Close()
 
-	// دریافت لینک از دیتابیس برای تست بر اساس programID
-	row := db.QueryRow("SELECT link FROM radio_program_sessions WHERE program_id = ?", *programID)
-
-	var link string
-	if err := row.Scan(&link); err != nil {
-		fmt.Println("Error fetching link for program ID:", *programID, err)
+	// دریافت لینک‌ها و وضعیت دانلود از دیتابیس
+	rows, err := db.Query("SELECT id, link, is_downloaded FROM radio_program_sessions")
+	if err != nil {
+		fmt.Println("Error fetching data from database:", err)
 		return
 	}
-	fmt.Println("Fetched link from DB:", link)
+	defer rows.Close()
 
-	// اصلاح لینک
-	link = strings.Replace(link, "..", "", 1)
-	originalLink := "https://radio.iranseda.ir" + link
-	fmt.Println("Original Link:", originalLink)
+	// خواندن لینک‌ها و دانلود فایل‌های جدید
+	for rows.Next() {
+		var id int
+		var link string
+		var isDownloaded int
+		if err := rows.Scan(&id, &link, &isDownloaded); err != nil {
+			fmt.Println("Error scanning row:", err)
+			continue
+		}
 
-	// درخواست HTML صفحه برای استخراج لینک دانلود
-	downloadURL := extractDownloadLinkAndFilename(originalLink)
-	if downloadURL == "" {
-		fmt.Println("Error: Unable to extract download link")
-		return
+		if isDownloaded == 0 { // فقط فایل‌هایی که دانلود نشده‌اند
+			// اصلاح لینک
+			link = strings.Replace(link, "..", "", 1)
+			originalLink := "https://radio.iranseda.ir" + link
+			fmt.Println("Original Link:", originalLink)
+
+			// استخراج لینک دانلود
+			downloadURL := extractDownloadLinkAndFilename(originalLink)
+			if downloadURL == "" {
+				fmt.Println("Error: Unable to extract download link")
+				continue
+			}
+
+			// دانلود فایل
+			filename := downloadFile(downloadURL)
+
+			// ذخیره نام فایل در بانک اطلاعاتی
+
+			if err != nil {
+				fmt.Println("Error converting programID to int:", err)
+				continue
+			}
+			saveDownloadedFile(db, id, filename)
+
+			// بروزرسانی وضعیت دانلود در دیتابیس
+			_, err = db.Exec("UPDATE radio_program_sessions SET is_downloaded = 1 WHERE link = ?", link)
+			if err != nil {
+				fmt.Println("Error updating download status in database:", err)
+			} else {
+				fmt.Println("File marked as downloaded in database.")
+			}
+		} else {
+			fmt.Println("File already downloaded:", link)
+		}
 	}
 
-	// پوشه‌ای که فایل‌ها در آن ذخیره می‌شوند
-	downloadFolder := "./downloads/" + *programID + "/"
-	os.MkdirAll(downloadFolder, os.ModePerm) // ایجاد پوشه برای برنامه خاص
-
-	// دانلود و ذخیره فایل
-	downloadFile(downloadURL)
+	if err := rows.Err(); err != nil {
+		fmt.Println("Error iterating rows:", err)
+	}
 }
 
 // تابع استخراج لینک دانلود از صفحه HTML
@@ -87,20 +118,20 @@ func extractDownloadLinkAndFilename(url string) string {
 	return downloadURL
 }
 
-// تابع دانلود فایل و استخراج نام فایل از هدر Content-Disposition
-func downloadFile(url string) {
+// تابع دانلود فایل
+func downloadFile(url string) string {
 	// ارسال درخواست برای دریافت فایل
 	response, err := http.Get(url)
 	if err != nil {
 		fmt.Println("Error while downloading:", err)
-		return
+		return ""
 	}
 	defer response.Body.Close()
 
 	// بررسی وضعیت پاسخ
 	if response.StatusCode != http.StatusOK {
 		fmt.Println("Error: failed to download file, status code:", response.StatusCode)
-		return
+		return ""
 	}
 
 	// استخراج نام فایل از هدر Content-Disposition
@@ -119,11 +150,16 @@ func downloadFile(url string) {
 		}
 	}
 
-	// ایجاد فایل برای ذخیره محتوا
-	outFile, err := os.Create(filename)
+	// ایجاد پوشه "downloads" در صورتی که وجود نداشته باشد
+	downloadFolder := "./downloads/"
+	os.MkdirAll(downloadFolder, os.ModePerm)
+
+	// ذخیره فایل در پوشه "downloads"
+	filepath := downloadFolder + filename
+	outFile, err := os.Create(filepath)
 	if err != nil {
 		fmt.Println("Error while creating file:", err)
-		return
+		return ""
 	}
 	defer outFile.Close()
 
@@ -131,8 +167,17 @@ func downloadFile(url string) {
 	_, err = io.Copy(outFile, response.Body)
 	if err != nil {
 		fmt.Println("Error while saving file:", err)
-		return
+		return ""
 	}
 
 	fmt.Printf("File downloaded successfully as %s!\n", filename)
+	return filename
+}
+
+// ذخیره نام فایل در بانک اطلاعاتی
+func saveDownloadedFile(db *sql.DB, id int, filename string) {
+	_, err := db.Exec("UPDATE radio_program_sessions SET filename = ?, is_downloaded = 1 WHERE id = ?", filename, id)
+	if err != nil {
+		fmt.Println("Error saving filename to database:", err)
+	}
 }

@@ -28,6 +28,14 @@ CREATE TABLE radio_program_sessions (
     FOREIGN KEY (program_id) REFERENCES radio_programs(id) ON DELETE CASCADE
 );
 
+ALTER TABLE radio_program_sessions
+ADD COLUMN filename VARCHAR(255) NOT NULL;
+
+ALTER TABLE radio_program_sessions
+ADD COLUMN is_downloaded TINYINT(1) DEFAULT 0;
+
+
+
 CREATE TABLE downloaded_files (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,  -- نام فایل دانلود شده
