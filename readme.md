@@ -27,6 +27,16 @@ CREATE TABLE radio_program_sessions (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (program_id) REFERENCES radio_programs(id) ON DELETE CASCADE
 );
+
+CREATE TABLE downloaded_files (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,  -- نام فایل دانلود شده
+    link TEXT NOT NULL,          -- لینک مربوطه از دیتابیس اصلی
+    downloaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- زمان دانلود فایل
+);
+
+
+
 ```
 
 ### توضیحات فیلدها:
