@@ -12,7 +12,10 @@ import (
 )
 
 func main() {
-	url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044116"
+	// url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044116"
+	// url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=046104"
+	// url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=045101"
+	url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044323"
 	db, err := sql.Open("mysql", "root@tcp(127.0.0.1:3306)/radio")
 	if err != nil {
 		log.Fatal(err)
@@ -70,6 +73,12 @@ func main() {
 	if programName != "" && programTime != "" {
 		if !programExists(db, programName) {
 			programID = saveProgram(db, programName, programTime) // ذخیره شناسه
+		} else {
+			// دریافت شناسه برنامه موجود
+			err := db.QueryRow("SELECT id FROM radio_programs WHERE name=?", programName).Scan(&programID)
+			if err != nil {
+				log.Fatal(err)
+			}
 		}
 	}
 
