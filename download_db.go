@@ -18,7 +18,7 @@ func main() {
 	programID := flag.String("programID", "", "Program ID to fetch and download")
 	flag.Parse()
 
-	// اگر programID مشخص نشده باشد، خروجی خطا
+	// اگر programID مشخص نشده باشد، مقدار آن به "1" تنظیم می‌شود
 	if *programID == "" {
 		*programID = "1"
 	}
@@ -46,10 +46,10 @@ func main() {
 	originalLink := "https://radio.iranseda.ir" + link
 	fmt.Println("Original Link:", originalLink)
 
-	// درخواست HTML صفحه برای استخراج لینک دانلود و نام فایل
+	// درخواست HTML صفحه برای استخراج لینک دانلود
 	downloadURL := extractDownloadLinkAndFilename(originalLink)
 	if downloadURL == "" {
-		fmt.Println("Error: Unable to extract download link or filename")
+		fmt.Println("Error: Unable to extract download link")
 		return
 	}
 
@@ -57,25 +57,12 @@ func main() {
 	downloadFolder := "./downloads/" + *programID + "/"
 	os.MkdirAll(downloadFolder, os.ModePerm) // ایجاد پوشه برای برنامه خاص
 
-	// اصلاح نام فایل
-	// filename = sanitizeFilename(filename)
-	// fmt.Println("Sanitized filename:", filename)
-
-	// filepath := downloadFolder + filename
-	// fmt.Println("Filepath to save:", filepath)
-
-	// بررسی اینکه آیا فایل قبلاً دانلود شده است
-	// if _, err := os.Stat(filepath); os.IsNotExist(err) {
-	// 	fmt.Printf("Downloading file: %s\n", filename)
-    downloadFile(downloadURL) // استفاده از تابع جدید downloadFile
-    // saveDownloadedFile(db, filename)
-	// } else {
-	// 	fmt.Printf("File already exists: %s\n", filename)
-	// }
+	// دانلود و ذخیره فایل
+	downloadFile(downloadURL)
 }
 
-// تابع استخراج لینک دانلود و نام فایل از صفحه HTML
-func extractDownloadLinkAndFilename(url string) (string) {
+// تابع استخراج لینک دانلود از صفحه HTML
+func extractDownloadLinkAndFilename(url string) string {
 	// درخواست HTML صفحه
 	res, err := http.Get(url)
 	if err != nil {
@@ -97,22 +84,12 @@ func extractDownloadLinkAndFilename(url string) (string) {
 		downloadURL, _ = s.Attr("href")
 	})
 
-
 	return downloadURL
 }
 
-// تابع برای جایگزینی کاراکترهای نامناسب در نام فایل
-// func sanitizeFilename(filename string) string {
-// 	// جایگزینی کاراکترهای نامناسب مثل () و ...
-// 	filename = strings.ReplaceAll(filename, "(", "-")
-// 	filename = strings.ReplaceAll(filename, ")", "-")
-// 	filename = strings.ReplaceAll(filename, " ", "_")
-// 	return filename
-// }
-
-// تابع دانلود فایل
+// تابع دانلود فایل و استخراج نام فایل از هدر Content-Disposition
 func downloadFile(url string) {
-	// استفاده از همان کد برای استخراج نام فایل از هدر Content-Disposition
+	// ارسال درخواست برای دریافت فایل
 	response, err := http.Get(url)
 	if err != nil {
 		fmt.Println("Error while downloading:", err)
@@ -142,7 +119,6 @@ func downloadFile(url string) {
 		}
 	}
 
-	
 	// ایجاد فایل برای ذخیره محتوا
 	outFile, err := os.Create(filename)
 	if err != nil {
@@ -159,12 +135,4 @@ func downloadFile(url string) {
 	}
 
 	fmt.Printf("File downloaded successfully as %s!\n", filename)
-}
-
-// ذخیره نام فایل در بانک اطلاعاتی
-func saveDownloadedFile(db *sql.DB, filename string) {
-	_, err := db.Exec("INSERT INTO downloaded_files (name) VALUES (?)", filename)
-	if err != nil {
-		fmt.Println("Error saving filename to database:", err)
-	}
 }
