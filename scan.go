@@ -15,7 +15,26 @@ func main() {
 	// url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044116"
 	// url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=046104"
 	// url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=045101"
-	url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044323"
+	// url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044323"
+	// url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=047545"
+	// tarikh
+	// url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=045102"
+	// quran
+	// url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=045103"
+	// mahdavi
+	// url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=046111"
+	// پیام ولایت
+	// url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044125"
+	// امیر مؤمنان
+	//url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=047506"
+	// امیر بیان
+	//  url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=045504"
+	//اخبار معارفی
+	url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=048113"
+
+
+	// url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044323"
+	// url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044323"
 	db, err := sql.Open("mysql", "root@tcp(127.0.0.1:3306)/radio")
 	if err != nil {
 		log.Fatal(err)
