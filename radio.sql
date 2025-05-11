@@ -11,7 +11,7 @@
  Target Server Version : 100432 (10.4.32-MariaDB)
  File Encoding         : 65001
 
- Date: 11/05/2025 20:32:30
+ Date: 11/05/2025 21:20:13
 */
 
 SET NAMES utf8mb4;
@@ -454,24 +454,30 @@ CREATE TABLE `radio_programs`  (
   `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
   `url` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
   `time` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `time_description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL,
+  `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 13 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 17 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of radio_programs
 -- ----------------------------
-INSERT INTO `radio_programs` VALUES (1, 'بر كرانه نور\n\n					', 'https://radio.iranseda.ir/Program/?https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044116', '05', '2024-11-08 16:30:00');
-INSERT INTO `radio_programs` VALUES (2, 'گنج سعادت\n\n					', 'https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=046104', '02', '2025-05-02 05:52:49');
-INSERT INTO `radio_programs` VALUES (3, ' پرسمان اعتقادی\n\n					', 'https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=045101', '19', '2025-05-02 05:54:06');
-INSERT INTO `radio_programs` VALUES (4, 'پرسمان خانواده\n\n					', 'https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044323', '15', '2025-05-02 05:57:49');
-INSERT INTO `radio_programs` VALUES (5, ' پرسمان انقلاب\n\n					', 'https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=047545', '14', '2025-05-03 22:07:36');
-INSERT INTO `radio_programs` VALUES (6, '\n\n					پرسمان تاریخی', 'https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=045102', '28', '2025-05-03 22:07:50');
-INSERT INTO `radio_programs` VALUES (7, 'پرسمان قرآنی\n\n					', 'https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=045103', '25', '2025-05-03 22:11:51');
-INSERT INTO `radio_programs` VALUES (8, 'پرسمان مهدوی\n\n					', 'https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=046111', '25', '2025-05-03 22:14:49');
-INSERT INTO `radio_programs` VALUES (9, 'پیام ولایت\n\n					', 'https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044125', '25', '2025-05-03 22:15:54');
-INSERT INTO `radio_programs` VALUES (10, 'امیر مؤمنان\n\n					', 'https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=047506', '10', '2025-05-03 22:16:49');
-INSERT INTO `radio_programs` VALUES (11, 'امیر جان ها\n\n					', 'https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=045504', '28', '2025-05-06 09:13:18');
-INSERT INTO `radio_programs` VALUES (12, '\n\n					اخبار معارفی', 'https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=048113', '28', '2025-05-07 09:05:55');
+INSERT INTO `radio_programs` VALUES (1, 'بر كرانه نور\n\n					', 'https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044116', '05', NULL, NULL, '2024-11-08 16:30:00');
+INSERT INTO `radio_programs` VALUES (2, 'گنج سعادت\n\n					', 'https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=046104', '02', NULL, NULL, '2025-05-02 05:52:49');
+INSERT INTO `radio_programs` VALUES (3, ' پرسمان اعتقادی\n\n					', 'https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=045101', '19', NULL, NULL, '2025-05-02 05:54:06');
+INSERT INTO `radio_programs` VALUES (4, 'پرسمان خانواده\n\n					', 'https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044323', '15', NULL, NULL, '2025-05-02 05:57:49');
+INSERT INTO `radio_programs` VALUES (5, ' پرسمان انقلاب\n\n					', 'https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=047545', '14', NULL, NULL, '2025-05-03 22:07:36');
+INSERT INTO `radio_programs` VALUES (6, '\n\n					پرسمان تاریخی', 'https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=045102', '28', NULL, NULL, '2025-05-03 22:07:50');
+INSERT INTO `radio_programs` VALUES (7, 'پرسمان قرآنی\n\n					', 'https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=045103', '25', NULL, NULL, '2025-05-03 22:11:51');
+INSERT INTO `radio_programs` VALUES (8, 'پرسمان مهدوی\n\n					', 'https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=046111', '25', NULL, NULL, '2025-05-03 22:14:49');
+INSERT INTO `radio_programs` VALUES (9, 'پیام ولایت\n\n					', 'https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044125', '25', NULL, NULL, '2025-05-03 22:15:54');
+INSERT INTO `radio_programs` VALUES (10, 'امیر مؤمنان\n\n					', 'https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=047506', '10', NULL, NULL, '2025-05-03 22:16:49');
+INSERT INTO `radio_programs` VALUES (11, 'امیر جان ها\n\n					', 'https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=045504', '28', NULL, NULL, '2025-05-06 09:13:18');
+INSERT INTO `radio_programs` VALUES (12, '\n\n					اخبار معارفی', 'https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=048113', '28', NULL, NULL, '2025-05-07 09:05:55');
+INSERT INTO `radio_programs` VALUES (13, 'مكارم خوبان', 'https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=045122', '', 'یکشنبه 21 اردیبهشت 1404ساعت 04:55به مدت 20 دقیقه', 'none', '2025-05-11 21:15:40');
+INSERT INTO `radio_programs` VALUES (14, 'زمزم احكام', 'https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044157', '', 'یکشنبه 21 اردیبهشت 1404ساعت 03:55به مدت 20 دقیقه', 'none', '2025-05-11 21:17:52');
+INSERT INTO `radio_programs` VALUES (15, 'پارسایان', 'https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044122', '', 'یکشنبه 21 اردیبهشت 1404ساعت 04:15به مدت 10 دقیقه', 'none', '2025-05-11 21:17:53');
+INSERT INTO `radio_programs` VALUES (16, 'بر بال سخن', 'https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044114', '', 'یکشنبه 21 اردیبهشت 1404ساعت 01:10به مدت 30 دقیقه', 'none', '2025-05-11 21:17:54');
 
 SET FOREIGN_KEY_CHECKS = 1;
