@@ -8,13 +8,19 @@
 این جدول اطلاعات مربوط به برنامه‌های رادیویی را ذخیره می‌کند.
 
 ```sql
-CREATE TABLE radio_programs (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    time VARCHAR(50) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+DROP TABLE IF EXISTS `radio_programs`;
+CREATE TABLE `radio_programs` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `name` VARCHAR(255) NOT NULL,
+  `url` VARCHAR(255),
+  `time_description` TEXT,
+  `description` TEXT,
+  `created_at` TIMESTAMP NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
 ```
+
 
 ### 2. جدول `radio_program_sessions`
 این جدول اطلاعات مربوط به جلسات هر برنامه را ذخیره می‌کند.
