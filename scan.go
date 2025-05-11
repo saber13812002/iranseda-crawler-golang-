@@ -12,10 +12,15 @@ import (
 )
 
 func main() {
+	// بر کرانه نور
 	// url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044116"
+	// گنج سعادت
 	// url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=046104"
+	// پرسمان اعتقادی
 	// url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=045101"
+	// پرسمان خانواده
 	// url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044323"
+	// پرسمان انقلاب
 	// url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=047545"
 	// tarikh
 	// url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=045102"
@@ -30,7 +35,7 @@ func main() {
 	// امیر بیان
 	//  url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=045504"
 	//اخبار معارفی
-	url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=048113"
+	// url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=048113"
 
 
 	// url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044323"
