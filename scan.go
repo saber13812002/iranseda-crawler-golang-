@@ -12,128 +12,93 @@ import (
 )
 
 func main() {
-	// بر کرانه نور
-	// url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044116"
-	// گنج سعادت
-	// url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=046104"
-	// پرسمان اعتقادی
-	// url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=045101"
-	// پرسمان خانواده
-	// url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044323"
-	// پرسمان انقلاب
-	// url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=047545"
-	// tarikh
-	// url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=045102"
-	// quran
-	// url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=045103"
-	// mahdavi
-	// url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=046111"
-	// پیام ولایت
-	// url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044125"
-	// امیر مؤمنان
-	//url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=047506"
-	// امیر بیان
-	//  url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=045504"
-	//اخبار معارفی
-	// url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=048113"
-
-
-	// url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044323"
-	// url := "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044323"
 	db, err := sql.Open("mysql", "root@tcp(127.0.0.1:3306)/radio")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
 
-	res, err := http.Get(url)
+	// دریافت لیست تمام برنامه‌ها از دیتابیس
+	programs, err := getPrograms(db)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer res.Body.Close()
 
-	if res.StatusCode != 200 {
-		log.Fatalf("failed to get page: %s", res.Status)
-	}
+	for _, program := range programs {
+		fmt.Printf("Scanning program: %s (ID: %d)\n", program.Name, program.ID)
+		
+		res, err := http.Get(program.URL)
+		if err != nil {
+			log.Printf("Failed to fetch program %s: %v", program.Name, err)
+			continue
+		}
+		defer res.Body.Close()
 
-	doc, err := goquery.NewDocumentFromReader(res.Body)
-	if err != nil {
-		log.Fatal(err)
-	}
-	var programID int
+		if res.StatusCode != 200 {
+			log.Printf("Failed to get page for program %s: %s", program.Name, res.Status)
+			continue
+		}
 
-	var programName, programTime string
-	var newSession bool
+		doc, err := goquery.NewDocumentFromReader(res.Body)
+		if err != nil {
+			log.Printf("Failed to parse page for program %s: %v", program.Name, err)
+			continue
+		}
 
-	// استخراج نام برنامه و زمان آن
-	doc.Find("h1").Each(func(i int, s *goquery.Selection) {
-		programName = s.Text()
-	})
+		// استخراج لینک‌ها
+		doc.Find("a").Each(func(i int, s *goquery.Selection) {
+			href, exists := s.Attr("href")
+			if exists {
+				matched, _ := regexp.MatchString(`epgarchivePart`, href)
+				if matched {
+					fmt.Printf("Found link: %s\n", href)
 
-	doc.Find("h2").Each(func(i int, s *goquery.Selection) {
-		programTime = s.Text()
-	})
-
-	// استخراج لینک‌ها
-	// استخراج لینک‌ها
-	doc.Find("a").Each(func(i int, s *goquery.Selection) {
-		href, exists := s.Attr("href")
-		if exists {
-			matched, _ := regexp.MatchString(`epgarchivePart`, href)
-			if matched {
-				fmt.Printf("Found link: %s\n", href) // چاپ لینک پیدا شده
-
-				// بررسی وجود لینک در دیتابیس
-				if !sessionExists(db, href) {
-					saveSession(db, href, programID) // استفاده از شناسه برنامه
-					fmt.Printf("Inserted: %s\n", href)
-				} else {
-					fmt.Printf("Already exists: %s\n", href)
+					// بررسی وجود لینک در دیتابیس
+					if !sessionExists(db, href) {
+						saveSession(db, href, program.ID) // استفاده از شناسه برنامه از دیتابیس
+						fmt.Printf("Inserted: %s for program ID %d\n", href, program.ID)
+					} else {
+						fmt.Printf("Already exists: %s\n", href)
+					}
 				}
 			}
+		})
+	}
+}
+
+// ساختار برای ذخیره اطلاعات برنامه از دیتابیس
+type Program struct {
+	ID   int
+	Name string
+	URL  string
+}
+
+// دریافت لیست برنامه‌ها از دیتابیس
+func getPrograms(db *sql.DB) ([]Program, error) {
+	var programs []Program
+
+	rows, err := db.Query("SELECT id, name, url FROM radio_programs WHERE url IS NOT NULL AND url != ''")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var p Program
+		err := rows.Scan(&p.ID, &p.Name, &p.URL)
+		if err != nil {
+			return nil, err
 		}
-	})
-
-	if programName != "" && programTime != "" {
-		if !programExists(db, programName) {
-			programID = saveProgram(db, programName, programTime) // ذخیره شناسه
-		} else {
-			// دریافت شناسه برنامه موجود
-			err := db.QueryRow("SELECT id FROM radio_programs WHERE name=?", programName).Scan(&programID)
-			if err != nil {
-				log.Fatal(err)
-			}
-		}
+		programs = append(programs, p)
 	}
 
-	if newSession {
-		fmt.Println("New session added.")
-	} else {
-		fmt.Println("No new sessions.")
-	}
+	return programs, nil
 }
 
-func programExists(db *sql.DB, name string) bool {
-	var exists bool
-	err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM radio_programs WHERE name=?)", name).Scan(&exists)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return exists
-}
+// توابع دیگر (programExists, saveProgram, sessionExists, saveSession) بدون تغییر می‌مانند
+// ...
 
-// در تابع saveProgram:
-func saveProgram(db *sql.DB, name, time string) int {
-	result, err := db.Exec("INSERT INTO radio_programs (name, time) VALUES (?, ?)", name, time)
-	if err != nil {
-		log.Fatal(err)
-	}
-	id, err := result.LastInsertId() // دریافت شناسه برنامه جدید
-	if err != nil {
-		log.Fatal(err)
-	}
-	return int(id) // بازگشت شناسه
-}
+
 
 func sessionExists(db *sql.DB, link string) bool {
 	var exists bool
