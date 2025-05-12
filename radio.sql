@@ -1,17 +1,17 @@
 /*
  Navicat Premium Dump SQL
 
- Source Server         : local
+ Source Server         : 192.168.2.160_3306
  Source Server Type    : MySQL
- Source Server Version : 100432 (10.4.32-MariaDB)
- Source Host           : localhost:3306
+ Source Server Version : 80042 (8.0.42-0ubuntu0.24.04.1)
+ Source Host           : 192.168.2.160:3306
  Source Schema         : radio
 
  Target Server Type    : MySQL
- Target Server Version : 100432 (10.4.32-MariaDB)
+ Target Server Version : 80042 (8.0.42-0ubuntu0.24.04.1)
  File Encoding         : 65001
 
- Date: 12/05/2025 20:34:23
+ Date: 12/05/2025 21:50:14
 */
 
 SET NAMES utf8mb4;
@@ -25,9 +25,9 @@ CREATE TABLE `downloaded_files`  (
   `id` int NOT NULL AUTO_INCREMENT,
   `name` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
   `link` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `downloaded_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `downloaded_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 785 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 785 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of downloaded_files
@@ -44,7 +44,7 @@ CREATE TABLE `radio_program_session_files`  (
   `filename` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
   `is_downloaded` tinyint NULL DEFAULT 0,
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of radio_program_session_files
@@ -58,12 +58,12 @@ CREATE TABLE `radio_program_sessions`  (
   `id` int NOT NULL AUTO_INCREMENT,
   `program_id` int NOT NULL,
   `link` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `filename` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `filename` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT '',
   `is_downloaded` tinyint(1) NULL DEFAULT 0,
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `program_id`(`program_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 573 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 575 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of radio_program_sessions
@@ -577,7 +577,7 @@ INSERT INTO `radio_program_sessions` VALUES (508, 17, '../epgarchivePart/?VALID=
 INSERT INTO `radio_program_sessions` VALUES (509, 17, '../epgarchivePart/?VALID=TRUE&ch=14&e=152846088', '2025-05-12 18:05:47', 'radio-maaref-04-01-31-23-30.mp3', 1);
 INSERT INTO `radio_program_sessions` VALUES (510, 17, '../epgarchivePart/?VALID=TRUE&ch=14&e=152846150', '2025-05-12 18:05:47', 'radio-maaref-04-01-30-23-30.mp3', 1);
 INSERT INTO `radio_program_sessions` VALUES (511, 17, '../epgarchivePart/?VALID=TRUE&ch=14&e=152846267', '2025-05-12 18:05:47', 'radio-maaref-04-01-28-23-30.mp3', 1);
-INSERT INTO `radio_program_sessions` VALUES (512, 14, '../epgarchivePart/?VALID=TRUE&ch=14&e=152863540', '2025-05-12 18:59:08', '', 0);
+INSERT INTO `radio_program_sessions` VALUES (512, 14, '../epgarchivePart/?VALID=TRUE&ch=14&e=152863540', '2025-05-12 18:59:08', 'radio-maaref-04-02-22-18-30.mp3', 1);
 INSERT INTO `radio_program_sessions` VALUES (513, 18, '../epgarchivePart/?VALID=TRUE&ch=14&e=152858696', '2025-05-12 18:59:12', 'radio-maaref-04-02-21-23-30.mp3', 1);
 INSERT INTO `radio_program_sessions` VALUES (514, 18, '../epgarchivePart/?VALID=TRUE&ch=14&e=152857284', '2025-05-12 18:59:12', 'radio-maaref-04-02-20-23-30.mp3', 1);
 INSERT INTO `radio_program_sessions` VALUES (515, 18, '../epgarchivePart/?VALID=TRUE&ch=14&e=152852400', '2025-05-12 18:59:12', 'radio-maaref-04-02-18-23-30.mp3', 1);
@@ -608,7 +608,7 @@ INSERT INTO `radio_program_sessions` VALUES (539, 19, '../epgarchivePart/?VALID=
 INSERT INTO `radio_program_sessions` VALUES (540, 19, '../epgarchivePart/?VALID=TRUE&ch=14&e=152845306', '2025-05-12 18:59:13', 'radio-maaref-04-02-14-20-00.mp3', 1);
 INSERT INTO `radio_program_sessions` VALUES (541, 19, '../epgarchivePart/?VALID=TRUE&ch=14&e=152845362', '2025-05-12 18:59:13', 'radio-maaref-04-02-13-20-00.mp3', 1);
 INSERT INTO `radio_program_sessions` VALUES (542, 19, '../epgarchivePart/?VALID=TRUE&ch=14&e=152845416', '2025-05-12 18:59:13', 'radio-maaref-04-02-12-20-00.mp3', 1);
-INSERT INTO `radio_program_sessions` VALUES (543, 19, '../epgarchivePart/?VALID=TRUE&ch=14&e=152845467', '2025-05-12 18:59:13', '', 0);
+INSERT INTO `radio_program_sessions` VALUES (543, 19, '../epgarchivePart/?VALID=TRUE&ch=14&e=152845467', '2025-05-12 18:59:13', 'radio-maaref-04-02-11-20-00.mp3', 1);
 INSERT INTO `radio_program_sessions` VALUES (544, 19, '../epgarchivePart/?VALID=TRUE&ch=14&e=152845519', '2025-05-12 18:59:13', 'radio-maaref-04-02-10-20-00.mp3', 1);
 INSERT INTO `radio_program_sessions` VALUES (545, 19, '../epgarchivePart/?VALID=TRUE&ch=14&e=152845574', '2025-05-12 18:59:13', 'radio-maaref-04-02-09-20-00.mp3', 1);
 INSERT INTO `radio_program_sessions` VALUES (546, 19, '../epgarchivePart/?VALID=TRUE&ch=14&e=152845623', '2025-05-12 18:59:13', 'radio-maaref-04-02-08-20-00.mp3', 1);
@@ -620,7 +620,7 @@ INSERT INTO `radio_program_sessions` VALUES (551, 19, '../epgarchivePart/?VALID=
 INSERT INTO `radio_program_sessions` VALUES (552, 19, '../epgarchivePart/?VALID=TRUE&ch=14&e=152845975', '2025-05-12 18:59:13', 'radio-maaref-04-02-02-20-00.mp3', 1);
 INSERT INTO `radio_program_sessions` VALUES (553, 20, '../epgarchivePart/?VALID=TRUE&ch=14&e=152858719', '2025-05-12 18:59:14', 'radio-maaref-04-02-21-15-00.mp3', 1);
 INSERT INTO `radio_program_sessions` VALUES (554, 20, '../epgarchivePart/?VALID=TRUE&ch=14&e=152845694', '2025-05-12 18:59:14', 'radio-maaref-04-02-07-15-00.mp3', 1);
-INSERT INTO `radio_program_sessions` VALUES (555, 20, '../epgarchivePart/?VALID=TRUE&ch=14&e=152846109', '2025-05-12 18:59:14', '', 0);
+INSERT INTO `radio_program_sessions` VALUES (555, 20, '../epgarchivePart/?VALID=TRUE&ch=14&e=152846109', '2025-05-12 18:59:14', 'radio-maaref-04-01-31-15-00.mp3', 1);
 INSERT INTO `radio_program_sessions` VALUES (556, 20, '../epgarchivePart/?VALID=TRUE&ch=14&e=152846533', '2025-05-12 18:59:14', 'radio-maaref-04-01-24-15-00.mp3', 1);
 INSERT INTO `radio_program_sessions` VALUES (557, 20, '../epgarchivePart/?VALID=TRUE&ch=14&e=152802845', '2025-05-12 18:59:14', 'radio-maaref-04-01-17-15-00.mp3', 1);
 INSERT INTO `radio_program_sessions` VALUES (558, 20, '../epgarchivePart/?VALID=TRUE&ch=14&e=152730377', '2025-05-12 18:59:14', 'radio-maaref-03-12-05-15-00.mp3', 1);
@@ -638,6 +638,8 @@ INSERT INTO `radio_program_sessions` VALUES (569, 20, '../epgarchivePart/?VALID=
 INSERT INTO `radio_program_sessions` VALUES (570, 20, '../epgarchivePart/?VALID=TRUE&ch=14&e=152569298', '2025-05-12 18:59:14', 'radio-maaref-03-09-18-15-00.mp3', 1);
 INSERT INTO `radio_program_sessions` VALUES (571, 20, '../epgarchivePart/?VALID=TRUE&ch=14&e=152562572', '2025-05-12 18:59:14', 'radio-maaref-03-09-13-15-00.mp3', 1);
 INSERT INTO `radio_program_sessions` VALUES (572, 20, '../epgarchivePart/?VALID=TRUE&ch=14&e=152559139', '2025-05-12 18:59:14', 'radio-maaref-03-09-11-15-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (573, 1, '../epgarchivePart/?VALID=TRUE&ch=14&e=152863528', '2025-05-12 18:19:00', '', 0);
+INSERT INTO `radio_program_sessions` VALUES (574, 19, '../epgarchivePart/?VALID=TRUE&ch=14&e=152863536', '2025-05-12 18:19:22', '', 0);
 
 -- ----------------------------
 -- Table structure for radio_programs
@@ -650,7 +652,7 @@ CREATE TABLE `radio_programs`  (
   `time` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
   `time_description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL,
   `description` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB AUTO_INCREMENT = 21 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = DYNAMIC;
 

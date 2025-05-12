@@ -5,14 +5,29 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"regexp"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/joho/godotenv"
+
 	_ "github.com/go-sql-driver/mysql"
 )
 
 func main() {
-	db, err := sql.Open("mysql", "root@tcp(127.0.0.1:3306)/radio")
+	// بارگذاری فایل .env
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
+	connStr := os.Getenv("MYSQL_CONN")
+	if connStr == "" {
+		log.Fatal("MYSQL_CONN not found in .env")
+	}
+
+	// اتصال به دیتابیس
+	db, err := sql.Open("mysql", connStr)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -110,8 +125,9 @@ func sessionExists(db *sql.DB, link string) bool {
 }
 
 func saveSession(db *sql.DB, link string, programID int) {
-	_, err := db.Exec("INSERT INTO radio_program_sessions (link, program_id) VALUES (?, ?)", link, programID)
+	_, err := db.Exec("INSERT INTO radio_program_sessions (link, program_id, filename) VALUES (?, ?, '')", link, programID)
 	if err != nil {
 		log.Fatal(err)
 	}
 }
+
