@@ -1,16 +1,22 @@
+import os
 import requests
 from bs4 import BeautifulSoup
 import pymysql
+from dotenv import load_dotenv
 
 BASE_LIST_URL = "https://radio.iranseda.ir/epgList/?VALID=TRUE&ch=14"
 BASE_DOMAIN = "https://radio.iranseda.ir"
 
 # اتصال به پایگاه داده
+# بارگذاری .env
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '..', '.env'))
+
+# اتصال به پایگاه داده با متغیرهای محیطی
 conn = pymysql.connect(
-    host='localhost',
-    user='root',
-    password='',
-    database='radio',
+    host=os.getenv("DB_HOST"),
+    user=os.getenv("DB_USER"),
+    password=os.getenv("DB_PASS"),
+    database=os.getenv("DB_NAME"),
     charset='utf8mb4'
 )
 cursor = conn.cursor()
