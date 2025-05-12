@@ -2,31 +2,35 @@ package main
 
 import (
 	"database/sql"
-	// "flag"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
-	// "strconv"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
+	"github.com/joho/godotenv"
 
 	_ "github.com/go-sql-driver/mysql"
 )
 
 func main() {
-	// دریافت پارامتر از خط فرمان برای آی دی برنامه
-	// programID := flag.String("programID", "", "Program ID to fetch and download")
-	// flag.Parse()
+	// بارگذاری متغیرهای محیطی از .env
+	err := godotenv.Load()
+	if err != nil {
+		fmt.Println("Error loading .env file:", err)
+		return
+	}
 
-	// // اگر programID مشخص نشده باشد، مقدار آن به "1" تنظیم می‌شود
-	// if *programID == "" {
-	// 	*programID = "1"
-	// }
+	// گرفتن کانکشن‌استرینگ از .env
+	connStr := os.Getenv("MYSQL_CONN")
+	if connStr == "" {
+		fmt.Println("MYSQL_CONN not found in .env")
+		return
+	}
 
 	// اتصال به دیتابیس
-	db, err := sql.Open("mysql", "root@tcp(127.0.0.1:3306)/radio")
+	db, err := sql.Open("mysql", connStr)
 	if err != nil {
 		fmt.Println("Error connecting to database:", err)
 		return
@@ -181,3 +185,4 @@ func saveDownloadedFile(db *sql.DB, id int, filename string) {
 		fmt.Println("Error saving filename to database:", err)
 	}
 }
+
