@@ -1,6 +1,5 @@
 annotated-types==0.7.0
 anyio==4.9.0
-audioop-lts==0.2.1
 backoff==2.2.1
 beautifulsoup4==4.13.3
 certifi==2025.1.31
