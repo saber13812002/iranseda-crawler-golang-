@@ -9,3 +9,6 @@ https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=152858719
 https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=152873904
 https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=152873876
 https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=55&e=152606133
+https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=152873886
+https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=152873859
+https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=65&e=152873856
