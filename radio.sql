@@ -11,7 +11,7 @@
  Target Server Version : 80042 (8.0.42-0ubuntu0.24.04.1)
  File Encoding         : 65001
 
- Date: 17/05/2025 00:20:32
+ Date: 17/05/2025 01:09:07
 */
 
 SET NAMES utf8mb4;
@@ -884,7 +884,7 @@ CREATE TABLE `radio_programs`  (
   `radio` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
   `radio_id` int NULL DEFAULT NULL,
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 24 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 27 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of radio_programs
@@ -912,5 +912,8 @@ INSERT INTO `radio_programs` VALUES (20, 'فقه پویا', 'https://radio.irans
 INSERT INTO `radio_programs` VALUES (21, 'برای بیداری', 'https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044115', '00:00:30', 'جمعه 26 اردیبهشت 1404ساعت 01:10به مدت 30 دقیقه', 'none', '2025-05-16 14:14:47', NULL, NULL, NULL);
 INSERT INTO `radio_programs` VALUES (22, 'راهبرد', 'https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044210', '00:00:40', 'جمعه 26 اردیبهشت 1404ساعت 14:35به مدت 40 دقیقه', 'none', '2025-05-16 14:14:48', NULL, NULL, NULL);
 INSERT INTO `radio_programs` VALUES (23, 'محوطه گفتگو', 'https://radio.iranseda.ir/Program/?VALID=TRUE&ch=18&m=081100', NULL, 'پنجشنبه 6 دی 1403ساعت 03:00به مدت 60 دقیقه', 'none', '2025-05-16 16:30:54', NULL, NULL, NULL);
+INSERT INTO `radio_programs` VALUES (24, 'تا جمعه ظهور', 'https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044127', NULL, 'جمعه 26 اردیبهشت 1404ساعت 09:00به مدت 120 دقیقه', 'none', '2025-05-16 21:38:26', NULL, NULL, NULL);
+INSERT INTO `radio_programs` VALUES (25, 'نشان صبح(تكرار)', 'https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044395', NULL, 'جمعه 26 اردیبهشت 1404ساعت 21:30به مدت 30 دقیقه', 'none', '2025-05-16 21:38:27', NULL, NULL, NULL);
+INSERT INTO `radio_programs` VALUES (26, 'مبنا', 'https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=040125', NULL, 'جمعه 26 اردیبهشت 1404ساعت 23:05به مدت 45 دقیقه', 'none', '2025-05-16 21:38:28', NULL, NULL, NULL);
 
 SET FOREIGN_KEY_CHECKS = 1;
