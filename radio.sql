@@ -11,7 +11,7 @@
  Target Server Version : 80042 (8.0.42-0ubuntu0.24.04.1)
  File Encoding         : 65001
 
- Date: 17/05/2025 01:09:07
+ Date: 21/05/2025 20:36:19
 */
 
 SET NAMES utf8mb4;
@@ -63,7 +63,7 @@ CREATE TABLE `radio_program_sessions`  (
   `is_downloaded` tinyint(1) NULL DEFAULT 0,
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `program_id`(`program_id` ASC) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 802 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 972 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of radio_program_sessions
@@ -867,6 +867,176 @@ INSERT INTO `radio_program_sessions` VALUES (798, 22, '../epgarchivePart/?VALID=
 INSERT INTO `radio_program_sessions` VALUES (799, 14, '../epgarchivePart/?VALID=TRUE&ch=14&e=152873869', '2025-05-16 16:30:41', 'radio-maaref-04-02-26-18-30.mp3', 1);
 INSERT INTO `radio_program_sessions` VALUES (800, 15, '../epgarchivePart/?VALID=TRUE&ch=14&e=152873862', '2025-05-16 18:30:43', 'radio-maaref-04-02-26-21-00.mp3', 1);
 INSERT INTO `radio_program_sessions` VALUES (801, 19, '../epgarchivePart/?VALID=TRUE&ch=14&e=152873865', '2025-05-16 18:30:47', 'radio-maaref-04-02-26-20-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (802, 24, '../epgarchivePart/?VALID=TRUE&ch=14&e=152873858', '2025-05-16 22:30:50', 'radio-maaref-04-02-26-22-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (803, 24, '../epgarchivePart/?VALID=TRUE&ch=14&e=152873886', '2025-05-16 22:30:50', 'radio-maaref-04-02-26-10-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (804, 24, '../epgarchivePart/?VALID=TRUE&ch=14&e=152874283', '2025-05-16 22:30:50', 'radio-maaref-04-02-19-22-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (805, 24, '../epgarchivePart/?VALID=TRUE&ch=14&e=152845413', '2025-05-16 22:30:50', 'radio-maaref-04-02-12-22-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (806, 24, '../epgarchivePart/?VALID=TRUE&ch=14&e=152845437', '2025-05-16 22:30:50', 'radio-maaref-04-02-12-10-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (807, 24, '../epgarchivePart/?VALID=TRUE&ch=14&e=152845825', '2025-05-16 22:30:50', 'radio-maaref-04-02-05-10-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (808, 24, '../epgarchivePart/?VALID=TRUE&ch=14&e=152846209', '2025-05-16 22:30:50', 'radio-maaref-04-01-29-22-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (809, 24, '../epgarchivePart/?VALID=TRUE&ch=14&e=152846240', '2025-05-16 22:30:50', 'radio-maaref-04-01-29-10-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (810, 24, '../epgarchivePart/?VALID=TRUE&ch=14&e=152846638', '2025-05-16 22:30:50', 'radio-maaref-04-01-22-22-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (811, 24, '../epgarchivePart/?VALID=TRUE&ch=14&e=152846668', '2025-05-16 22:30:50', 'radio-maaref-04-01-22-10-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (812, 24, '../epgarchivePart/?VALID=TRUE&ch=14&e=152789229', '2025-05-16 22:30:50', 'radio-maaref-04-01-15-22-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (813, 24, '../epgarchivePart/?VALID=TRUE&ch=14&e=152789257', '2025-05-16 22:30:50', 'radio-maaref-04-01-15-10-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (814, 24, '../epgarchivePart/?VALID=TRUE&ch=14&e=152731602', '2025-05-16 22:30:50', 'radio-maaref-03-11-12-23-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (815, 24, '../epgarchivePart/?VALID=TRUE&ch=14&e=152732006', '2025-05-16 22:30:50', 'radio-maaref-03-11-05-23-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (816, 24, '../epgarchivePart/?VALID=TRUE&ch=14&e=152732033', '2025-05-16 22:30:50', 'radio-maaref-03-11-05-10-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (817, 24, '../epgarchivePart/?VALID=TRUE&ch=14&e=152655447', '2025-05-16 22:30:50', 'radio-maaref-03-10-28-23-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (818, 24, '../epgarchivePart/?VALID=TRUE&ch=14&e=152655474', '2025-05-16 22:30:50', 'radio-maaref-03-10-28-10-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (819, 24, '../epgarchivePart/?VALID=TRUE&ch=14&e=152655853', '2025-05-16 22:30:50', 'radio-maaref-03-10-21-23-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (820, 24, '../epgarchivePart/?VALID=TRUE&ch=14&e=152655880', '2025-05-16 22:30:50', 'radio-maaref-03-10-21-10-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (821, 24, '../epgarchivePart/?VALID=TRUE&ch=14&e=152634278', '2025-05-16 22:30:50', 'radio-maaref-03-10-14-23-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (822, 7, '../epgarchivePart/?VALID=TRUE&ch=14&e=152875353', '2025-05-17 00:30:38', 'radio-maaref-04-02-27-02-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (823, 14, '../epgarchivePart/?VALID=TRUE&ch=14&e=152875349', '2025-05-17 00:30:43', 'radio-maaref-04-02-27-04-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (824, 16, '../epgarchivePart/?VALID=TRUE&ch=14&e=152875355', '2025-05-17 00:30:45', 'radio-maaref-04-02-27-01-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (825, 26, '../epgarchivePart/?VALID=TRUE&ch=14&e=152873856', '2025-05-17 00:30:52', 'radio-maaref-04-02-26-23-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (826, 26, '../epgarchivePart/?VALID=TRUE&ch=14&e=152873892', '2025-05-17 00:30:52', 'radio-maaref-04-02-26-06-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (827, 26, '../epgarchivePart/?VALID=TRUE&ch=14&e=152873952', '2025-05-17 00:30:52', 'radio-maaref-04-02-25-06-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (828, 26, '../epgarchivePart/?VALID=TRUE&ch=14&e=152874281', '2025-05-17 00:30:52', 'radio-maaref-04-02-19-23-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (829, 26, '../epgarchivePart/?VALID=TRUE&ch=14&e=152874317', '2025-05-17 00:30:52', 'radio-maaref-04-02-19-06-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (830, 26, '../epgarchivePart/?VALID=TRUE&ch=14&e=152852442', '2025-05-17 00:30:52', 'radio-maaref-04-02-18-06-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (831, 26, '../epgarchivePart/?VALID=TRUE&ch=14&e=152845411', '2025-05-17 00:30:52', 'radio-maaref-04-02-12-23-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (832, 26, '../epgarchivePart/?VALID=TRUE&ch=14&e=152845445', '2025-05-17 00:30:52', 'radio-maaref-04-02-12-06-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (833, 26, '../epgarchivePart/?VALID=TRUE&ch=14&e=152845497', '2025-05-17 00:30:52', 'radio-maaref-04-02-11-06-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (834, 26, '../epgarchivePart/?VALID=TRUE&ch=14&e=152845834', '2025-05-17 00:30:52', 'radio-maaref-04-02-05-06-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (835, 26, '../epgarchivePart/?VALID=TRUE&ch=14&e=152845893', '2025-05-17 00:30:52', 'radio-maaref-04-02-04-06-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (836, 26, '../epgarchivePart/?VALID=TRUE&ch=14&e=152846250', '2025-05-17 00:30:52', 'radio-maaref-04-01-29-06-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (837, 26, '../epgarchivePart/?VALID=TRUE&ch=14&e=152846311', '2025-05-17 00:30:52', 'radio-maaref-04-01-28-06-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (838, 26, '../epgarchivePart/?VALID=TRUE&ch=14&e=152846636', '2025-05-17 00:30:52', 'radio-maaref-04-01-22-23-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (839, 26, '../epgarchivePart/?VALID=TRUE&ch=14&e=152846677', '2025-05-17 00:30:52', 'radio-maaref-04-01-22-06-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (840, 26, '../epgarchivePart/?VALID=TRUE&ch=14&e=152802619', '2025-05-17 00:30:52', 'radio-maaref-04-01-21-06-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (841, 26, '../epgarchivePart/?VALID=TRUE&ch=14&e=152789267', '2025-05-17 00:30:53', 'radio-maaref-04-01-15-06-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (842, 26, '../epgarchivePart/?VALID=TRUE&ch=14&e=152730515', '2025-05-17 00:30:53', 'radio-maaref-03-12-03-06-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (843, 26, '../epgarchivePart/?VALID=TRUE&ch=14&e=152730914', '2025-05-17 00:30:53', 'radio-maaref-03-11-26-06-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (844, 26, '../epgarchivePart/?VALID=TRUE&ch=14&e=152731283', '2025-05-17 00:30:53', 'radio-maaref-03-11-19-06-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (845, 1, '../epgarchivePart/?VALID=TRUE&ch=14&e=152875341', '2025-05-17 02:30:32', 'radio-maaref-04-02-27-06-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (846, 13, '../epgarchivePart/?VALID=TRUE&ch=14&e=152875345', '2025-05-17 02:30:41', 'radio-maaref-04-02-27-05-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (847, 15, '../epgarchivePart/?VALID=TRUE&ch=14&e=152875348', '2025-05-17 02:30:43', 'radio-maaref-04-02-27-04-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (848, 2, '../epgarchivePart/?VALID=TRUE&ch=14&e=152875339', '2025-05-17 04:30:33', 'radio-maaref-04-02-27-07-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (849, 12, '../epgarchivePart/?VALID=TRUE&ch=14&e=152875332', '2025-05-17 08:30:40', 'radio-maaref-04-02-27-11-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (850, 14, '../epgarchivePart/?VALID=TRUE&ch=14&e=152875330', '2025-05-17 08:30:41', 'radio-maaref-04-02-27-11-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (851, 15, '../epgarchivePart/?VALID=TRUE&ch=14&e=152875331', '2025-05-17 08:30:42', 'radio-maaref-04-02-27-11-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (852, 9, '../epgarchivePart/?VALID=TRUE&ch=14&e=152875323', '2025-05-17 10:30:39', 'radio-maaref-04-02-27-13-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (853, 16, '../epgarchivePart/?VALID=TRUE&ch=14&e=152875325', '2025-05-17 10:30:45', 'radio-maaref-04-02-27-13-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (854, 7, '../epgarchivePart/?VALID=TRUE&ch=14&e=152875318', '2025-05-17 12:30:36', 'radio-maaref-04-02-27-16-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (855, 2, '../epgarchivePart/?VALID=TRUE&ch=14&e=152875315', '2025-05-17 14:30:33', 'radio-maaref-04-02-27-18-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (856, 14, '../epgarchivePart/?VALID=TRUE&ch=14&e=152875313', '2025-05-17 16:30:44', 'radio-maaref-04-02-27-18-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (857, 1, '../epgarchivePart/?VALID=TRUE&ch=14&e=152875302', '2025-05-17 18:30:32', 'radio-maaref-04-02-27-21-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (858, 19, '../epgarchivePart/?VALID=TRUE&ch=14&e=152875309', '2025-05-17 18:30:48', 'radio-maaref-04-02-27-20-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (859, 17, '../epgarchivePart/?VALID=TRUE&ch=14&e=152875300', '2025-05-17 20:30:44', 'radio-maaref-04-02-27-22-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (860, 18, '../epgarchivePart/?VALID=TRUE&ch=14&e=152875297', '2025-05-17 20:30:45', 'radio-maaref-04-02-27-23-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (861, 1, '../epgarchivePart/?VALID=TRUE&ch=14&e=152877798', '2025-05-18 02:30:32', 'radio-maaref-04-02-28-06-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (862, 13, '../epgarchivePart/?VALID=TRUE&ch=14&e=152877802', '2025-05-18 02:30:42', 'radio-maaref-04-02-28-05-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (863, 14, '../epgarchivePart/?VALID=TRUE&ch=14&e=152877806', '2025-05-18 02:30:42', 'radio-maaref-04-02-28-04-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (864, 15, '../epgarchivePart/?VALID=TRUE&ch=14&e=152877805', '2025-05-18 02:30:43', 'radio-maaref-04-02-28-04-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (865, 16, '../epgarchivePart/?VALID=TRUE&ch=14&e=152877812', '2025-05-18 02:30:44', 'radio-maaref-04-02-28-01-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (866, 2, '../epgarchivePart/?VALID=TRUE&ch=14&e=152877796', '2025-05-18 04:30:35', 'radio-maaref-04-02-28-07-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (867, 12, '../epgarchivePart/?VALID=TRUE&ch=14&e=152877787', '2025-05-18 08:30:41', 'radio-maaref-04-02-28-11-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (868, 9, '../epgarchivePart/?VALID=TRUE&ch=14&e=152877841', '2025-05-18 10:30:41', 'radio-maaref-04-02-28-13-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (869, 16, '../epgarchivePart/?VALID=TRUE&ch=14&e=152877843', '2025-05-18 10:30:49', 'radio-maaref-04-02-28-13-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (870, 20, '../epgarchivePart/?VALID=TRUE&ch=14&e=152877838', '2025-05-18 12:30:49', 'radio-maaref-04-02-28-15-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (871, 2, '../epgarchivePart/?VALID=TRUE&ch=14&e=152877833', '2025-05-18 14:30:32', 'radio-maaref-04-02-28-18-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (872, 14, '../epgarchivePart/?VALID=TRUE&ch=14&e=152877831', '2025-05-18 16:30:46', 'radio-maaref-04-02-28-18-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (873, 19, '../epgarchivePart/?VALID=TRUE&ch=14&e=152877827', '2025-05-18 16:30:50', 'radio-maaref-04-02-28-20-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (874, 1, '../epgarchivePart/?VALID=TRUE&ch=14&e=152877820', '2025-05-18 18:30:32', 'radio-maaref-04-02-28-21-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (875, 17, '../epgarchivePart/?VALID=TRUE&ch=14&e=152877818', '2025-05-18 20:30:44', 'radio-maaref-04-02-28-22-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (876, 18, '../epgarchivePart/?VALID=TRUE&ch=14&e=152877815', '2025-05-18 20:30:45', 'radio-maaref-04-02-28-23-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (877, 27, '../epgarchivePart/?VALID=TRUE&ch=14&e=145189198', '2025-05-19 02:30:52', 'radio-maaref-97-12-26-20-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (878, 27, '../epgarchivePart/?VALID=TRUE&ch=14&e=145188457', '2025-05-19 02:30:52', 'radio-maaref-97-12-23-20-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (879, 27, '../epgarchivePart/?VALID=TRUE&ch=14&e=145172623', '2025-05-19 02:30:53', 'radio-maaref-97-12-21-20-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (880, 27, '../epgarchivePart/?VALID=TRUE&ch=14&e=145172522', '2025-05-19 02:30:53', 'radio-maaref-97-12-19-20-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (881, 27, '../epgarchivePart/?VALID=TRUE&ch=14&e=145131920', '2025-05-19 02:30:53', 'radio-maaref-97-12-14-20-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (882, 27, '../epgarchivePart/?VALID=TRUE&ch=14&e=145130842', '2025-05-19 02:30:53', 'radio-maaref-97-12-12-20-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (883, 27, '../epgarchivePart/?VALID=TRUE&ch=14&e=145131035', '2025-05-19 02:30:53', 'radio-maaref-97-12-09-20-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (884, 27, '../epgarchivePart/?VALID=TRUE&ch=14&e=145122104', '2025-05-19 02:30:53', 'radio-maaref-97-12-07-20-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (885, 27, '../epgarchivePart/?VALID=TRUE&ch=14&e=145115422', '2025-05-19 02:30:53', 'radio-maaref-97-12-05-20-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (886, 27, '../epgarchivePart/?VALID=TRUE&ch=14&e=145106102', '2025-05-19 02:30:53', 'radio-maaref-97-12-02-20-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (887, 27, '../epgarchivePart/?VALID=TRUE&ch=14&e=145106116', '2025-05-19 02:30:53', 'radio-maaref-97-11-30-20-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (888, 27, '../epgarchivePart/?VALID=TRUE&ch=14&e=145093404', '2025-05-19 02:30:53', 'radio-maaref-97-11-28-20-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (889, 27, '../epgarchivePart/?VALID=TRUE&ch=14&e=145083603', '2025-05-19 02:30:53', 'radio-maaref-97-11-25-20-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (890, 27, '../epgarchivePart/?VALID=TRUE&ch=14&e=145080270', '2025-05-19 02:30:53', 'radio-maaref-97-11-23-20-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (891, 27, '../epgarchivePart/?VALID=TRUE&ch=14&e=145080468', '2025-05-19 02:30:53', 'radio-maaref-97-11-21-20-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (892, 27, '../epgarchivePart/?VALID=TRUE&ch=14&e=145075646', '2025-05-19 02:30:53', 'radio-maaref-97-11-18-20-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (893, 27, '../epgarchivePart/?VALID=TRUE&ch=14&e=145049348', '2025-05-19 02:30:53', 'radio-maaref-97-11-16-20-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (894, 27, '../epgarchivePart/?VALID=TRUE&ch=14&e=145049232', '2025-05-19 02:30:53', 'radio-maaref-97-11-14-20-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (895, 27, '../epgarchivePart/?VALID=TRUE&ch=14&e=145043513', '2025-05-19 02:30:53', 'radio-maaref-97-11-11-20-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (896, 27, '../epgarchivePart/?VALID=TRUE&ch=14&e=145043786', '2025-05-19 02:30:53', 'radio-maaref-97-11-09-20-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (897, 28, '../epgarchivePart/?VALID=TRUE&ch=14&e=152877824', '2025-05-19 02:30:54', 'radio-maaref-04-02-28-20-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (898, 28, '../epgarchivePart/?VALID=TRUE&ch=14&e=152875306', '2025-05-19 02:30:54', 'radio-maaref-04-02-27-20-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (899, 28, '../epgarchivePart/?VALID=TRUE&ch=14&e=152874166', '2025-05-19 02:30:54', 'radio-maaref-04-02-21-20-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (900, 28, '../epgarchivePart/?VALID=TRUE&ch=14&e=152874228', '2025-05-19 02:30:54', 'radio-maaref-04-02-20-20-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (901, 28, '../epgarchivePart/?VALID=TRUE&ch=14&e=152845680', '2025-05-19 02:30:54', 'radio-maaref-04-02-07-20-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (902, 28, '../epgarchivePart/?VALID=TRUE&ch=14&e=152845742', '2025-05-19 02:30:54', 'radio-maaref-04-02-06-20-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (903, 28, '../epgarchivePart/?VALID=TRUE&ch=14&e=152846095', '2025-05-19 02:30:54', 'radio-maaref-04-01-31-20-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (904, 28, '../epgarchivePart/?VALID=TRUE&ch=14&e=152846157', '2025-05-19 02:30:54', 'radio-maaref-04-01-30-20-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (905, 28, '../epgarchivePart/?VALID=TRUE&ch=14&e=152846212', '2025-05-19 02:30:54', 'radio-maaref-04-01-29-21-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (906, 28, '../epgarchivePart/?VALID=TRUE&ch=14&e=152846336', '2025-05-19 02:30:55', 'radio-maaref-04-01-27-20-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (907, 28, '../epgarchivePart/?VALID=TRUE&ch=14&e=152846577', '2025-05-19 02:30:55', 'radio-maaref-04-01-23-21-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (908, 28, '../epgarchivePart/?VALID=TRUE&ch=14&e=152802889', '2025-05-19 02:30:55', 'radio-maaref-04-01-16-21-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (909, 28, '../epgarchivePart/?VALID=TRUE&ch=14&e=152789232', '2025-05-19 02:30:55', 'radio-maaref-04-01-15-21-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (910, 28, '../epgarchivePart/?VALID=TRUE&ch=14&e=152788083', '2025-05-19 02:30:55', 'radio-maaref-04-01-14-21-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (911, 28, '../epgarchivePart/?VALID=TRUE&ch=14&e=152788138', '2025-05-19 02:30:55', 'radio-maaref-04-01-13-21-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (912, 28, '../epgarchivePart/?VALID=TRUE&ch=14&e=152788196', '2025-05-19 02:30:55', 'radio-maaref-04-01-12-21-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (913, 28, '../epgarchivePart/?VALID=TRUE&ch=14&e=152735624', '2025-05-19 02:30:55', 'radio-maaref-03-12-09-21-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (914, 28, '../epgarchivePart/?VALID=TRUE&ch=14&e=152733881', '2025-05-19 02:30:55', 'radio-maaref-03-12-08-21-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (915, 28, '../epgarchivePart/?VALID=TRUE&ch=14&e=152730244', '2025-05-19 02:30:55', 'radio-maaref-03-12-07-21-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (916, 28, '../epgarchivePart/?VALID=TRUE&ch=14&e=152730537', '2025-05-19 02:30:55', 'radio-maaref-03-12-02-21-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (917, 1, '../epgarchivePart/?VALID=TRUE&ch=14&e=152880269', '2025-05-19 08:30:33', 'radio-maaref-04-02-29-06-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (918, 2, '../epgarchivePart/?VALID=TRUE&ch=14&e=152880267', '2025-05-19 08:30:34', 'radio-maaref-04-02-29-07-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (919, 12, '../epgarchivePart/?VALID=TRUE&ch=14&e=152880258', '2025-05-19 08:30:41', 'radio-maaref-04-02-29-11-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (920, 13, '../epgarchivePart/?VALID=TRUE&ch=14&e=152880273', '2025-05-19 08:30:42', 'radio-maaref-04-02-29-05-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (921, 14, '../epgarchivePart/?VALID=TRUE&ch=14&e=152880256', '2025-05-19 08:30:43', 'radio-maaref-04-02-29-11-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (922, 14, '../epgarchivePart/?VALID=TRUE&ch=14&e=152880276', '2025-05-19 08:30:43', 'radio-maaref-04-02-29-04-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (923, 15, '../epgarchivePart/?VALID=TRUE&ch=14&e=152880275', '2025-05-19 08:30:44', 'radio-maaref-04-02-29-04-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (924, 16, '../epgarchivePart/?VALID=TRUE&ch=14&e=152880282', '2025-05-19 08:30:44', 'radio-maaref-04-02-29-01-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (925, 9, '../epgarchivePart/?VALID=TRUE&ch=14&e=152880249', '2025-05-19 10:30:40', 'radio-maaref-04-02-29-13-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (926, 16, '../epgarchivePart/?VALID=TRUE&ch=14&e=152880251', '2025-05-19 10:30:46', 'radio-maaref-04-02-29-13-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (927, 2, '../epgarchivePart/?VALID=TRUE&ch=14&e=152880241', '2025-05-19 14:30:33', 'radio-maaref-04-02-29-18-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (928, 14, '../epgarchivePart/?VALID=TRUE&ch=14&e=152880239', '2025-05-19 16:30:45', 'radio-maaref-04-02-29-18-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (929, 19, '../epgarchivePart/?VALID=TRUE&ch=14&e=152880235', '2025-05-19 16:30:49', 'radio-maaref-04-02-29-20-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (930, 1, '../epgarchivePart/?VALID=TRUE&ch=14&e=152880227', '2025-05-19 18:30:33', 'radio-maaref-04-02-29-21-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (931, 17, '../epgarchivePart/?VALID=TRUE&ch=14&e=152880225', '2025-05-19 20:30:46', 'radio-maaref-04-02-29-22-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (932, 18, '../epgarchivePart/?VALID=TRUE&ch=14&e=152880222', '2025-05-19 20:30:47', 'radio-maaref-04-02-29-23-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (933, 1, '../epgarchivePart/?VALID=TRUE&ch=14&e=152882708', '2025-05-20 02:30:32', 'radio-maaref-04-02-30-06-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (934, 3, '../epgarchivePart/?VALID=TRUE&ch=14&e=152882719', '2025-05-20 02:30:33', 'radio-maaref-04-02-30-02-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (935, 13, '../epgarchivePart/?VALID=TRUE&ch=14&e=152882712', '2025-05-20 02:30:42', 'radio-maaref-04-02-30-05-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (936, 14, '../epgarchivePart/?VALID=TRUE&ch=14&e=152882715', '2025-05-20 02:30:43', 'radio-maaref-04-02-30-04-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (937, 15, '../epgarchivePart/?VALID=TRUE&ch=14&e=152882714', '2025-05-20 02:30:44', 'radio-maaref-04-02-30-04-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (938, 16, '../epgarchivePart/?VALID=TRUE&ch=14&e=152882721', '2025-05-20 02:30:45', 'radio-maaref-04-02-30-01-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (939, 2, '../epgarchivePart/?VALID=TRUE&ch=14&e=152882706', '2025-05-20 04:30:35', 'radio-maaref-04-02-30-07-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (940, 12, '../epgarchivePart/?VALID=TRUE&ch=14&e=152883039', '2025-05-20 08:30:40', 'radio-maaref-04-02-30-11-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (941, 14, '../epgarchivePart/?VALID=TRUE&ch=14&e=152883037', '2025-05-20 08:30:42', 'radio-maaref-04-02-30-11-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (942, 9, '../epgarchivePart/?VALID=TRUE&ch=14&e=152883030', '2025-05-20 10:30:41', 'radio-maaref-04-02-30-13-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (943, 16, '../epgarchivePart/?VALID=TRUE&ch=14&e=152883032', '2025-05-20 10:30:47', 'radio-maaref-04-02-30-13-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (944, 3, '../epgarchivePart/?VALID=TRUE&ch=14&e=152883025', '2025-05-20 12:30:35', 'radio-maaref-04-02-30-16-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (945, 2, '../epgarchivePart/?VALID=TRUE&ch=14&e=152883022', '2025-05-20 14:30:34', 'radio-maaref-04-02-30-18-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (946, 14, '../epgarchivePart/?VALID=TRUE&ch=14&e=152883020', '2025-05-20 16:30:44', 'radio-maaref-04-02-30-18-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (947, 19, '../epgarchivePart/?VALID=TRUE&ch=14&e=152883016', '2025-05-20 16:30:48', 'radio-maaref-04-02-30-20-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (948, 1, '../epgarchivePart/?VALID=TRUE&ch=14&e=152883009', '2025-05-20 18:30:33', 'radio-maaref-04-02-30-21-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (949, 17, '../epgarchivePart/?VALID=TRUE&ch=14&e=152883007', '2025-05-20 20:30:44', 'radio-maaref-04-02-30-22-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (950, 18, '../epgarchivePart/?VALID=TRUE&ch=14&e=152883003', '2025-05-20 20:30:44', 'radio-maaref-04-02-30-23-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (951, 1, '../epgarchivePart/?VALID=TRUE&ch=14&e=152886118', '2025-05-21 02:30:33', 'radio-maaref-04-02-31-06-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (952, 3, '../epgarchivePart/?VALID=TRUE&ch=14&e=152886129', '2025-05-21 02:30:35', 'radio-maaref-04-02-31-02-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (953, 13, '../epgarchivePart/?VALID=TRUE&ch=14&e=152886122', '2025-05-21 02:30:43', 'radio-maaref-04-02-31-05-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (954, 14, '../epgarchivePart/?VALID=TRUE&ch=14&e=152886125', '2025-05-21 02:30:44', 'radio-maaref-04-02-31-04-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (955, 15, '../epgarchivePart/?VALID=TRUE&ch=14&e=152886124', '2025-05-21 02:30:44', 'radio-maaref-04-02-31-04-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (956, 16, '../epgarchivePart/?VALID=TRUE&ch=14&e=152886131', '2025-05-21 02:30:45', 'radio-maaref-04-02-31-01-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (957, 2, '../epgarchivePart/?VALID=TRUE&ch=14&e=152886116', '2025-05-21 04:30:35', 'radio-maaref-04-02-31-07-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (958, 3, '../epgarchivePart/?VALID=TRUE&ch=14&e=152886112', '2025-05-21 06:30:35', '', 0);
+INSERT INTO `radio_program_sessions` VALUES (959, 1, '../epgarchivePart/?VALID=TRUE&ch=14&e=152886206', '2025-05-21 08:30:33', 'radio-maaref-04-02-31-06-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (960, 2, '../epgarchivePart/?VALID=TRUE&ch=14&e=152886204', '2025-05-21 08:30:34', 'radio-maaref-04-02-31-07-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (961, 3, '../epgarchivePart/?VALID=TRUE&ch=14&e=152886200', '2025-05-21 08:30:35', 'radio-maaref-04-02-31-09-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (962, 12, '../epgarchivePart/?VALID=TRUE&ch=14&e=152886195', '2025-05-21 08:30:43', 'radio-maaref-04-02-31-11-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (963, 13, '../epgarchivePart/?VALID=TRUE&ch=14&e=152886210', '2025-05-21 08:30:44', 'radio-maaref-04-02-31-05-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (964, 14, '../epgarchivePart/?VALID=TRUE&ch=14&e=152886213', '2025-05-21 08:30:44', 'radio-maaref-04-02-31-04-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (965, 15, '../epgarchivePart/?VALID=TRUE&ch=14&e=152886212', '2025-05-21 08:30:45', 'radio-maaref-04-02-31-04-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (966, 9, '../epgarchivePart/?VALID=TRUE&ch=14&e=152886187', '2025-05-21 10:30:44', 'radio-maaref-04-02-31-13-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (967, 16, '../epgarchivePart/?VALID=TRUE&ch=14&e=152886189', '2025-05-21 10:30:54', 'radio-maaref-04-02-31-13-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (968, 3, '../epgarchivePart/?VALID=TRUE&ch=14&e=152886182', '2025-05-21 12:30:34', 'radio-maaref-04-02-31-16-30.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (969, 2, '../epgarchivePart/?VALID=TRUE&ch=14&e=152886179', '2025-05-21 14:30:33', 'radio-maaref-04-02-31-18-00.mp3', 1);
+INSERT INTO `radio_program_sessions` VALUES (970, 14, '../epgarchivePart/?VALID=TRUE&ch=14&e=152886177', '2025-05-21 16:30:41', '', 0);
+INSERT INTO `radio_program_sessions` VALUES (971, 19, '../epgarchivePart/?VALID=TRUE&ch=14&e=152886173', '2025-05-21 16:30:45', '', 0);
 
 -- ----------------------------
 -- Table structure for radio_programs
@@ -884,7 +1054,7 @@ CREATE TABLE `radio_programs`  (
   `radio` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL,
   `radio_id` int NULL DEFAULT NULL,
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB AUTO_INCREMENT = 27 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = DYNAMIC;
+) ENGINE = InnoDB AUTO_INCREMENT = 29 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Records of radio_programs
@@ -915,5 +1085,7 @@ INSERT INTO `radio_programs` VALUES (23, 'محوطه گفتگو', 'https://radio
 INSERT INTO `radio_programs` VALUES (24, 'تا جمعه ظهور', 'https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044127', NULL, 'جمعه 26 اردیبهشت 1404ساعت 09:00به مدت 120 دقیقه', 'none', '2025-05-16 21:38:26', NULL, NULL, NULL);
 INSERT INTO `radio_programs` VALUES (25, 'نشان صبح(تكرار)', 'https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044395', NULL, 'جمعه 26 اردیبهشت 1404ساعت 21:30به مدت 30 دقیقه', 'none', '2025-05-16 21:38:27', NULL, NULL, NULL);
 INSERT INTO `radio_programs` VALUES (26, 'مبنا', 'https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=040125', NULL, 'جمعه 26 اردیبهشت 1404ساعت 23:05به مدت 45 دقیقه', 'none', '2025-05-16 21:38:28', NULL, NULL, NULL);
+INSERT INTO `radio_programs` VALUES (27, 'اندیشه های ماندگار', 'https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044103', NULL, 'یکشنبه 26 اسفند 1397ساعت 20:50به مدت 10 دقیقه', 'none', '2025-05-19 00:31:02', NULL, NULL, NULL);
+INSERT INTO `radio_programs` VALUES (28, 'حكایت آزادگی', 'https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=043118', NULL, 'یکشنبه 28 اردیبهشت 1404ساعت 20:40به مدت 20 دقیقه', 'none', '2025-05-19 00:31:03', NULL, NULL, NULL);
 
 SET FOREIGN_KEY_CHECKS = 1;
