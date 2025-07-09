@@ -1,5 +1,25 @@
 # iranseda-crawler-golang-
 
+ 
+This project is a web crawler written in Golang that retrieves audio files and metadata from the IranSeda radio website. It is designed to crawl the website, scan for available content, and download the audio files and associated data.
+
+### Main Function Points
+- Crawl and retrieve information and audio files from the IranSeda radio website
+- Store the downloaded audio files and metadata in a local directory
+- Manage the database of radio programs and their associated sessions
+
+### Technology Stack
+- Golang
+- Python
+- MariaDB/MySQL
+- Git
+
+### License
+This project is open-source and available under the MIT License.
+
+
+
+
 
 اول لينك رو اضافه ميكنيم به كراول
 بعدش اسكن ميكنيم
