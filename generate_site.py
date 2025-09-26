@@ -115,20 +115,39 @@ def format_time(time_obj):
         return time_obj.strftime("%H:%M:%S")
     return str(time_obj)
 
-def render_index(programs):
-    items = []
+def render_index(programs, stats_by_program_id):
+    # Build table rows
+    rows = []
     for p in programs:
+        pid = p['id']
         title = html_escape((p.get("name") or "").strip())
-        time_info = ""
+        time_info = []
         if p.get("time"):
-            time_info = f" - {format_time(p['time'])}"
+            time_info.append(format_time(p['time']))
         if p.get("time_description"):
-            time_info += f" ({html_escape(p['time_description'])})"
-        
-        items.append(f"""
-        <li>
-          <a href="programs/{p['id']}.html">{title}</a>{time_info}
-        </li>""")
+            time_info.append(html_escape(p['time_description']))
+        time_info_str = " | ".join([s for s in time_info if s])
+
+        st = stats_by_program_id.get(pid, {})
+        total_sessions = st.get('total_sessions', 0)
+        sub_count = st.get('subtitle_count', 0)
+        cleaned_count = st.get('cleaned_count', 0)
+        first_dt_iso = st.get('first_date_iso', '')
+        last_dt_iso = st.get('last_date_iso', '')
+        first_dt_disp = st.get('first_date_disp', '')
+        last_dt_disp = st.get('last_date_disp', '')
+
+        rows.append(f"""
+        <tr>
+          <td data-label="نام"><a href="programs/{pid}.html">{title}</a></td>
+          <td data-label="زمان/توضیح">{time_info_str}</td>
+          <td data-label="قسمت‌ها" data-order="{total_sessions}">{total_sessions}</td>
+          <td data-label="زیرنویس" data-order="{sub_count}">{sub_count}</td>
+          <td data-label="متن کامل" data-order="{cleaned_count}">{cleaned_count}</td>
+          <td data-label="اولین" data-order="{first_dt_iso}">{first_dt_disp}</td>
+          <td data-label="آخرین" data-order="{last_dt_iso}">{last_dt_disp}</td>
+        </tr>""")
+
     return f"""<!doctype html>
 <html lang="fa" dir="rtl">
 <head>
@@ -137,15 +156,39 @@ def render_index(programs):
 <title>فهرست برنامه‌های رادیو ایران‌صدا</title>
 <style>
 body {{ font-family: 'Tahoma', 'Arial', sans-serif; margin: 24px; background: #f5f5f5; }}
-.container {{ max-width: 800px; margin: 0 auto; background: white; padding: 24px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }}
+.container {{ max-width: 1100px; margin: 0 auto; background: white; padding: 24px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }}
 header {{ margin-bottom: 24px; text-align: center; }}
 h1 {{ color: #2c3e50; margin-bottom: 8px; }}
 .meta {{ color: #7f8c8d; font-size: 14px; }}
-ul {{ list-style: none; padding: 0; }}
-ul li {{ margin-bottom: 12px; padding: 12px; background: #f8f9fa; border-radius: 4px; border-right: 3px solid #3498db; }}
-ul li a {{ text-decoration: none; color: #2c3e50; font-weight: bold; }}
-ul li a:hover {{ color: #e74c3c; }}
+table {{ width: 100%; border-collapse: collapse; direction: rtl; }}
+th, td {{ padding: 10px 12px; border-bottom: 1px solid #eee; text-align: right; }}
+th {{ cursor: pointer; background: #f8f9fa; position: sticky; top: 0; }}
+tr:hover {{ background: #fafafa; }}
+.sortable::after {{ content: ' \25B2\25BC'; color: #ccc; font-size: 12px; margin-right: 6px; }}
 </style>
+<script>
+function sortTable(n, isNumeric=false, isDate=false) {{
+  const table = document.getElementById('programsTable');
+  const tbody = table.tBodies[0];
+  const rows = Array.from(tbody.rows);
+  let dir = table.getAttribute('data-sort-dir') === 'asc' ? 'desc' : 'asc';
+  table.setAttribute('data-sort-dir', dir);
+  rows.sort((a, b) => {{
+    const aCell = a.cells[n];
+    const bCell = b.cells[n];
+    const aKey = aCell.getAttribute('data-order') || aCell.textContent.trim();
+    const bKey = bCell.getAttribute('data-order') || bCell.textContent.trim();
+    let aVal = aKey, bVal = bKey;
+    if (isNumeric) {{ aVal = parseFloat(aKey)||0; bVal = parseFloat(bKey)||0; }}
+    else if (isDate) {{ aVal = aKey; bVal = bKey; }}
+    else {{ aVal = aKey; bVal = bKey; }}
+    if (aVal < bVal) return dir === 'asc' ? -1 : 1;
+    if (aVal > bVal) return dir === 'asc' ? 1 : -1;
+    return 0;
+  }});
+  rows.forEach(r => tbody.appendChild(r));
+}}
+</script>
 </head>
 <body>
 <div class="container">
@@ -153,9 +196,22 @@ ul li a:hover {{ color: #e74c3c; }}
   <h1>فهرست برنامه‌های رادیو ایران‌صدا</h1>
   <div class="meta">تولید شده در {datetime.now().strftime("%Y-%m-%d %H:%M")} | تعداد برنامه‌ها: {len(programs)}</div>
 </header>
-<ul>
-{''.join(items)}
-</ul>
+<table id="programsTable" data-sort-dir="asc">
+  <thead>
+    <tr>
+      <th class="sortable" onclick="sortTable(0, false, false)">نام</th>
+      <th class="sortable" onclick="sortTable(1, false, false)">زمان/توضیح</th>
+      <th class="sortable" onclick="sortTable(2, true, false)">تعداد قسمت</th>
+      <th class="sortable" onclick="sortTable(3, true, false)">زیرنویس</th>
+      <th class="sortable" onclick="sortTable(4, true, false)">متن کامل</th>
+      <th class="sortable" onclick="sortTable(5, false, true)">اولین تاریخ</th>
+      <th class="sortable" onclick="sortTable(6, false, true)">آخرین تاریخ</th>
+    </tr>
+  </thead>
+  <tbody>
+    {''.join(rows)}
+  </tbody>
+</table>
 </div>
 </body>
 </html>"""
@@ -311,8 +367,52 @@ def generate():
         programs = fetch_programs(conn)
         print(f"📊 Found {len(programs)} programs")
         
+        # Compute stats per program
+        stats_by_program_id = {}
+        for p in programs:
+            sessions, _files = fetch_sessions_for_program(conn, p["id"])
+            total_sessions = len(sessions)
+            subtitle_count = 0
+            cleaned_count = 0
+            first_dt = None
+            last_dt = None
+            for s in sessions:
+                created = s.get("created_at")
+                if created:
+                    dt = created if isinstance(created, datetime) else None
+                    if dt is None:
+                        try:
+                            # Fallback parse
+                            dt = datetime.fromisoformat(str(created))
+                        except Exception:
+                            dt = None
+                    if dt is not None:
+                        first_dt = dt if first_dt is None or dt < first_dt else first_dt
+                        last_dt = dt if last_dt is None or dt > last_dt else last_dt
+                subs = find_subtitles_for_session(s.get("filename") or "")
+                if subs:
+                    # Count separately by label
+                    for sub in subs:
+                        if sub.get("label") == "زیرنویس":
+                            subtitle_count += 1
+                            break
+                if subs:
+                    for sub in subs:
+                        if sub.get("label") == "متن کامل":
+                            cleaned_count += 1
+                            break
+            stats_by_program_id[p["id"]] = {
+                "total_sessions": total_sessions,
+                "subtitle_count": subtitle_count,
+                "cleaned_count": cleaned_count,
+                "first_date_iso": first_dt.strftime("%Y-%m-%d %H:%M:%S") if first_dt else "",
+                "last_date_iso": last_dt.strftime("%Y-%m-%d %H:%M:%S") if last_dt else "",
+                "first_date_disp": first_dt.strftime("%Y-%m-%d %H:%M") if first_dt else "",
+                "last_date_disp": last_dt.strftime("%Y-%m-%d %H:%M") if last_dt else "",
+            }
+
         # Generate index page
-        index_html = render_index(programs)
+        index_html = render_index(programs, stats_by_program_id)
         (DOCS_DIR / "index.html").write_text(index_html, encoding="utf-8")
         print("✅ Generated index.html")
         
