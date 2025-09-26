@@ -1,5 +1,28 @@
 # iranseda-crawler-golang-
 
+## 🌐 Live Website / وب‌سایت زنده
+
+**🔗 [View Live Website - مشاهده وب‌سایت زنده](https://saber13812002.github.io/iranseda-crawler-golang-/index.html)**
+
+### What you'll find / آنچه خواهید یافت:
+
+**English:**
+- 📻 **Complete Radio Program Archive** - Browse 28+ radio programs from IranSeda
+- 📊 **Interactive Statistics** - Sortable table showing program counts, subtitle availability, and date ranges
+- 🎵 **Direct Audio Links** - Access original MP3 files from IranSeda website
+- 📝 **Transcripts & Subtitles** - Download both raw and cleaned text transcripts
+- 🔍 **Detailed Program Pages** - Each program has its own page with all episodes and metadata
+- 📱 **Mobile Responsive** - Beautiful design that works on all devices
+
+**Persian:**
+- 📻 **آرشیو کامل برنامه‌های رادیویی** - مرور بیش از 28 برنامه رادیو ایران‌صدا
+- 📊 **آمار تعاملی** - جدول قابل مرتب‌سازی با تعداد قسمت‌ها، زیرنویس‌ها و بازه‌های زمانی
+- 🎵 **لینک‌های مستقیم صوتی** - دسترسی به فایل‌های MP3 اصلی از سایت ایران‌صدا
+- 📝 **متن‌ها و زیرنویس‌ها** - دانلود متن‌های خام و پاک‌سازی شده
+- 🔍 **صفحات تفصیلی برنامه‌ها** - هر برنامه صفحه مخصوص خود با تمام قسمت‌ها و اطلاعات
+- 📱 **طراحی ریسپانسیو** - طراحی زیبا که روی همه دستگاه‌ها کار می‌کند
+
+---
  
 This project is a web crawler written in Golang that retrieves audio files and metadata from the IranSeda radio website. It is designed to crawl the website, scan for available content, and download the audio files and associated data.
 
