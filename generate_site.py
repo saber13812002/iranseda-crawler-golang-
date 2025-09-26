@@ -13,9 +13,9 @@ DB_PASS = os.getenv("DB_PASS", "")
 DB_NAME = os.getenv("DB_NAME", "radio")
 
 # GitHub raw for linking subtitle files in repo
-GITHUB_USER = os.getenv("GITHUB_USER", "USERNAME")         # e.g. your github username
+GITHUB_USER = os.getenv("GITHUB_USER", "saber13812002")         # e.g. your github username
 GITHUB_REPO = os.getenv("GITHUB_REPO", "iranseda-crawler-golang-")
-GITHUB_BRANCH = os.getenv("GITHUB_BRANCH", "main")
+GITHUB_BRANCH = os.getenv("GITHUB_BRANCH", "download-db")
 
 REPO_ROOT = pathlib.Path(__file__).parent.resolve()
 DOWNLOADS_DIR = REPO_ROOT / "downloads"  # holds .srt/.txt
@@ -82,10 +82,16 @@ def find_subtitles_for_session(filename: str):
         return results
     stem = pathlib.Path(filename).stem
     for ext in (".srt", ".txt"):
+        # Original extracted files in downloads/
         candidate = DOWNLOADS_DIR / f"{stem}{ext}"
         if candidate.exists():
             rel = os.path.join("downloads", candidate.name)
-            results.append({"type": ext.lstrip("."), "name": candidate.name, "repo_rel": rel, "raw_url": gh_raw_url(rel)})
+            results.append({"type": ext.lstrip("."), "name": candidate.name, "repo_rel": rel, "raw_url": gh_raw_url(rel), "label": "زیرنویس"})
+        # Cleaned transcripts in downloads/cleaned/
+        cleaned_candidate = DOWNLOADS_DIR / "cleaned" / f"{stem}{ext}"
+        if cleaned_candidate.exists():
+            rel_cleaned = os.path.join("downloads", "cleaned", cleaned_candidate.name)
+            results.append({"type": ext.lstrip("."), "name": cleaned_candidate.name, "repo_rel": rel_cleaned, "raw_url": gh_raw_url(rel_cleaned), "label": "متن کامل"})
     return results
 
 def full_iranseda_url(db_link: str):
@@ -196,8 +202,12 @@ def render_program_page(program, sessions, files_by_session):
         # Subtitle links
         subs_html = ""
         if subs:
-            links = [f'<a href="{sub["raw_url"]}" target="_blank" rel="noopener" class="sub-link">{html_escape(sub["name"])}</a>' for sub in subs]
-            subs_html = f'<div class="subs"><strong>زیرنویس‌ها:</strong> {" | ".join(links)}</div>'
+            links = []
+            for sub in subs:
+                css = "sub-link" if sub.get("label") == "زیرنویس" else "file-link"
+                label_prefix = "زیرنویس:" if sub.get("label") == "زیرنویس" else "متن کامل:" if sub.get("label") == "متن کامل" else "فایل:"
+                links.append(f'<span>{label_prefix} <a href="{sub["raw_url"]}" target="_blank" rel="noopener" class="{css}">{html_escape(sub["name"])}</a></span>')
+            subs_html = f'<div class="subs"><strong>متن‌ها:</strong> {" | ".join(links)}</div>'
 
         # Attached files
         attach_html = ""
