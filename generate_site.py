@@ -115,7 +115,116 @@ def format_time(time_obj):
         return time_obj.strftime("%H:%M:%S")
     return str(time_obj)
 
+def get_time_based_stats():
+    """Calculate time-based statistics for SRT generation"""
+    from datetime import datetime, timedelta
+    import os
+    import glob
+    
+    now = datetime.now()
+    today = now.date()
+    yesterday = today - timedelta(days=1)
+    
+    # Calculate week boundaries
+    start_of_week = today - timedelta(days=today.weekday())
+    end_of_week = start_of_week + timedelta(days=6)
+    start_of_last_week = start_of_week - timedelta(days=7)
+    end_of_last_week = start_of_week - timedelta(days=1)
+    
+    # Calculate month boundaries
+    start_of_month = today.replace(day=1)
+    if today.month == 12:
+        start_of_next_month = today.replace(year=today.year + 1, month=1, day=1)
+    else:
+        start_of_next_month = today.replace(month=today.month + 1, day=1)
+    end_of_month = start_of_next_month - timedelta(days=1)
+    
+    if today.month == 1:
+        start_of_last_month = today.replace(year=today.year - 1, month=12, day=1)
+    else:
+        start_of_last_month = today.replace(month=today.month - 1, day=1)
+    end_of_last_month = start_of_month - timedelta(days=1)
+    
+    # Calculate year boundaries
+    start_of_year = today.replace(month=1, day=1)
+    start_of_next_year = today.replace(year=today.year + 1, month=1, day=1)
+    end_of_year = start_of_next_year - timedelta(days=1)
+    start_of_last_year = today.replace(year=today.year - 1, month=1, day=1)
+    end_of_last_year = start_of_year - timedelta(days=1)
+    
+    def count_srt_files_in_period(start_date, end_date):
+        """Count SRT files created in a specific date range"""
+        count = 0
+        downloads_dir = REPO_ROOT / "downloads"
+        if downloads_dir.exists():
+            for srt_file in downloads_dir.glob("*.srt"):
+                try:
+                    # Get file modification time
+                    file_time = datetime.fromtimestamp(srt_file.stat().st_mtime).date()
+                    if start_date <= file_time <= end_date:
+                        count += 1
+                except:
+                    continue
+        return count
+    
+    stats = {
+        'today': count_srt_files_in_period(today, today),
+        'yesterday': count_srt_files_in_period(yesterday, yesterday),
+        'this_week': count_srt_files_in_period(start_of_week, end_of_week),
+        'last_week': count_srt_files_in_period(start_of_last_week, end_of_last_week),
+        'this_month': count_srt_files_in_period(start_of_month, end_of_month),
+        'last_month': count_srt_files_in_period(start_of_last_month, end_of_last_month),
+        'this_year': count_srt_files_in_period(start_of_year, end_of_year),
+        'last_year': count_srt_files_in_period(start_of_last_year, end_of_last_year),
+    }
+    
+    return stats
+
 def render_index(programs, stats_by_program_id):
+    # Get time-based statistics
+    time_stats = get_time_based_stats()
+    
+    # Build time-based stats display
+    time_stats_html = f"""
+    <div class="time-stats">
+      <h3>📊 آمار تولید زیرنویس‌ها / Subtitle Generation Statistics</h3>
+      <div class="stats-grid">
+        <div class="stat-item">
+          <span class="stat-label">امروز / Today:</span>
+          <span class="stat-value">{time_stats['today']}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">دیروز / Yesterday:</span>
+          <span class="stat-value">{time_stats['yesterday']}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">این هفته / This Week:</span>
+          <span class="stat-value">{time_stats['this_week']}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">هفته گذشته / Last Week:</span>
+          <span class="stat-value">{time_stats['last_week']}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">این ماه / This Month:</span>
+          <span class="stat-value">{time_stats['this_month']}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">ماه گذشته / Last Month:</span>
+          <span class="stat-value">{time_stats['last_month']}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">امسال / This Year:</span>
+          <span class="stat-value">{time_stats['this_year']}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">سال گذشته / Last Year:</span>
+          <span class="stat-value">{time_stats['last_year']}</span>
+        </div>
+      </div>
+    </div>
+    """
+    
     # Build table rows
     rows = []
     for p in programs:
@@ -160,6 +269,12 @@ body {{ font-family: 'Tahoma', 'Arial', sans-serif; margin: 24px; background: #f
 header {{ margin-bottom: 24px; text-align: center; }}
 h1 {{ color: #2c3e50; margin-bottom: 8px; }}
 .meta {{ color: #7f8c8d; font-size: 14px; }}
+.time-stats {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px; margin-bottom: 24px; }}
+.time-stats h3 {{ margin: 0 0 16px 0; text-align: center; font-size: 18px; }}
+.stats-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }}
+.stat-item {{ background: rgba(255,255,255,0.1); padding: 12px; border-radius: 6px; text-align: center; }}
+.stat-label {{ display: block; font-size: 12px; opacity: 0.9; margin-bottom: 4px; }}
+.stat-value {{ display: block; font-size: 24px; font-weight: bold; }}
 table {{ width: 100%; border-collapse: collapse; direction: rtl; }}
 th, td {{ padding: 10px 12px; border-bottom: 1px solid #eee; text-align: right; }}
 th {{ cursor: pointer; background: #f8f9fa; position: sticky; top: 0; }}
@@ -196,6 +311,8 @@ function sortTable(n, isNumeric=false, isDate=false) {{
   <h1>فهرست برنامه‌های رادیو ایران‌صدا</h1>
   <div class="meta">تولید شده در {datetime.now().strftime("%Y-%m-%d %H:%M")} | تعداد برنامه‌ها: {len(programs)}</div>
 </header>
+
+{time_stats_html}
 <table id="programsTable" data-sort-dir="asc">
   <thead>
     <tr>
