@@ -4,29 +4,33 @@ import pathlib
 import urllib.parse
 import pymysql
 from datetime import datetime
+from config import get_config
 
-# Config from env
-DB_HOST = os.getenv("DB_HOST", "localhost")
-DB_PORT = int(os.getenv("DB_PORT", "3306"))
-DB_USER = os.getenv("DB_USER", "root")
-DB_PASS = os.getenv("DB_PASS", "")
-DB_NAME = os.getenv("DB_NAME", "radio")
+# Load configuration based on environment
+config = get_config()
 
-# GitHub raw for linking subtitle files in repo
-GITHUB_USER = os.getenv("GITHUB_USER", "saber13812002")         # e.g. your github username
-GITHUB_REPO = os.getenv("GITHUB_REPO", "iranseda-crawler-golang-")
-GITHUB_BRANCH = os.getenv("GITHUB_BRANCH", "download-db")
+# Use config values
+DB_HOST = config.db_config['host']
+DB_PORT = config.db_config['port']
+DB_USER = config.db_config['user']
+DB_PASS = config.db_config['password']
+DB_NAME = config.db_config['database']
 
-REPO_ROOT = pathlib.Path(__file__).parent.resolve()
-DOWNLOADS_DIR = REPO_ROOT / "downloads"  # holds .srt/.txt
-DOCS_DIR = REPO_ROOT / "docs"
-PROGRAMS_DIR = DOCS_DIR / "programs"
+# GitHub configuration
+GITHUB_USER = config.github_config['user']
+GITHUB_REPO = config.github_config['repo']
+GITHUB_BRANCH = config.github_config['branch']
+
+# Paths from config
+DOWNLOADS_DIR = config.paths['downloads']
+DOCS_DIR = config.paths['docs']
+PROGRAMS_DIR = config.paths['programs']
 
 IRAN_SEDA_BASE = "https://radio.iranseda.ir"
 
 def gh_raw_url(relative_path: str) -> str:
-    # relative_path like 'downloads/file.srt'
-    return f"https://raw.githubusercontent.com/{GITHUB_USER}/{GITHUB_REPO}/{GITHUB_BRANCH}/{urllib.parse.quote(relative_path.replace(os.sep, '/'))}"
+    # Use config method for GitHub raw URL
+    return config.get_github_raw_url(relative_path)
 
 def ensure_dirs():
     PROGRAMS_DIR.mkdir(parents=True, exist_ok=True)
@@ -155,7 +159,7 @@ def get_time_based_stats():
     def count_srt_files_in_period(start_date, end_date):
         """Count SRT files created in a specific date range"""
         count = 0
-        downloads_dir = REPO_ROOT / "downloads"
+        downloads_dir = DOWNLOADS_DIR
         if downloads_dir.exists():
             for srt_file in downloads_dir.glob("*.srt"):
                 try:
@@ -475,6 +479,10 @@ a:hover {{ text-decoration: underline; }}
 
 def generate():
     print("🚀 Starting static site generation...")
+    print("🔧 Configuration:")
+    config.print_config()
+    print()
+    
     ensure_dirs()
     
     try:
