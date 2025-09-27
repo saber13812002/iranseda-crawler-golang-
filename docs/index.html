@@ -16,6 +16,23 @@ h1 { color: #2c3e50; margin-bottom: 8px; }
 .stat-item { background: rgba(255,255,255,0.1); padding: 12px; border-radius: 6px; text-align: center; }
 .stat-label { display: block; font-size: 12px; opacity: 0.9; margin-bottom: 4px; }
 .stat-value { display: block; font-size: 24px; font-weight: bold; }
+.latest-programs { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 20px; border-radius: 8px; margin-bottom: 24px; }
+.latest-programs h3 { margin: 0 0 16px 0; text-align: center; font-size: 18px; }
+.programs-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.program-item { background: rgba(255,255,255,0.15); padding: 16px; border-radius: 8px; }
+.program-link { color: white; text-decoration: none; font-weight: bold; font-size: 16px; display: block; margin-bottom: 8px; }
+.program-link:hover { color: #ffeb3b; }
+.program-stats { display: flex; justify-content: space-between; font-size: 14px; opacity: 0.9; }
+.cleaned-count { color: #4caf50; font-weight: bold; }
+.total-sessions { color: #2196f3; }
+.latest-files { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; padding: 20px; border-radius: 8px; margin-bottom: 24px; }
+.latest-files h3 { margin: 0 0 16px 0; text-align: center; font-size: 18px; }
+.files-table { width: 100%; border-collapse: collapse; background: rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden; }
+.files-table th, .files-table td { padding: 12px; text-align: right; border-bottom: 1px solid rgba(255,255,255,0.2); }
+.files-table th { background: rgba(255,255,255,0.2); font-weight: bold; }
+.files-table tr:hover { background: rgba(255,255,255,0.1); }
+.file-link { color: white; text-decoration: none; font-weight: bold; }
+.file-link:hover { color: #ffeb3b; }
 table { width: 100%; border-collapse: collapse; direction: rtl; }
 th, td { padding: 10px 12px; border-bottom: 1px solid #eee; text-align: right; }
 th { cursor: pointer; background: #f8f9fa; position: sticky; top: 0; }
@@ -50,7 +67,7 @@ function sortTable(n, isNumeric=false, isDate=false) {
 <div class="container">
 <header>
   <h1>فهرست برنامه‌های رادیو ایران‌صدا</h1>
-  <div class="meta">تولید شده در 2025-09-27 06:34 | تعداد برنامه‌ها: 28</div>
+  <div class="meta">تولید شده در 2025-09-28 01:05 | تعداد برنامه‌ها: 28</div>
 </header>
 
 
@@ -59,11 +76,11 @@ function sortTable(n, isNumeric=false, isDate=false) {
       <div class="stats-grid">
         <div class="stat-item">
           <span class="stat-label">امروز / Today:</span>
-          <span class="stat-value">3</span>
+          <span class="stat-value">0</span>
         </div>
         <div class="stat-item">
           <span class="stat-label">دیروز / Yesterday:</span>
-          <span class="stat-value">317</span>
+          <span class="stat-value">3</span>
         </div>
         <div class="stat-item">
           <span class="stat-label">این هفته / This Week:</span>
@@ -92,6 +109,126 @@ function sortTable(n, isNumeric=false, isDate=false) {
       </div>
     </div>
     
+
+
+        <div class="latest-programs">
+          <h3>🆕 آخرین برنامه‌های با متن کامل / Latest Programs with Cleaned Subtitles</h3>
+          <div class="programs-grid">
+            
+            <div class="program-item">
+              <a href="programs/1.html" class="program-link">بر كرانه نور</a>
+              <div class="program-stats">
+                <span class="cleaned-count">118 متن کامل</span>
+                <span class="total-sessions">118 قسمت</span>
+              </div>
+            </div>
+            <div class="program-item">
+              <a href="programs/2.html" class="program-link">گنج سعادت</a>
+              <div class="program-stats">
+                <span class="cleaned-count">79 متن کامل</span>
+                <span class="total-sessions">79 قسمت</span>
+              </div>
+            </div>
+            <div class="program-item">
+              <a href="programs/14.html" class="program-link">زمزم احكام</a>
+              <div class="program-stats">
+                <span class="cleaned-count">67 متن کامل</span>
+                <span class="total-sessions">68 قسمت</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+
+
+        <div class="latest-files">
+          <h3>📁 آخرین فایل‌های متن کامل / Latest Cleaned Files</h3>
+          <table class="files-table">
+            <thead>
+              <tr>
+                <th>نام فایل / Filename</th>
+                <th>برنامه / Program</th>
+                <th>تاریخ / Date</th>
+                <th>ساعت / Time</th>
+                <th>آخرین تغییر / Last Modified</th>
+              </tr>
+            </thead>
+            <tbody>
+              
+            <tr>
+              <td><a href="https://raw.githubusercontent.com/saber13812002/iranseda-crawler-golang-/download-db/downloads/cleaned/radio-varzesh-04-06-28-03-00.srt" target="_blank" rel="noopener" class="file-link">radio-varzesh-04-06-28-03-00.srt</a></td>
+              <td>برنامه رادیویی</td>
+              <td>04/06</td>
+              <td>28:03</td>
+              <td>2025-09-27 06:26</td>
+            </tr>
+            <tr>
+              <td><a href="https://raw.githubusercontent.com/saber13812002/iranseda-crawler-golang-/download-db/downloads/cleaned/radio-maaref-04-06-28-01-30.srt" target="_blank" rel="noopener" class="file-link">radio-maaref-04-06-28-01-30.srt</a></td>
+              <td>بر كرانه نور</td>
+              <td>04/06</td>
+              <td>28:01</td>
+              <td>2025-09-27 06:26</td>
+            </tr>
+            <tr>
+              <td><a href="https://raw.githubusercontent.com/saber13812002/iranseda-crawler-golang-/download-db/downloads/cleaned/radio-maaref-04-06-28-06-30.srt" target="_blank" rel="noopener" class="file-link">radio-maaref-04-06-28-06-30.srt</a></td>
+              <td>بر كرانه نور</td>
+              <td>04/06</td>
+              <td>28:06</td>
+              <td>2025-09-27 06:26</td>
+            </tr>
+            <tr>
+              <td><a href="https://raw.githubusercontent.com/saber13812002/iranseda-crawler-golang-/download-db/downloads/cleaned/radio-maaref-04-06-27-23-30.srt" target="_blank" rel="noopener" class="file-link">radio-maaref-04-06-27-23-30.srt</a></td>
+              <td>بر كرانه نور</td>
+              <td>04/06</td>
+              <td>27:23</td>
+              <td>2025-09-27 06:26</td>
+            </tr>
+            <tr>
+              <td><a href="https://raw.githubusercontent.com/saber13812002/iranseda-crawler-golang-/download-db/downloads/cleaned/radio-maaref-04-06-27-19-30.srt" target="_blank" rel="noopener" class="file-link">radio-maaref-04-06-27-19-30.srt</a></td>
+              <td>بر كرانه نور</td>
+              <td>04/06</td>
+              <td>27:19</td>
+              <td>2025-09-27 06:26</td>
+            </tr>
+            <tr>
+              <td><a href="https://raw.githubusercontent.com/saber13812002/iranseda-crawler-golang-/download-db/downloads/cleaned/radio-maaref-04-06-27-21-00.srt" target="_blank" rel="noopener" class="file-link">radio-maaref-04-06-27-21-00.srt</a></td>
+              <td>بر كرانه نور</td>
+              <td>04/06</td>
+              <td>27:21</td>
+              <td>2025-09-27 06:26</td>
+            </tr>
+            <tr>
+              <td><a href="https://raw.githubusercontent.com/saber13812002/iranseda-crawler-golang-/download-db/downloads/cleaned/radio-maaref-04-06-27-13-00.srt" target="_blank" rel="noopener" class="file-link">radio-maaref-04-06-27-13-00.srt</a></td>
+              <td>بر كرانه نور</td>
+              <td>04/06</td>
+              <td>27:13</td>
+              <td>2025-09-27 06:26</td>
+            </tr>
+            <tr>
+              <td><a href="https://raw.githubusercontent.com/saber13812002/iranseda-crawler-golang-/download-db/downloads/cleaned/radio-maaref-04-06-26-21-00.srt" target="_blank" rel="noopener" class="file-link">radio-maaref-04-06-26-21-00.srt</a></td>
+              <td>بر كرانه نور</td>
+              <td>04/06</td>
+              <td>26:21</td>
+              <td>2025-09-26 23:40</td>
+            </tr>
+            <tr>
+              <td><a href="https://raw.githubusercontent.com/saber13812002/iranseda-crawler-golang-/download-db/downloads/cleaned/radio-maaref-04-06-27-01-30.srt" target="_blank" rel="noopener" class="file-link">radio-maaref-04-06-27-01-30.srt</a></td>
+              <td>بر كرانه نور</td>
+              <td>04/06</td>
+              <td>27:01</td>
+              <td>2025-09-26 23:40</td>
+            </tr>
+            <tr>
+              <td><a href="https://raw.githubusercontent.com/saber13812002/iranseda-crawler-golang-/download-db/downloads/cleaned/radio-maaref-04-06-27-03-30.srt" target="_blank" rel="noopener" class="file-link">radio-maaref-04-06-27-03-30.srt</a></td>
+              <td>بر كرانه نور</td>
+              <td>04/06</td>
+              <td>27:03</td>
+              <td>2025-09-26 23:40</td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+        
 <table id="programsTable" data-sort-dir="asc">
   <thead>
     <tr>

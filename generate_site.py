@@ -184,9 +184,111 @@ def get_time_based_stats():
     
     return stats
 
+def get_latest_cleaned_files(limit=10):
+    """Get latest cleaned subtitle files with program information"""
+    cleaned_files = []
+    cleaned_dir = DOWNLOADS_DIR / "cleaned"
+    
+    if not cleaned_dir.exists():
+        return cleaned_files
+    
+    # Get all cleaned files with their modification times
+    file_info = []
+    for srt_file in cleaned_dir.glob("*.srt"):
+        try:
+            mod_time = datetime.fromtimestamp(srt_file.stat().st_mtime)
+            file_info.append({
+                'file': srt_file,
+                'name': srt_file.name,
+                'mod_time': mod_time,
+                'size': srt_file.stat().st_size
+            })
+        except:
+            continue
+    
+    # Sort by modification time (newest first)
+    file_info.sort(key=lambda x: x['mod_time'], reverse=True)
+    
+    # Take only the requested number
+    for info in file_info[:limit]:
+        # Extract program info from filename (heuristic)
+        filename = info['name']
+        stem = pathlib.Path(filename).stem
+        
+        # Try to extract date and time from filename
+        # Format: radio-maaref-03-11-28-15-00.srt
+        parts = stem.split('-')
+        if len(parts) >= 6:
+            try:
+                month = parts[2]
+                day = parts[3]
+                hour = parts[4]
+                minute = parts[5]
+                program_name = "برنامه رادیویی"  # Default
+                
+                # Try to match with known programs
+                if "maaref" in stem.lower():
+                    program_name = "بر كرانه نور"
+                elif "ganj" in stem.lower():
+                    program_name = "گنج سعادت"
+                elif "porseman" in stem.lower():
+                    program_name = "پرسمان"
+                
+                cleaned_files.append({
+                    'filename': filename,
+                    'program_name': program_name,
+                    'date': f"{month}/{day}",
+                    'time': f"{hour}:{minute}",
+                    'mod_time': info['mod_time'],
+                    'size': info['size'],
+                    'raw_url': config.get_github_raw_url(f"downloads/cleaned/{filename}")
+                })
+            except:
+                # Fallback for files that don't match expected format
+                cleaned_files.append({
+                    'filename': filename,
+                    'program_name': "نامشخص",
+                    'date': info['mod_time'].strftime("%m/%d"),
+                    'time': info['mod_time'].strftime("%H:%M"),
+                    'mod_time': info['mod_time'],
+                    'size': info['size'],
+                    'raw_url': config.get_github_raw_url(f"downloads/cleaned/{filename}")
+                })
+    
+    return cleaned_files
+
+def get_latest_programs_with_cleaned(programs, stats_by_program_id, limit=3):
+    """Get latest programs that have new cleaned subtitles"""
+    programs_with_cleaned = []
+    
+    for p in programs:
+        pid = p['id']
+        st = stats_by_program_id.get(pid, {})
+        cleaned_count = st.get('cleaned_count', 0)
+        
+        if cleaned_count > 0:
+            programs_with_cleaned.append({
+                'id': pid,
+                'name': p.get('name', '').strip(),
+                'cleaned_count': cleaned_count,
+                'total_sessions': st.get('total_sessions', 0),
+                'last_date': st.get('last_date_disp', ''),
+                'url': f"programs/{pid}.html"
+            })
+    
+    # Sort by cleaned count (descending) and take latest
+    programs_with_cleaned.sort(key=lambda x: x['cleaned_count'], reverse=True)
+    return programs_with_cleaned[:limit]
+
 def render_index(programs, stats_by_program_id):
     # Get time-based statistics
     time_stats = get_time_based_stats()
+    
+    # Get latest programs with cleaned subtitles
+    latest_programs = get_latest_programs_with_cleaned(programs, stats_by_program_id, 3)
+    
+    # Get latest cleaned files
+    latest_cleaned_files = get_latest_cleaned_files(10)
     
     # Build time-based stats display
     time_stats_html = f"""
@@ -228,6 +330,63 @@ def render_index(programs, stats_by_program_id):
       </div>
     </div>
     """
+    
+    # Build latest programs section
+    latest_programs_html = ""
+    if latest_programs:
+        program_items = []
+        for prog in latest_programs:
+            program_items.append(f"""
+            <div class="program-item">
+              <a href="{prog['url']}" class="program-link">{html_escape(prog['name'])}</a>
+              <div class="program-stats">
+                <span class="cleaned-count">{prog['cleaned_count']} متن کامل</span>
+                <span class="total-sessions">{prog['total_sessions']} قسمت</span>
+              </div>
+            </div>""")
+        
+        latest_programs_html = f"""
+        <div class="latest-programs">
+          <h3>🆕 آخرین برنامه‌های با متن کامل / Latest Programs with Cleaned Subtitles</h3>
+          <div class="programs-grid">
+            {''.join(program_items)}
+          </div>
+        </div>
+        """
+    
+    # Build latest files section
+    latest_files_html = ""
+    if latest_cleaned_files:
+        file_rows = []
+        for file_info in latest_cleaned_files:
+            file_rows.append(f"""
+            <tr>
+              <td><a href="{file_info['raw_url']}" target="_blank" rel="noopener" class="file-link">{html_escape(file_info['filename'])}</a></td>
+              <td>{html_escape(file_info['program_name'])}</td>
+              <td>{file_info['date']}</td>
+              <td>{file_info['time']}</td>
+              <td>{file_info['mod_time'].strftime('%Y-%m-%d %H:%M')}</td>
+            </tr>""")
+        
+        latest_files_html = f"""
+        <div class="latest-files">
+          <h3>📁 آخرین فایل‌های متن کامل / Latest Cleaned Files</h3>
+          <table class="files-table">
+            <thead>
+              <tr>
+                <th>نام فایل / Filename</th>
+                <th>برنامه / Program</th>
+                <th>تاریخ / Date</th>
+                <th>ساعت / Time</th>
+                <th>آخرین تغییر / Last Modified</th>
+              </tr>
+            </thead>
+            <tbody>
+              {''.join(file_rows)}
+            </tbody>
+          </table>
+        </div>
+        """
     
     # Build table rows
     rows = []
@@ -279,6 +438,23 @@ h1 {{ color: #2c3e50; margin-bottom: 8px; }}
 .stat-item {{ background: rgba(255,255,255,0.1); padding: 12px; border-radius: 6px; text-align: center; }}
 .stat-label {{ display: block; font-size: 12px; opacity: 0.9; margin-bottom: 4px; }}
 .stat-value {{ display: block; font-size: 24px; font-weight: bold; }}
+.latest-programs {{ background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 20px; border-radius: 8px; margin-bottom: 24px; }}
+.latest-programs h3 {{ margin: 0 0 16px 0; text-align: center; font-size: 18px; }}
+.programs-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }}
+.program-item {{ background: rgba(255,255,255,0.15); padding: 16px; border-radius: 8px; }}
+.program-link {{ color: white; text-decoration: none; font-weight: bold; font-size: 16px; display: block; margin-bottom: 8px; }}
+.program-link:hover {{ color: #ffeb3b; }}
+.program-stats {{ display: flex; justify-content: space-between; font-size: 14px; opacity: 0.9; }}
+.cleaned-count {{ color: #4caf50; font-weight: bold; }}
+.total-sessions {{ color: #2196f3; }}
+.latest-files {{ background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; padding: 20px; border-radius: 8px; margin-bottom: 24px; }}
+.latest-files h3 {{ margin: 0 0 16px 0; text-align: center; font-size: 18px; }}
+.files-table {{ width: 100%; border-collapse: collapse; background: rgba(255,255,255,0.1); border-radius: 8px; overflow: hidden; }}
+.files-table th, .files-table td {{ padding: 12px; text-align: right; border-bottom: 1px solid rgba(255,255,255,0.2); }}
+.files-table th {{ background: rgba(255,255,255,0.2); font-weight: bold; }}
+.files-table tr:hover {{ background: rgba(255,255,255,0.1); }}
+.file-link {{ color: white; text-decoration: none; font-weight: bold; }}
+.file-link:hover {{ color: #ffeb3b; }}
 table {{ width: 100%; border-collapse: collapse; direction: rtl; }}
 th, td {{ padding: 10px 12px; border-bottom: 1px solid #eee; text-align: right; }}
 th {{ cursor: pointer; background: #f8f9fa; position: sticky; top: 0; }}
@@ -317,6 +493,10 @@ function sortTable(n, isNumeric=false, isDate=false) {{
 </header>
 
 {time_stats_html}
+
+{latest_programs_html}
+
+{latest_files_html}
 <table id="programsTable" data-sort-dir="asc">
   <thead>
     <tr>
