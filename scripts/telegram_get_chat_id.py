@@ -14,6 +14,10 @@ Usage:
 import os
 import sys
 import requests
+from pathlib import Path
+
+# Ensure project root is importable
+sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 
 def main():

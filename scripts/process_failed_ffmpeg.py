@@ -24,6 +24,9 @@ import sys
 from pathlib import Path
 from typing import Optional
 
+# Ensure project root is importable
+sys.path.append(str(Path(__file__).resolve().parents[1]))
+
 import pymysql
 
 from config import get_config

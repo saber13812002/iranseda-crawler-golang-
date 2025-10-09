@@ -19,6 +19,10 @@ from typing import List, Dict, Any
 
 import pymysql
 import requests
+from pathlib import Path
+
+# Ensure project root is importable
+sys.path.append(str(Path(__file__).resolve().parents[1]))
 
 from config import get_config
 
