@@ -2,3 +2,5 @@ downloads/*.mp4
 downloads/*.mp3
 /.env
 downloads/*.wav
+scripts/venv/*
+venv/*
