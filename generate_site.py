@@ -199,9 +199,12 @@ def get_latest_cleaned_files(limit=10):
     file_info = []
     for srt_file in cleaned_dir.glob("*.srt"):
         try:
+<<<<<<< Updated upstream
             # Skip files with .ffmpeg.failed suffix
             if srt_file.name.endswith('.ffmpeg.failed'):
                 continue
+=======
+>>>>>>> Stashed changes
             mod_time = datetime.fromtimestamp(srt_file.stat().st_mtime)
             file_info.append({
                 'file': srt_file,
