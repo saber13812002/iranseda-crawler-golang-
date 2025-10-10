@@ -88,12 +88,12 @@ def find_subtitles_for_session(filename: str):
     for ext in (".srt", ".txt"):
         # Original extracted files in downloads/
         candidate = DOWNLOADS_DIR / f"{stem}{ext}"
-        if candidate.exists():
+        if candidate.exists() and not candidate.name.endswith('.ffmpeg.failed'):
             rel = os.path.join("downloads", candidate.name)
             results.append({"type": ext.lstrip("."), "name": candidate.name, "repo_rel": rel, "raw_url": gh_raw_url(rel), "label": "زیرنویس"})
         # Cleaned transcripts in downloads/cleaned/
         cleaned_candidate = DOWNLOADS_DIR / "cleaned" / f"{stem}{ext}"
-        if cleaned_candidate.exists():
+        if cleaned_candidate.exists() and not cleaned_candidate.name.endswith('.ffmpeg.failed'):
             rel_cleaned = os.path.join("downloads", "cleaned", cleaned_candidate.name)
             results.append({"type": ext.lstrip("."), "name": cleaned_candidate.name, "repo_rel": rel_cleaned, "raw_url": gh_raw_url(rel_cleaned), "label": "متن کامل"})
     return results
@@ -157,12 +157,15 @@ def get_time_based_stats():
     end_of_last_year = start_of_year - timedelta(days=1)
     
     def count_srt_files_in_period(start_date, end_date):
-        """Count SRT files created in a specific date range"""
+        """Count SRT files created in a specific date range (excluding failed files)"""
         count = 0
         downloads_dir = DOWNLOADS_DIR
         if downloads_dir.exists():
             for srt_file in downloads_dir.glob("*.srt"):
                 try:
+                    # Skip files with .ffmpeg.failed suffix
+                    if srt_file.name.endswith('.ffmpeg.failed'):
+                        continue
                     # Get file modification time
                     file_time = datetime.fromtimestamp(srt_file.stat().st_mtime).date()
                     if start_date <= file_time <= end_date:
@@ -196,6 +199,9 @@ def get_latest_cleaned_files(limit=10):
     file_info = []
     for srt_file in cleaned_dir.glob("*.srt"):
         try:
+            # Skip files with .ffmpeg.failed suffix
+            if srt_file.name.endswith('.ffmpeg.failed'):
+                continue
             mod_time = datetime.fromtimestamp(srt_file.stat().st_mtime)
             file_info.append({
                 'file': srt_file,
