@@ -17,6 +17,38 @@ This guide explains how to manage different database configurations for local de
 ### Method 1: Using the Environment Runner (Recommended)
 
 ```bash
+
+
+ENVIRONMENT=server python3 generate_site.py
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Local development
 python run_generator.py --env local
 
