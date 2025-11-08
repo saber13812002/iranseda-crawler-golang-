@@ -11,7 +11,7 @@
  Target Server Version : 80043 (8.0.43-0ubuntu0.24.04.1)
  File Encoding         : 65001
 
- Date: 06/11/2025 09:11:47
+ Date: 08/11/2025 17:21:18
 */
 
 SET NAMES utf8mb4;
@@ -44,7 +44,7 @@ CREATE TABLE `programs`  (
   `created_at` datetime(3) NULL DEFAULT NULL,
   `updated_at` datetime(3) NULL DEFAULT NULL,
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of programs
@@ -5144,7 +5144,7 @@ CREATE TABLE `subtitles`  (
   PRIMARY KEY (`id`) USING BTREE,
   INDEX `fk_programs_subtitles`(`program_id` ASC) USING BTREE,
   CONSTRAINT `fk_programs_subtitles` FOREIGN KEY (`program_id`) REFERENCES `programs` (`id`) ON DELETE RESTRICT ON UPDATE RESTRICT
-) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
+) ENGINE = InnoDB AUTO_INCREMENT = 1 CHARACTER SET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci ROW_FORMAT = Dynamic;
 
 -- ----------------------------
 -- Records of subtitles
