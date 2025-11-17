@@ -1,0 +1,77 @@
+{
+  "name": "crawl.go copy",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 45
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "5f8e97a4-6670-454f-9ea4-10e2dc82b75e",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "command": "=source /mnt/data/saberprojects/iranseda-crawler-golang-/crawler/venv/bin/activate && python /mnt/data/saberprojects/iranseda-crawler-golang-/crawler/crawler.py",
+        "cwd": "/mnt/data/saberprojects/iranseda-crawler-golang-/crawler"
+      },
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        220,
+        0
+      ],
+      "id": "6df59d74-1b71-49e5-8c33-e55a72234d18",
+      "name": "SSH",
+      "credentials": {
+        "sshPassword": {
+          "id": "Tlm08tAezBcLr4B8",
+          "name": "SSH new server"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "SSH",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "217fda89-2e6d-47cf-89d1-20f214520e9f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f218bc5a432ffd6184ad612d7f1e0192712a89d0cfac55c4748d2b460becdf21"
+  },
+  "id": "Y5zhxljsJ2yerypl",
+  "tags": [
+    {
+      "createdAt": "2025-06-03T15:01:33.745Z",
+      "updatedAt": "2025-06-03T15:01:33.745Z",
+      "id": "pCA0nbWXNHSwikBk",
+      "name": "persian"
+    }
+  ]
+}

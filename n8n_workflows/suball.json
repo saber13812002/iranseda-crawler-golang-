@@ -1,0 +1,79 @@
+{
+  "name": "suball",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 5
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "c818c686-0473-4e66-9924-2448a1f8de2b",
+      "name": "Schedule Trigger",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "command": "source /mnt/data/saberprojects/automated-multi-step-content-processing-and-seo-optimization-system/Subtitle-Generator/myenv/bin/activate && python3 subAlljob.py --language fa --directory ../../iranseda-crawler-golang-/downloads/",
+        "cwd": "/mnt/data/saberprojects/automated-multi-step-content-processing-and-seo-optimization-system/Subtitle-Generator"
+      },
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        220,
+        0
+      ],
+      "id": "a3130e6a-38a5-4305-b81d-6cb8fed21b01",
+      "name": "SSH",
+      "credentials": {
+        "sshPassword": {
+          "id": "Tlm08tAezBcLr4B8",
+          "name": "SSH new server"
+        }
+      },
+      "disabled": true
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "SSH",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "e70e14c7-a19f-44a5-b894-d663aa2018fc",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f218bc5a432ffd6184ad612d7f1e0192712a89d0cfac55c4748d2b460becdf21"
+  },
+  "id": "I4U7e8fG9PdDB7gW",
+  "tags": [
+    {
+      "createdAt": "2025-06-03T15:01:33.745Z",
+      "updatedAt": "2025-06-03T15:01:33.745Z",
+      "id": "pCA0nbWXNHSwikBk",
+      "name": "persian"
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+{
+  "name": "Webhook test",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "4dddbc8b-f925-4f53-99a2-e164d45dd9ab",
+        "options": {
+          "binaryPropertyName": "request",
+          "rawBody": true
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "86ecd873-8bbe-4682-b2f6-590ea27831c0",
+      "name": "Webhook",
+      "webhookId": "4dddbc8b-f925-4f53-99a2-e164d45dd9ab"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"request\": \"request\",\n  \"url\": \"url\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        0
+      ],
+      "id": "97550168-60a7-47ee-996a-42011ce74874",
+      "name": "Edit Fields"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "f9d4c5e8-36c7-4b3f-9c0e-9d88a0adcc97",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f218bc5a432ffd6184ad612d7f1e0192712a89d0cfac55c4748d2b460becdf21"
+  },
+  "id": "E4I3aQnED4C4oEmn",
+  "tags": [
+    {
+      "createdAt": "2025-06-03T15:01:33.745Z",
+      "updatedAt": "2025-06-03T15:01:33.745Z",
+      "id": "pCA0nbWXNHSwikBk",
+      "name": "persian"
+    }
+  ]
+}

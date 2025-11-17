@@ -1,0 +1,77 @@
+{
+  "name": "download_db.go",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 2
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "5590793b-d559-46b8-84f7-0fb40917b470",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "command": "=/usr/local/go/bin/go run download_db.go",
+        "cwd": "/mnt/data/saberprojects/iranseda-crawler-golang-/"
+      },
+      "type": "n8n-nodes-base.ssh",
+      "typeVersion": 1,
+      "position": [
+        220,
+        0
+      ],
+      "id": "f372b304-e2a3-4f23-b82d-a9336360ae28",
+      "name": "SSH",
+      "credentials": {
+        "sshPassword": {
+          "id": "Tlm08tAezBcLr4B8",
+          "name": "SSH new server"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "SSH",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "bee5ac3b-f9f3-4f96-996c-13e19b19a8b8",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f218bc5a432ffd6184ad612d7f1e0192712a89d0cfac55c4748d2b460becdf21"
+  },
+  "id": "SyXJx1Wju6V5hcPX",
+  "tags": [
+    {
+      "createdAt": "2025-06-03T15:01:33.745Z",
+      "updatedAt": "2025-06-03T15:01:33.745Z",
+      "id": "pCA0nbWXNHSwikBk",
+      "name": "persian"
+    }
+  ]
+}
