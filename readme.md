@@ -26,6 +26,19 @@
  
 This project is a web crawler written in Golang that retrieves audio files and metadata from the IranSeda radio website. It is designed to crawl the website, scan for available content, and download the audio files and associated data.
 
+## 🔄 Workflow Documentation / مستند فرایند
+
+برای هماهنگی تیم روی سرور و n8n، هر مرحلهٔ اصلی خط لوله در یک فایل Markdown توضیح داده شده است. پیش از اعمال هر تغییر در اسکریپت‌ها یا ورک‌فلوها، لطفاً سند متناظر را مطالعه و پس از تغییر، به‌روزرسانی کنید:
+
+- [Stage 1 – Scan & Ingest / اسکن لینک و ثبت برنامه](docs/workflows/01_scan_and_ingest.md)
+- [Stage 2 – DB-driven Downloads / دانلود از دیتابیس](docs/workflows/02_download_pipeline.md)
+- [Stage 3 – Subtitle Generation / تولید زیرنویس](docs/workflows/03_subtitle_generation.md)
+- [Stage 4 – Full-Text Cleanup / متن کامل و پاک‌سازی](docs/workflows/04_full_text_cleanup.md)
+- [Stage 5 – Server Git Sync / همگام‌سازی گیت](docs/workflows/05_git_sync.md)
+- [Stage 6 – Site Generation / تولید صفحات وب](docs/workflows/06_site_generation.md)
+
+> **Rule:** هر تغییری در اسکریپت‌های مربوط به مراحل بالا، باید هم‌زمان در سند مرتبط ثبت شود تا «Single Source of Truth» حفظ گردد.
+
 ### Main Function Points
 - Crawl and retrieve information and audio files from the IranSeda radio website
 - Store the downloaded audio files and metadata in a local directory

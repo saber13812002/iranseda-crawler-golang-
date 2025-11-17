@@ -1,0 +1,7 @@
+# Cursor Rules for IranSeda Crawler
+
+1. **Follow the six-stage workflow docs.** Before editing any crawler, downloader, subtitle, cleanup, git-sync, or site-generation code (including n8n workflows), review the corresponding file in `docs/workflows/0x_*.md`.
+2. **Keep docs in sync.** After making changes to a stage, immediately update the matching Markdown file so that architecture, commands, and schedules remain accurate.
+3. **Reference stages in task plans.** When planning or discussing tasks in Cursor, explicitly mention which workflow stage(s) from `docs/workflows` are affected.
+4. **Do not remove these rules.** Extend or refine them as the workflow evolves, but keep this file present so future sessions honor the documentation contract.
+
