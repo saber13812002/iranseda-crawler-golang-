@@ -17,7 +17,8 @@ conn = pymysql.connect(
     user=os.getenv("DB_USER"),
     password=os.getenv("DB_PASS"),
     database=os.getenv("DB_NAME"),
-    charset='utf8mb4'
+    charset='utf8mb4',
+    cursorclass=pymysql.cursors.DictCursor
 )
 cursor = conn.cursor()
 
@@ -26,9 +27,31 @@ def get_soup(url):
     response.encoding = 'utf-8'
     return BeautifulSoup(response.text, 'html.parser')
 
-def is_url_exists(url):
-    cursor.execute("SELECT COUNT(*) FROM radio_programs WHERE url = %s", (url,))
-    return cursor.fetchone()[0] > 0
+def get_active_program(url):
+    cursor.execute(
+        """
+        SELECT id, name, time, start, time_description, description, radio, radio_id
+        FROM radio_programs
+        WHERE url = %s AND IFNULL(is_legacy, 0) = 0
+        ORDER BY id DESC
+        LIMIT 1
+        """,
+        (url,),
+    )
+    return cursor.fetchone()
+
+
+def mark_program_legacy(program_id):
+    cursor.execute(
+        """
+        UPDATE radio_programs
+        SET is_legacy = 1,
+            legacy_expires_at = NOW()
+        WHERE id = %s
+        """,
+        (program_id,),
+    )
+    conn.commit()
 
 def extract_duration(text):
     match = re.search(r'به مدت\s*(\d{1,4})\s*دقیقه', text)
@@ -85,6 +108,46 @@ def update_program(name, url, time_desc, description, duration, start_time, radi
     conn.commit()
     print(f"🔄 Updated program: {name} | url: {url}")
 
+
+def fill_missing_fields(program, duration, start_time, time_desc, description, radio, radio_id):
+    updates = {}
+    if not program.get('time') and duration:
+        updates['time'] = duration
+    if not program.get('start') and start_time:
+        updates['start'] = start_time
+    if (not program.get('time_description') or not program['time_description'].strip()) and time_desc:
+        updates['time_description'] = time_desc
+    if (not program.get('description') or not program['description'].strip()) and description:
+        updates['description'] = description
+    if not program.get('radio') and radio:
+        updates['radio'] = radio
+    if not program.get('radio_id') and radio_id is not None:
+        updates['radio_id'] = radio_id
+
+    if updates:
+        set_clause = ", ".join(f"{field} = %s" for field in updates.keys())
+        values = list(updates.values()) + [program['id']]
+        cursor.execute(f"UPDATE radio_programs SET {set_clause} WHERE id = %s", values)
+        conn.commit()
+        print(f"🩹 Filled missing fields for '{program.get('name', '')}' ({program['id']})")
+        return True
+    return False
+
+
+def has_schedule_change(program, duration, start_time, time_desc, radio, radio_id):
+    checks = [
+        ('time', duration),
+        ('start', start_time),
+        ('time_description', time_desc),
+        ('radio', radio),
+        ('radio_id', radio_id),
+    ]
+    for field, new_value in checks:
+        old_value = program.get(field)
+        if old_value and new_value and str(old_value).strip() != str(new_value).strip():
+            return True
+    return False
+
 def extract_program_links_from_file(filepath="crawl_links.txt"):
     with open(filepath, "r", encoding="utf-8") as file:
         links = [line.strip() for line in file if line.strip()]
@@ -117,13 +180,17 @@ def crawl(overwrite=False):
 
         for a in archive_links:
             archive_url = BASE_DOMAIN + a.get('href')[2:]
-            exists = is_url_exists(archive_url)
-            if exists and overwrite:
-                update_program(name, archive_url, time_desc, description, duration, start_time, radio, radio_id)
-            elif not exists:
+            existing = get_active_program(archive_url)
+            if not existing:
                 save_program(name, archive_url, time_desc, description, duration, start_time, radio, radio_id)
             else:
-                print(f"⚠️ Already exists (skipped): {archive_url}")
+                if has_schedule_change(existing, duration, start_time, time_desc, radio, radio_id):
+                    mark_program_legacy(existing['id'])
+                    save_program(name, archive_url, time_desc, description, duration, start_time, radio, radio_id)
+                else:
+                    filled = fill_missing_fields(existing, duration, start_time, time_desc, description, radio, radio_id)
+                    if not filled:
+                        print(f"⚠️ No changes for existing program: {archive_url}")
 
 # برای اجرای crawl با بازنویسی رکوردها، از این استفاده کن:
 # crawl(overwrite=True)
@@ -131,7 +198,7 @@ def crawl(overwrite=False):
 # یا فقط برای اضافه کردن رکوردهای جدید (بدون بازنویسی)
 # crawl()
 
-crawl(overwrite=True)
+crawl()
 
 cursor.close()
 conn.close()
