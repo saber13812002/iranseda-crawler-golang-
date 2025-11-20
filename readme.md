@@ -30,6 +30,7 @@ This project is a web crawler written in Golang that retrieves audio files and m
 
 برای هماهنگی تیم روی سرور و n8n، هر مرحلهٔ اصلی خط لوله در یک فایل Markdown توضیح داده شده است. پیش از اعمال هر تغییر در اسکریپت‌ها یا ورک‌فلوها، لطفاً سند متناظر را مطالعه و پس از تغییر، به‌روزرسانی کنید:
 
+- [Plan – Program Schedule Refresh / طرح به‌روزرسانی زمان‌بندی](docs/workflows/00_program_schedule_refresh.md)
 - [Stage 1 – Scan & Ingest / اسکن لینک و ثبت برنامه](docs/workflows/01_scan_and_ingest.md)
 - [Stage 2 – DB-driven Downloads / دانلود از دیتابیس](docs/workflows/02_download_pipeline.md)
 - [Stage 3 – Subtitle Generation / تولید زیرنویس](docs/workflows/03_subtitle_generation.md)
