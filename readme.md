@@ -1,142 +1,136 @@
-# iranseda-crawler-golang-
+# 📻 IranSeda Crawler & Archive System
 
-## 🌐 Live Website / وب‌سایت زنده
+سیستم خودکار خزش، دانلود، تولید زیرنویس و انتشار برنامه‌های رادیو ایران‌صدا
 
-**🔗 [View Live Website - مشاهده وب‌سایت زنده](https://saber13812002.github.io/iranseda-crawler-golang-/index.html)**
-
-### What you'll find / آنچه خواهید یافت:
-
-**English:**
-- 📻 **Complete Radio Program Archive** - Browse 28+ radio programs from IranSeda
-- 📊 **Interactive Statistics** - Sortable table showing program counts, subtitle availability, and date ranges
-- 🎵 **Direct Audio Links** - Access original MP3 files from IranSeda website
-- 📝 **Transcripts & Subtitles** - Download both raw and cleaned text transcripts
-- 🔍 **Detailed Program Pages** - Each program has its own page with all episodes and metadata
-- 📱 **Mobile Responsive** - Beautiful design that works on all devices
-
-**Persian:**
-- 📻 **آرشیو کامل برنامه‌های رادیویی** - مرور بیش از 28 برنامه رادیو ایران‌صدا
-- 📊 **آمار تعاملی** - جدول قابل مرتب‌سازی با تعداد قسمت‌ها، زیرنویس‌ها و بازه‌های زمانی
-- 🎵 **لینک‌های مستقیم صوتی** - دسترسی به فایل‌های MP3 اصلی از سایت ایران‌صدا
-- 📝 **متن‌ها و زیرنویس‌ها** - دانلود متن‌های خام و پاک‌سازی شده
-- 🔍 **صفحات تفصیلی برنامه‌ها** - هر برنامه صفحه مخصوص خود با تمام قسمت‌ها و اطلاعات
-- 📱 **طراحی ریسپانسیو** - طراحی زیبا که روی همه دستگاه‌ها کار می‌کند
+**🌐 [مشاهده وب‌سایت زنده / View Live Website](https://saber13812002.github.io/iranseda-crawler-golang-/index.html)**
 
 ---
- 
-This project is a web crawler written in Golang that retrieves audio files and metadata from the IranSeda radio website. It is designed to crawl the website, scan for available content, and download the audio files and associated data.
 
-## 🔄 Workflow Documentation / مستند فرایند
+## 📋 فهرست مطالب / Table of Contents
 
-برای هماهنگی تیم روی سرور و n8n، هر مرحلهٔ اصلی خط لوله در یک فایل Markdown توضیح داده شده است. پیش از اعمال هر تغییر در اسکریپت‌ها یا ورک‌فلوها، لطفاً سند متناظر را مطالعه و پس از تغییر، به‌روزرسانی کنید:
+- [نمای کلی پروژه](#نمای-کلی-پروژه)
+- [معماری و گردش کار](#معماری-و-گردش-کار)
+- [نصب و راه‌اندازی](#نصب-و-راه‌اندازی)
+- [مستندات جزئیات](#مستندات-جزئیات)
+- [ساختار پروژه](#ساختار-پروژه)
+- [تکنولوژی‌ها](#تکنولوژی‌ها)
+- [نکات مهم](#نکات-مهم)
 
-- [Plan – Program Schedule Refresh / طرح به‌روزرسانی زمان‌بندی](docs/workflows/00_program_schedule_refresh.md)
-- [Stage 1 – Scan & Ingest / اسکن لینک و ثبت برنامه](docs/workflows/01_scan_and_ingest.md)
-- [Stage 2 – DB-driven Downloads / دانلود از دیتابیس](docs/workflows/02_download_pipeline.md)
-- [Stage 3 – Subtitle Generation / تولید زیرنویس](docs/workflows/03_subtitle_generation.md)
-- [Stage 4 – Full-Text Cleanup / متن کامل و پاک‌سازی](docs/workflows/04_full_text_cleanup.md)
-- [Stage 5 – Server Git Sync / همگام‌سازی گیت](docs/workflows/05_git_sync.md)
-- [Stage 6 – Site Generation / تولید صفحات وب](docs/workflows/06_site_generation.md)
+---
 
-> **Rule:** هر تغییری در اسکریپت‌های مربوط به مراحل بالا، باید هم‌زمان در سند مرتبط ثبت شود تا «Single Source of Truth» حفظ گردد.
+## 🎯 نمای کلی پروژه
 
-### Main Function Points
-- Crawl and retrieve information and audio files from the IranSeda radio website
-- Store the downloaded audio files and metadata in a local directory
-- Manage the database of radio programs and their associated sessions
+این پروژه یک سیستم خودکار کامل برای:
+1. **خزش برنامه‌ها**: شناسایی و ثبت برنامه‌های رادیو ایران‌صدا از روی فایل متنی
+2. **مدیریت زمان‌بندی**: تشخیص تغییرات زمان پخش و deprecate کردن نسخه‌های قدیمی
+3. **دانلود فایل‌ها**: دریافت خودکار فایل‌های صوتی MP3
+4. **تولید زیرنویس**: ساخت خودکار فایل‌های SRT با استفاده از ASR
+5. **پاک‌سازی متن**: تبدیل زیرنویس‌ها به متن کامل و تمیز
+6. **همگام‌سازی Git**: پوش خودکار تغییرات به GitHub
+7. **تولید وب‌سایت**: ساخت صفحات HTML برای نمایش در GitHub Pages
 
-### Technology Stack
-- Golang
-- Python
-- MariaDB/MySQL
-- Git
+**⏰ اجرای خودکار**: تمام مراحل از طریق n8n هر 2 ساعت اجرا می‌شوند و بیش از 6 ماه است که به صورت پایدار کار می‌کنند.
 
-### License
-This project is open-source and available under the MIT License.
+---
 
-
-
-
-
-اول لينك رو اضافه ميكنيم به كراول
-بعدش اسكن ميكنيم
-بعدش دانلود میکنیم
-
-
-
-
-
-------------------------
-
-
-
-# 📡 IranSeda Crawler Golang Project
-
-این پروژه برای خزش (crawl) و دریافت اطلاعات و فایل‌های صوتی از وب‌سایت رادیو ایران‌صدا طراحی شده است.
-
-## 📁 ساختار پوشه‌ها
+## 🔄 معماری و گردش کار
 
 ```
-.
-├── crawler/                # کدهای Python
-├── downloads/             # فایل‌های mp3 یا srt
-├── logs/                  # لاگ‌های تست
-├── *.go                   # فایل‌های Go
-├── *.sql                  # اسکریپت ساخت دیتابیس
-├── .env                   # متغیرهای اتصال
-└── readme.md              # این فایل
+┌─────────────────────────────────────────────────────────────┐
+│  مرحله 0: به‌روزرسانی زمان‌بندی برنامه‌ها                  │
+│  📝 crawler/crawler.py + scripts/backfill_program_times.py  │
+│  ⏰ هر 45 دقیقه                                              │
+└─────────────────────────────────────────────────────────────┘
+                        ↓
+┌─────────────────────────────────────────────────────────────┐
+│  مرحله 1: اسکن و ثبت برنامه‌ها                              │
+│  🐍 crawler/crawler.py (Python)                             │
+│  🔍 scan.go (Go)                                             │
+│  ⏰ هر 2 ساعت                                                │
+└─────────────────────────────────────────────────────────────┘
+                        ↓
+┌─────────────────────────────────────────────────────────────┐
+│  مرحله 2: دانلود فایل‌های صوتی                             │
+│  🐹 download_db.go                                          │
+│  ⏰ هر 2 ساعت                                                │
+└─────────────────────────────────────────────────────────────┘
+                        ↓
+┌─────────────────────────────────────────────────────────────┐
+│  مرحله 3: تولید زیرنویس (SRT)                              │
+│  🔧 ابزار خارجی: Subtitle-Generator                        │
+│  ⏰ هر 5-6 ساعت                                              │
+└─────────────────────────────────────────────────────────────┘
+                        ↓
+┌─────────────────────────────────────────────────────────────┐
+│  مرحله 4: پاک‌سازی و تبدیل به متن کامل                     │
+│  🧹 srt_cleaner + convert_srt_to_txt.py                     │
+│  ⏰ هر 2 ساعت                                                │
+└─────────────────────────────────────────────────────────────┘
+                        ↓
+┌─────────────────────────────────────────────────────────────┐
+│  مرحله 5: همگام‌سازی Git                                    │
+│  🔄 git_push.json (n8n)                                      │
+│  ⏰ هر 90 دقیقه                                               │
+└─────────────────────────────────────────────────────────────┘
+                        ↓
+┌─────────────────────────────────────────────────────────────┐
+│  مرحله 6: تولید صفحات وب                                    │
+│  🐍 generate_site.py                                         │
+│  ⏰ هر 2 ساعت                                                │
+└─────────────────────────────────────────────────────────────┘
 ```
 
----
+### 📊 جریان داده
 
-## 🛠 پیش‌نیازهای سرور
-
-- Ubuntu 20.04 یا بالاتر
-- Go (نسخه 1.24+)
-- Python 3.8+
-- MariaDB یا MySQL
-- Git
-- build-essential
+1. **ورودی**: فایل `crawler/crawl_links.txt` شامل لینک‌های صفحات برنامه‌ها
+2. **دیتابیس**: MySQL/MariaDB با جداول `radio_programs` و `radio_program_sessions`
+3. **فایل‌ها**: پوشه `downloads/` شامل MP3، SRT و TXT
+4. **خروجی**: پوشه `docs/` شامل صفحات HTML برای GitHub Pages
 
 ---
 
-## 🚀 مراحل نصب
+## 🚀 نصب و راه‌اندازی
 
-### 1. کلون پروژه
+### پیش‌نیازها
+
+- **Go** 1.23+ 
+- **Python** 3.8+
+- **MySQL/MariaDB** 5.7+
+- **Git**
+- **n8n** (برای اجرای خودکار)
+
+### مراحل نصب
+
+#### 1. کلون پروژه
 
 ```bash
 git clone https://github.com/saber13812002/iranseda-crawler-golang-.git
 cd iranseda-crawler-golang-
 ```
 
-### 2. نصب Go
+#### 2. نصب وابستگی‌های Go
 
 ```bash
-wget https://go.dev/dl/go1.24.3.linux-amd64.tar.gz
-sudo rm -rf /usr/local/go
-sudo tar -C /usr/local -xzf go1.24.3.linux-amd64.tar.gz
-echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
-source ~/.bashrc
-go version
+go mod download
 ```
 
-### 3. نصب Python و کتابخانه‌ها
+#### 3. نصب وابستگی‌های Python
 
 ```bash
-sudo apt update
-sudo apt install python3-pip
-pip3 install requests beautifulsoup4 pymysql python-dotenv
+# برای crawler
+cd crawler
+python3 -m venv venv
+source venv/bin/activate  # در Windows: venv\Scripts\activate
+pip install -r requirements.txt
+
+# برای generate_site
+cd ..
+python3 -m venv venv
+source venv/bin/activate
+pip install pymysql python-dotenv
 ```
 
-### 4. نصب MariaDB و ساخت دیتابیس
-
-```bash
-sudo apt install mariadb-server
-sudo systemctl enable mysql
-sudo systemctl start mysql
-```
-
-### 5. ساخت دیتابیس و یوزر
+#### 4. تنظیم دیتابیس
 
 ```sql
 CREATE DATABASE radio CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
@@ -145,130 +139,198 @@ GRANT ALL PRIVILEGES ON radio.* TO 'n8nuser'@'%';
 FLUSH PRIVILEGES;
 ```
 
-### 6. ساخت فایل .env
+اجرای اسکریپت‌های SQL:
+```bash
+mysql -u n8nuser -p radio < radio.sql
+mysql -u n8nuser -p radio < radio_programs.sql
+```
 
+#### 5. تنظیم فایل `.env`
+
+کپی کردن یکی از فایل‌های نمونه:
+```bash
+cp env.local.example .env
+```
+
+ویرایش `.env`:
 ```env
-MYSQL_CONN=n8nuser:StrongPassword123!@tcp(192.168.2.160:3306)/radio
-DB_HOST=192.168.2.160
+DB_HOST=localhost
+DB_PORT=3306
 DB_USER=n8nuser
 DB_PASS=StrongPassword123!
 DB_NAME=radio
+MYSQL_CONN=n8nuser:StrongPassword123!@tcp(localhost:3306)/radio
+
+GITHUB_USER=saber13812002
+GITHUB_REPO=iranseda-crawler-golang-
+GITHUB_BRANCH=download-db
+
+ENVIRONMENT=local
+```
+
+#### 6. تنظیم n8n Workflows
+
+وارد کردن workflowهای JSON از پوشه `n8n_workflows/` به n8n و تنظیم:
+- مسیرهای اجرا
+- زمان‌بندی‌ها
+- متغیرهای محیطی
+
+---
+
+## 📚 مستندات جزئیات
+
+برای جزئیات هر مرحله، به مستندات زیر مراجعه کنید:
+
+### مستندات اصلی
+
+- **[📋 مستندات گردش کار / Workflow Documentation](docs/workflows/)** - مستندات کامل هر مرحله
+  - [مرحله 0: به‌روزرسانی زمان‌بندی](docs/workflows/00_program_schedule_refresh.md)
+  - [مرحله 1: اسکن و ثبت](docs/workflows/01_scan_and_ingest.md)
+  - [مرحله 2: دانلود](docs/workflows/02_download_pipeline.md)
+  - [مرحله 3: تولید زیرنویس](docs/workflows/03_subtitle_generation.md)
+  - [مرحله 4: پاک‌سازی متن](docs/workflows/04_full_text_cleanup.md)
+  - [مرحله 5: همگام‌سازی Git](docs/workflows/05_git_sync.md)
+  - [مرحله 6: تولید سایت](docs/workflows/06_site_generation.md)
+
+### مستندات کامپوننت‌ها
+
+- **[🕷️ Crawler (Python)](docs/README_CRAWLER.md)** - خزش و ثبت برنامه‌ها
+- **[🔍 Scanner (Go)](docs/README_SCANNER.md)** - اسکن لینک‌های قسمت‌ها
+- **[⬇️ Downloader (Go)](docs/README_DOWNLOADER.md)** - دانلود فایل‌های صوتی
+- **[📝 Subtitle Generation](docs/README_SUBTITLES.md)** - تولید زیرنویس خودکار
+- **[🧹 Full Text Cleanup](docs/README_CLEANUP.md)** - پاک‌سازی و تبدیل متن
+- **[🔄 Git Sync](docs/README_GIT_SYNC.md)** - همگام‌سازی با GitHub
+- **[🌐 Site Generator](docs/README_SITE_GENERATOR.md)** - تولید صفحات وب
+- **[🛠️ Scripts & Utilities](docs/README_SCRIPTS.md)** - اسکریپت‌های کمکی
+
+---
+
+## 📁 ساختار پروژه
+
+```
+iranseda-crawler-golang-/
+├── crawler/                    # خزش برنامه‌ها (Python)
+│   ├── crawler.py             # اسکریپت اصلی خزش
+│   ├── crawl_links.txt        # لیست لینک‌های برنامه‌ها
+│   └── requirements.txt       # وابستگی‌های Python
+│
+├── downloads/                  # فایل‌های دانلود شده
+│   ├── *.mp3                  # فایل‌های صوتی
+│   ├── *.srt                  # زیرنویس‌های خام
+│   ├── *.txt                  # متن‌های تبدیل شده
+│   └── cleaned/               # فایل‌های پاک‌سازی شده
+│
+├── docs/                       # خروجی صفحات وب
+│   ├── index.html             # صفحه اصلی
+│   └── programs/              # صفحات برنامه‌ها
+│
+├── scripts/                    # اسکریپت‌های کمکی
+│   ├── backfill_program_times.py
+│   ├── notify_telegram.py
+│   └── ...
+│
+├── n8n_workflows/              # فایل‌های workflow n8n
+│   ├── crawl_go_copy.json
+│   ├── scan_go_copy.json
+│   ├── download_db_go.json
+│   └── ...
+│
+├── web-viewer/                 # نمایشگر وب (Go)
+│   ├── main.go
+│   └── templates/
+│
+├── scan.go                     # اسکن لینک‌ها (Go)
+├── download_db.go             # دانلود از دیتابیس (Go)
+├── generate_site.py            # تولید صفحات وب (Python)
+├── convert_srt_to_txt.py      # تبدیل SRT به TXT
+├── config.py                   # مدیریت تنظیمات
+├── run_generator.py            # اجرای generator با محیط‌های مختلف
+│
+├── radio.sql                   # اسکریپت ساخت دیتابیس
+├── radio_programs.sql          # ساختار جدول برنامه‌ها
+├── migrations/                 # مایگریشن‌های دیتابیس
+│
+└── docs/workflows/             # مستندات گردش کار
+    ├── 00_program_schedule_refresh.md
+    ├── 01_scan_and_ingest.md
+    └── ...
 ```
 
 ---
 
-## ⚙️ اجرای برنامه‌ها
+## 🛠️ تکنولوژی‌ها
 
-### اجرای کراولر Go
+### Backend
+- **Go 1.23+** - اسکن و دانلود
+- **Python 3.8+** - خزش و تولید سایت
+- **MySQL/MariaDB** - ذخیره‌سازی داده‌ها
+
+### Tools & Libraries
+- **BeautifulSoup4** - پارس HTML
+- **goquery** - پارس HTML در Go
+- **pymysql** - اتصال به MySQL
+- **python-dotenv** - مدیریت متغیرهای محیطی
+
+### Infrastructure
+- **n8n** - خودکارسازی و زمان‌بندی
+- **GitHub Pages** - میزبانی وب‌سایت
+- **Git** - کنترل نسخه
+
+### External Services
+- **Subtitle-Generator** - تولید زیرنویس با ASR
+- **srt_cleaner** - پاک‌سازی زیرنویس‌ها
+
+---
+
+## ⚠️ نکات مهم
+
+### مدیریت Legacy Programs
+
+هنگامی که زمان پخش یک برنامه تغییر می‌کند:
+- رکورد قدیمی با `is_legacy=1` و `legacy_expires_at=NOW()` علامت‌گذاری می‌شود
+- رکورد جدید با همان URL اما `is_legacy=0` ایجاد می‌شود
+- هر دو رکورد در دیتابیس نگه‌داری می‌شوند برای تاریخچه
+
+### فایل‌های Deprecated
+
+- `download.go` - نسخه قدیمی دانلود (بدون دیتابیس)
+- `seek.go` - اسکریپت تست/دیباگ
+- `suball.json` - workflow قدیمی زیرنویس
+
+### تغییرات مهم
+
+- **2025-11-19**: اضافه شدن ستون‌های `is_legacy` و `legacy_expires_at` به `radio_programs`
+- استفاده از `download_db.go` به جای `download.go` برای مدیریت بهتر وضعیت دانلود
+
+### اجرای دستی
 
 ```bash
+# خزش برنامه‌ها
+cd crawler && python crawler.py
+
+# اسکن لینک‌ها
 go run scan.go
-```
 
-### اجرای دانلودر Go
+# دانلود فایل‌ها
+go run download_db.go
 
-```bash
-go run download.go
-```
-
-### اجرای اسکریپت پایتون
-
-```bash
-python3 crawler/your_script.py
+# تولید سایت
+python run_generator.py --env local
 ```
 
 ---
 
-## ✅ نکات مهم
+## 📝 لایسنس
 
-- اتصال‌ها به دیتابیس از طریق فایل `.env` انجام می‌شود.
-- Go نیاز به اجرای `go mod tidy` دارد.
-- MySQL باید به صورت ریموت در دسترس باشد (`bind-address=0.0.0.0` در فایل کانفیگ).
-- برای تست سریع می‌توان از `test_n8n.py` استفاده کرد.
+این پروژه تحت مجوز MIT منتشر شده است.
 
+---
 
+## 🤝 مشارکت
 
+برای گزارش باگ یا پیشنهاد فیچر جدید، لطفاً یک Issue ایجاد کنید.
 
+---
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
------------
-
-برای ایجاد جداول و فیلدهای مربوط به برنامه‌های رادیویی و جلسات در دیتابیس MySQL، می‌توانید از دستورات SQL زیر استفاده کنید:
-
-### 1. جدول `radio_programs`
-این جدول اطلاعات مربوط به برنامه‌های رادیویی را ذخیره می‌کند.
-
-```sql
-DROP TABLE IF EXISTS `radio_programs`;
-CREATE TABLE `radio_programs` (
-  `id` INT NOT NULL AUTO_INCREMENT,
-  `name` VARCHAR(255) NOT NULL,
-  `url` VARCHAR(255),
-  `time_description` TEXT,
-  `description` TEXT,
-  `created_at` TIMESTAMP NOT NULL DEFAULT current_timestamp(),
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-```
-
-
-### 2. جدول `radio_program_sessions`
-این جدول اطلاعات مربوط به جلسات هر برنامه را ذخیره می‌کند.
-
-```sql
-CREATE TABLE radio_program_sessions (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    program_id INT NOT NULL,
-    link VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (program_id) REFERENCES radio_programs(id) ON DELETE CASCADE
-);
-
-ALTER TABLE radio_program_sessions
-ADD COLUMN filename VARCHAR(255) NOT NULL;
-
-ALTER TABLE radio_program_sessions
-ADD COLUMN is_downloaded TINYINT(1) DEFAULT 0;
-
-
-
-CREATE TABLE downloaded_files (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,  -- نام فایل دانلود شده
-    link TEXT NOT NULL,          -- لینک مربوطه از دیتابیس اصلی
-    downloaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP  -- زمان دانلود فایل
-);
-
-
-
-```
-
-### توضیحات فیلدها:
-- **`id`**: شناسه یکتای هر رکورد (کلید اصلی).
-- **`name`**: نام برنامه رادیویی.
-- **`time`**: زمان پخش برنامه.
-- **`program_id`**: شناسه برنامه‌ای که جلسه به آن مربوط است (کلید خارجی).
-- **`link`**: لینک مربوط به جلسه.
-- **`created_at`**: زمان ایجاد رکورد.
-
-### نکات:
-- می‌توانید فیلدهای بیشتری به جداول اضافه کنید، مانند توضیحات یا تصویر برنامه.
-- اطمینان حاصل کنید که جداول به درستی به هم مرتبط شده‌اند تا از یکپارچگی داده‌ها اطمینان حاصل شود.
-
-اگر سوال دیگری دارید یا نیاز به تغییرات خاصی دارید، بفرمایید!
+**آخرین به‌روزرسانی**: 2025-01-XX  
+**وضعیت**: ✅ در حال اجرا و پایدار (6+ ماه)
