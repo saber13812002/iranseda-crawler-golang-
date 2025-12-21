@@ -1,0 +1,9 @@
+🚀 شروع حلقه deploy (هر 3 ساعت)
+📝 لاگ‌ها در: /mnt/data/saberprojects/iranseda-crawler-golang-/logs/deploy-loop.log
+⏹️  برای توقف: kill $(cat /tmp/deploy_loop.pid)
+=========================================
+⏰ اجرا در: 2025-12-21 16:51:56
+=========================================
+🚀 شروع فرآیند deploy...
+
+📝 اضافه کردن تغییرات به git...
