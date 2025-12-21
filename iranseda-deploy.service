@@ -1,0 +1,13 @@
+[Unit]
+Description=IranSeda Deploy Script
+After=network.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/mnt/data/saberprojects/iranseda-crawler-golang-
+ExecStart=/bin/bash /mnt/data/saberprojects/iranseda-crawler-golang-/deploy.sh
+StandardOutput=append:/mnt/data/saberprojects/iranseda-crawler-golang-/logs/deploy.log
+StandardError=append:/mnt/data/saberprojects/iranseda-crawler-golang-/logs/deploy.log
+Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+

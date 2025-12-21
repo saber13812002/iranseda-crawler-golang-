@@ -1,0 +1,12 @@
+[Unit]
+Description=Run IranSeda Deploy every 3 hours
+Requires=iranseda-deploy.service
+
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=3h
+Unit=iranseda-deploy.service
+
+[Install]
+WantedBy=timers.target
+
