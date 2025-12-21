@@ -121,3 +121,23 @@ To https://github.com/saber13812002/iranseda-crawler-golang-.git
 ⏳ منتظر 3 ساعت تا اجرای بعدی...
    اجرای بعدی: 2025-12-21 19:52:03
 
+🚀 شروع حلقه deploy (هر 3 ساعت)
+📝 لاگ‌ها در: /mnt/data/saberprojects/iranseda-crawler-golang-/logs/deploy-loop.log
+⏹️  برای توقف: kill $(cat /tmp/deploy_loop.pid)
+=========================================
+⏰ اجرا در: 2025-12-21 16:53:09
+=========================================
+🚀 شروع فرآیند deploy...
+
+📝 اضافه کردن تغییرات به git...
+fatal: Unable to create '/mnt/data/saberprojects/iranseda-crawler-golang-/.git/index.lock': File exists.
+
+Another git process seems to be running in this repository, e.g.
+an editor opened by 'git commit'. Please make sure all processes
+are terminated then try again. If it still fails, a git process
+may have crashed in this repository earlier:
+remove the file manually to continue.
+❌ خطا در git add
+
+🔧 تنظیم متغیرهای محیطی...
+🌐 تولید صفحات وب...
