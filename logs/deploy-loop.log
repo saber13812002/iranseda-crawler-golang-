@@ -65762,3 +65762,120 @@ To https://github.com/saber13812002/iranseda-crawler-golang-.git
 🚀 شروع فرآیند deploy...
 
 📝 اضافه کردن تغییرات به git...
+💾 ایجاد commit با پیام: 'new srt files'
+[download-db 3c3e20ad] new srt files
+ 2 files changed, 118 insertions(+), 1 deletion(-)
+📤 ارسال تغییرات به GitHub...
+To https://github.com/saber13812002/iranseda-crawler-golang-.git
+   76287d71..3c3e20ad  download-db -> download-db
+✅ تغییرات با موفقیت push شدند
+
+🔧 تنظیم متغیرهای محیطی...
+🌐 تولید صفحات وب...
+🚀 Starting static site generation...
+🔧 Configuration:
+🔧 Environment: server
+📊 Database: 192.168.2.160:3306/radio
+👤 DB User: n8nuser
+🐙 GitHub: saber13812002/iranseda-crawler-golang-@download-db
+📁 Downloads: /mnt/data/saberprojects/iranseda-crawler-golang-/downloads
+📄 Docs: /mnt/data/saberprojects/iranseda-crawler-golang-/docs
+
+✅ Connected to database
+📊 Found 78 programs
+✅ Generated index.html
+✅ Generated program 1/78: 1.html (420 sessions)
+✅ Generated program 2/78: 2.html (662 sessions)
+✅ Generated program 3/78: 3.html (235 sessions)
+✅ Generated program 4/78: 4.html (22 sessions)
+✅ Generated program 5/78: 5.html (107 sessions)
+✅ Generated program 6/78: 6.html (110 sessions)
+✅ Generated program 7/78: 7.html (139 sessions)
+✅ Generated program 8/78: 8.html (40 sessions)
+✅ Generated program 9/78: 9.html (376 sessions)
+✅ Generated program 10/78: 10.html (3 sessions)
+✅ Generated program 11/78: 11.html (20 sessions)
+✅ Generated program 12/78: 12.html (365 sessions)
+✅ Generated program 13/78: 13.html (224 sessions)
+✅ Generated program 14/78: 14.html (562 sessions)
+✅ Generated program 15/78: 15.html (338 sessions)
+✅ Generated program 16/78: 16.html (560 sessions)
+✅ Generated program 17/78: 17.html (261 sessions)
+✅ Generated program 18/78: 18.html (445 sessions)
+✅ Generated program 19/78: 19.html (342 sessions)
+✅ Generated program 20/78: 20.html (106 sessions)
+✅ Generated program 21/78: 21.html (104 sessions)
+✅ Generated program 22/78: 22.html (67 sessions)
+✅ Generated program 23/78: 23.html (285 sessions)
+✅ Generated program 24/78: 24.html (89 sessions)
+✅ Generated program 25/78: 25.html (33 sessions)
+✅ Generated program 26/78: 26.html (95 sessions)
+✅ Generated program 27/78: 27.html (20 sessions)
+✅ Generated program 28/78: 28.html (116 sessions)
+✅ Generated program 29/78: 29.html (2 sessions)
+✅ Generated program 30/78: 30.html (4 sessions)
+✅ Generated program 31/78: 31.html (0 sessions)
+✅ Generated program 32/78: 32.html (0 sessions)
+✅ Generated program 33/78: 33.html (0 sessions)
+✅ Generated program 34/78: 34.html (2 sessions)
+✅ Generated program 35/78: 35.html (0 sessions)
+✅ Generated program 36/78: 36.html (1 sessions)
+✅ Generated program 37/78: 37.html (0 sessions)
+✅ Generated program 38/78: 38.html (0 sessions)
+✅ Generated program 39/78: 39.html (0 sessions)
+✅ Generated program 40/78: 40.html (0 sessions)
+✅ Generated program 41/78: 41.html (0 sessions)
+✅ Generated program 42/78: 42.html (0 sessions)
+✅ Generated program 43/78: 43.html (1 sessions)
+✅ Generated program 44/78: 44.html (1 sessions)
+✅ Generated program 45/78: 45.html (1 sessions)
+✅ Generated program 46/78: 46.html (1 sessions)
+✅ Generated program 47/78: 47.html (1 sessions)
+✅ Generated program 48/78: 48.html (0 sessions)
+✅ Generated program 49/78: 49.html (0 sessions)
+✅ Generated program 50/78: 50.html (1 sessions)
+✅ Generated program 51/78: 51.html (0 sessions)
+✅ Generated program 52/78: 52.html (0 sessions)
+✅ Generated program 53/78: 53.html (0 sessions)
+✅ Generated program 54/78: 54.html (0 sessions)
+✅ Generated program 55/78: 55.html (0 sessions)
+✅ Generated program 56/78: 56.html (0 sessions)
+✅ Generated program 57/78: 57.html (0 sessions)
+✅ Generated program 58/78: 58.html (0 sessions)
+✅ Generated program 59/78: 59.html (0 sessions)
+✅ Generated program 60/78: 60.html (0 sessions)
+✅ Generated program 61/78: 61.html (0 sessions)
+✅ Generated program 62/78: 62.html (0 sessions)
+✅ Generated program 63/78: 63.html (0 sessions)
+✅ Generated program 64/78: 64.html (0 sessions)
+✅ Generated program 65/78: 65.html (0 sessions)
+✅ Generated program 66/78: 66.html (0 sessions)
+✅ Generated program 67/78: 67.html (0 sessions)
+✅ Generated program 68/78: 68.html (0 sessions)
+✅ Generated program 69/78: 69.html (0 sessions)
+✅ Generated program 70/78: 70.html (0 sessions)
+✅ Generated program 71/78: 71.html (0 sessions)
+✅ Generated program 72/78: 72.html (0 sessions)
+✅ Generated program 73/78: 73.html (0 sessions)
+✅ Generated program 74/78: 74.html (0 sessions)
+✅ Generated program 75/78: 75.html (0 sessions)
+✅ Generated program 76/78: 76.html (0 sessions)
+✅ Generated program 77/78: 77.html (0 sessions)
+✅ Generated program 78/78: 78.html (0 sessions)
+🎉 Site generation complete! Output: /mnt/data/saberprojects/iranseda-crawler-golang-/docs
+📁 Files created:
+   - /mnt/data/saberprojects/iranseda-crawler-golang-/docs/index.html
+   - /mnt/data/saberprojects/iranseda-crawler-golang-/docs/programs/*.html (78 files)
+
+✅ فرآیند deploy با موفقیت انجام شد!
+✅ اجرا با موفقیت تمام شد
+
+⏳ منتظر 3 ساعت تا اجرای بعدی...
+   اجرای بعدی: 2026-01-21 14:21:59
+
+=========================================
+⏰ اجرا در: 2026-01-21 11:22:23
+=========================================
+🚀 شروع فرآیند deploy...
+
+📝 اضافه کردن تغییرات به git...
