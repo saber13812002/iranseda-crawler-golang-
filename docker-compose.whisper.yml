@@ -1,0 +1,65 @@
+# IranSeda Whisper GPU service — deploy on the GPU server (53).
+#
+#   docker compose -f docker-compose.whisper.yml up -d --build
+#
+# Services:
+#   whisper-api    - OpenAI-compatible /v1/audio/transcriptions + queue endpoints (port 9500)
+#   whisper-worker - background loop: DB queue -> download -> transcribe -> ship SRT to 52
+#
+# Both pin to a single GPU via CUDA_VISIBLE_DEVICES (set to the GPU with free VRAM, e.g. 1).
+# The queue is the MySQL `radio` DB (server 52:3308), reachable over the LAN.
+services:
+  whisper-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.whisper
+    image: iranseda-whisper:latest
+    container_name: iranseda-whisper-api
+    restart: unless-stopped
+    environment: &whisper_env
+      CUDA_VISIBLE_DEVICES: "${WHISPER_GPU:-1}"
+      WHISPER_MODEL: "large-v3-turbo"
+      WHISPER_LANGUAGE: "fa"
+      DB_HOST: "172.20.1.52"
+      DB_PORT: "3308"
+      DB_USER: "n8nuser"
+      DB_PASS: "StrongPassword123!"
+      DB_NAME: "radio"
+    ports:
+      - "${WHISPER_PORT:-9500}:9500"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:9500/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  whisper-worker:
+    image: iranseda-whisper:latest
+    container_name: iranseda-whisper-worker
+    restart: unless-stopped
+    command: ["python3", "worker.py"]
+    environment:
+      <<: *whisper_env
+      WORK_DIR: "/tmp/whisper-worker"
+      BATCH_SIZE: "1"
+      KEEP_MP4: "0"
+      MAX_ATTEMPTS: "3"
+      IDLE_SLEEP: "20"
+      DELAY_BETWEEN: "1"
+      # LAN ssh from the GPU server to 52 to ship finished SRTs.
+      SSH_TARGET: "saber@172.20.1.52"
+      REMOTE_DOWNLOADS: "/home/saber/saberprojects/iranseda/downloads"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
