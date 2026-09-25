@@ -43,6 +43,7 @@ DELAY_BETWEEN = int(os.getenv("DELAY_BETWEEN", "1"))
 KEEP_MP4 = os.getenv("KEEP_MP4", "0") == "1"
 SSH_TARGET = os.getenv("SSH_TARGET", "saber@172.20.1.52")
 REMOTE_DOWNLOADS = os.getenv("REMOTE_DOWNLOADS", "/home/saber/saberprojects/iranseda/downloads")
+SSH_KEY = os.getenv("SSH_KEY_PATH", "")  # e.g. /app/keys/id_ed25519 (mounted in container)
 
 
 def _next_sessions(limit: int):
@@ -114,12 +115,10 @@ def _copy_to_52(files):
     existing = [f for f in files if f and os.path.exists(f)]
     if not existing:
         return
-    cmd = [
-        "scp", "-o", "BatchMode=yes", "-o", "ConnectTimeout=15",
-        "-o", "StrictHostKeyChecking=accept-new",
-        *existing,
-        f"{SSH_TARGET}:{REMOTE_DOWNLOADS}/",
-    ]
+    cmd = ["scp", "-o", "BatchMode=yes", "-o", "ConnectTimeout=15", "-o", "StrictHostKeyChecking=accept-new"]
+    if SSH_KEY:
+        cmd += ["-i", SSH_KEY]
+    cmd += existing + [f"{SSH_TARGET}:{REMOTE_DOWNLOADS}/"]
     res = subprocess.run(cmd, capture_output=True, text=True, timeout=900)
     if res.returncode != 0:
         raise RuntimeError(f"scp to 52 failed: {res.stderr[:300]}")

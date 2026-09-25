@@ -56,6 +56,9 @@ services:
       # LAN ssh from the GPU server to 52 to ship finished SRTs.
       SSH_TARGET: "saber@172.20.1.52"
       REMOTE_DOWNLOADS: "/home/saber/saberprojects/iranseda/downloads"
+      SSH_KEY_PATH: "/app/keys/id_ed25519"
+    volumes:
+      - ${HOME}/.ssh/id_ed25519:/app/keys/id_ed25519:ro
     deploy:
       resources:
         reservations:
