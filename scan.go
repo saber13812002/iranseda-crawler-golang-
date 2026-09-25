@@ -92,7 +92,7 @@ type Program struct {
 func getPrograms(db *sql.DB) ([]Program, error) {
 	var programs []Program
 
-	rows, err := db.Query("SELECT id, name, url FROM radio_programs WHERE url IS NOT NULL AND url != ''")
+	rows, err := db.Query("SELECT id, name, url FROM radio_programs WHERE url IS NOT NULL AND url != '' AND is_legacy = 0")
 	if err != nil {
 		return nil, err
 	}

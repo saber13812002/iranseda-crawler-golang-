@@ -49,24 +49,24 @@ class Config:
     def load_server_config(self):
         """Server configuration"""
         self.db_config = {
-            'host': os.getenv('DB_HOST', '192.168.2.160'),
-            'port': int(os.getenv('DB_PORT', '3306')),
+            'host': os.getenv('DB_HOST', '127.0.0.1'),
+            'port': int(os.getenv('DB_PORT', '3308')),
             'user': os.getenv('DB_USER', 'n8nuser'),
             'password': os.getenv('DB_PASS', 'StrongPassword123!'),
             'database': os.getenv('DB_NAME', 'radio'),
             'charset': 'utf8mb4'
         }
-        
+
         self.github_config = {
             'user': os.getenv('GITHUB_USER', 'saber13812002'),
             'repo': os.getenv('GITHUB_REPO', 'iranseda-crawler-golang-'),
             'branch': os.getenv('GITHUB_BRANCH', 'download-db')
         }
-        
+
         self.paths = {
-            'downloads': Path('/mnt/data/saberprojects/iranseda-crawler-golang-/downloads'),
-            'docs': Path('/mnt/data/saberprojects/iranseda-crawler-golang-/docs'),
-            'programs': Path('/mnt/data/saberprojects/iranseda-crawler-golang-/docs/programs')
+            'downloads': Path(os.getenv('DOWNLOADS_PATH', '/home/saber/saberprojects/iranseda/downloads')),
+            'docs': Path(os.getenv('DOCS_PATH', '/home/saber/saberprojects/iranseda/docs')),
+            'programs': Path(os.getenv('PROGRAMS_PATH', '/home/saber/saberprojects/iranseda/docs/programs'))
         }
     
     def load_production_config(self):

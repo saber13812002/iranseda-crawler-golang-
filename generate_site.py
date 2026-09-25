@@ -48,6 +48,7 @@ def fetch_programs(conn):
         cur.execute("""
             SELECT id, name, url, time, time_description, description, created_at, start, radio, radio_id
             FROM radio_programs
+            WHERE is_legacy = 0
             ORDER BY id ASC
         """)
         return cur.fetchall()

@@ -11,14 +11,17 @@ services:
       MYSQL_DATABASE: radio
       MYSQL_USER: n8nuser
       MYSQL_PASSWORD: StrongPassword123!
+    # Host port 3308 to avoid conflict with native MariaDB (3306) and
+    # the CMS docker MySQL (3307) already running on this server.
     ports:
-      - "3306:3306"
+      - "3308:3306"
     volumes:
       - mysql_data:/var/lib/mysql
-      # Auto-restore database dump on first run
-      - ./radio.sql:/docker-entrypoint-initdb.d/01-radio.sql
-      - ./radio_programs.sql:/docker-entrypoint-initdb.d/02-radio_programs.sql
-      - ./migrations:/docker-entrypoint-initdb.d/migrations
+      # Full/latest dump (Navicat, 2025-11-29). radio_programs.sql is a
+      # legacy old-schema dump and must NOT be auto-run (it drops the
+      # real radio_programs table). The 2025-11-19 legacy-columns
+      # migration is already baked into radio.sql, so it is not re-applied.
+      - ./radio.sql:/docker-entrypoint-initdb.d/01-radio.sql:ro
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_general_ci

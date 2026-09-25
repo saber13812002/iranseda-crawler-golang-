@@ -6,7 +6,9 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/joho/godotenv"
@@ -29,6 +31,21 @@ func main() {
 		return
 	}
 
+	// محدودیت تعداد دانلود در هر اجرا (برای جلوگیری از rate-limit؛ 0 = بدون محدودیت)
+	maxDownloads := 0
+	if v := os.Getenv("MAX_DOWNLOADS"); v != "" {
+		if n, perr := strconv.Atoi(v); perr == nil {
+			maxDownloads = n
+		}
+	}
+	// تأخیر بین هر دانلود (ثانیه؛ پیش‌فرض 0)
+	delaySec := 0
+	if v := os.Getenv("DOWNLOAD_DELAY"); v != "" {
+		if n, perr := strconv.Atoi(v); perr == nil {
+			delaySec = n
+		}
+	}
+
 	// اتصال به دیتابیس
 	db, err := sql.Open("mysql", connStr)
 	if err != nil {
@@ -45,6 +62,7 @@ func main() {
 	}
 	defer rows.Close()
 
+	downloadedThisRun := 0
 	// خواندن لینک‌ها و دانلود فایل‌های جدید
 	for rows.Next() {
 		var id int
@@ -56,6 +74,11 @@ func main() {
 		}
 
 		if isDownloaded == 0 { // فقط فایل‌هایی که دانلود نشده‌اند
+			// رسیدن به سقف دانلود این اجرا
+			if maxDownloads > 0 && downloadedThisRun >= maxDownloads {
+				fmt.Printf("Reached MAX_DOWNLOADS=%d for this run, stopping.\n", maxDownloads)
+				return
+			}
 			// اصلاح لینک
 			link = strings.Replace(link, "..", "", 1)
 			originalLink := "https://radio.iranseda.ir" + link
@@ -70,13 +93,12 @@ func main() {
 
 			// دانلود فایل
 			filename := downloadFile(downloadURL)
-
-			// ذخیره نام فایل در بانک اطلاعاتی
-
-			if err != nil {
-				fmt.Println("Error converting programID to int:", err)
+			if filename == "" {
+				fmt.Println("Download failed, skipping DB update for this session.")
 				continue
 			}
+
+			// ذخیره نام فایل در بانک اطلاعاتی
 			saveDownloadedFile(db, id, filename)
 
 			// بروزرسانی وضعیت دانلود در دیتابیس
@@ -84,7 +106,13 @@ func main() {
 			if err != nil {
 				fmt.Println("Error updating download status in database:", err)
 			} else {
+				downloadedThisRun++
 				fmt.Println("File marked as downloaded in database.")
+			}
+
+			// تأخیر بین دانلودها برای جلوگیری از فشار به سرور سایت
+			if delaySec > 0 {
+				time.Sleep(time.Duration(delaySec) * time.Second)
 			}
 		} else {
 			fmt.Println("File already downloaded:", link)
