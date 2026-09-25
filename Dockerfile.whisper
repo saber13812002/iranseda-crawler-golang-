@@ -1,14 +1,18 @@
 # IranSeda Whisper service (API + worker), GPU build.
 # Built on server 53 (H100). The resulting container runs on a CUDA GPU.
-# NOTE: server 53's Docker bridge can't resolve DNS (LAN resolver), so all
-# network steps run with --network=host. Build with BuildKit/buildx.
+# Build with the classic builder + host networking:
+#   DOCKER_BUILDKIT=0 docker build --network=host -f Dockerfile.whisper -t iranseda-whisper:latest .
 FROM nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Server 53's Docker daemon forces dead nameservers (5.202.100.x) into build
+# containers even with --network=host, so pin working ones here. This file
+# persists into later layers.
+RUN printf 'nameserver 172.20.1.10\nnameserver 8.8.8.8\n' > /etc/resolv.conf && \
+    apt-get update && apt-get install -y --no-install-recommends \
         python3.11 python3.11-venv python3-pip ffmpeg openssh-client \
         build-essential git \
     && rm -rf /var/lib/apt/lists/* \
