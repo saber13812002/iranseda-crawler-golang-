@@ -1,12 +1,14 @@
 # IranSeda Whisper service (API + worker), GPU build.
 # Built on server 53 (H100). The resulting container runs on a CUDA GPU.
+# NOTE: server 53's Docker bridge can't resolve DNS (LAN resolver), so all
+# network steps run with --network=host. Build with BuildKit/buildx.
 FROM nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN --network=host apt-get update && apt-get install -y --no-install-recommends \
         python3.11 python3.11-venv python3-pip ffmpeg openssh-client \
         build-essential git \
     && rm -rf /var/lib/apt/lists/* \
@@ -16,12 +18,12 @@ WORKDIR /app
 
 # Install Python deps first (better layer caching).
 COPY services/whisper/requirements.txt /app/requirements.txt
-RUN pip3 install --break-system-packages -r /app/requirements.txt
+RUN --network=host pip3 install --break-system-packages -r /app/requirements.txt
 
 # Pre-cache the whisper model into the image so containers start fast.
 ARG WHISPER_MODEL=large-v3-turbo
 ENV WHISPER_MODEL=${WHISPER_MODEL}
-RUN python3 -c "import faster_whisper, os; m=os.environ['WHISPER_MODEL']; faster_whisper.download_model(m); print('cached', m)" || \
+RUN --network=host python3 -c "from faster_whisper.utils import download_model; download_model('large-v3-turbo'); print('cached large-v3-turbo')" || \
     echo "model pre-cache skipped (offline build); will download on first run"
 
 # Application code.
