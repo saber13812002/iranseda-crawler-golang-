@@ -16,6 +16,13 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
+// کلاینت‌های HTTP با timeout: بدون timeout، یک اتصال stalled می‌تواند
+// کل اجرای cron را برای همیشه قفل کند (و اجرای بعدی به‌خاطر lock رد شود).
+var (
+	pageClient = &http.Client{Timeout: 60 * time.Second}  // صفحه آرشیو (~50KB)
+	fileClient = &http.Client{Timeout: 10 * time.Minute}  // فایل صوتی/ویدیو (~15MB)
+)
+
 func main() {
 	// بارگذاری متغیرهای محیطی از .env
 	err := godotenv.Load()
@@ -55,7 +62,9 @@ func main() {
 	defer db.Close()
 
 	// دریافت لینک‌ها و وضعیت دانلود از دیتابیس
-	rows, err := db.Query("SELECT id, link, is_downloaded FROM radio_program_sessions")
+	// ORDER BY id DESC: از جدیدترین شروع می‌کنیم تا محتوای تازه (که قابل
+	// دانلود است) اول مصرف شود و صف قدیمی/مردود پشت سر بماند.
+	rows, err := db.Query("SELECT id, link, is_downloaded FROM radio_program_sessions ORDER BY id DESC")
 	if err != nil {
 		fmt.Println("Error fetching data from database:", err)
 		return
@@ -126,8 +135,8 @@ func main() {
 
 // تابع استخراج لینک دانلود از صفحه HTML
 func extractDownloadLinkAndFilename(url string) string {
-	// درخواست HTML صفحه
-	res, err := http.Get(url)
+	// درخواست HTML صفحه (با timeout تا run قفل نشود)
+	res, err := pageClient.Get(url)
 	if err != nil {
 		fmt.Println("Error fetching the page:", err)
 		return ""
@@ -152,8 +161,8 @@ func extractDownloadLinkAndFilename(url string) string {
 
 // تابع دانلود فایل
 func downloadFile(url string) string {
-	// ارسال درخواست برای دریافت فایل
-	response, err := http.Get(url)
+	// ارسال درخواست برای دریافت فایل (با timeout تا run قفل نشود)
+	response, err := fileClient.Get(url)
 	if err != nil {
 		fmt.Println("Error while downloading:", err)
 		return ""
@@ -198,7 +207,11 @@ func downloadFile(url string) string {
 	// کپی کردن محتوا از response.Body به فایل
 	_, err = io.Copy(outFile, response.Body)
 	if err != nil {
-		fmt.Println("Error while saving file:", err)
+		outFile.Close()
+		// دانلود ناقص/تعقیب‌شده: فایل‌بریده را پاک می‌کنیم تا media خراب
+		// در downloads/ نماند (worker هر فایلی >100KB را معتبر می‌شمرد).
+		os.Remove(filepath)
+		fmt.Println("Error while saving file (partial file removed):", err)
 		return ""
 	}
 
@@ -206,9 +219,12 @@ func downloadFile(url string) string {
 	return filename
 }
 
-// ذخیره نام فایل در بانک اطلاعاتی
+// ذخیره نام فایل و وضعیت در بانک اطلاعاتی
+// پس از دانلود موفق، status را روی pending_transcribe می‌گذاریم تا worker
+// Whisper (که فقط pending_transcribe را می‌خواند) فایل را ترنسکریپت کند.
+// بدون این، فایل دانلود می‌شد اما هیچ‌گاه وارد صف ترنسکریپت نمی‌شد.
 func saveDownloadedFile(db *sql.DB, id int, filename string) {
-	_, err := db.Exec("UPDATE radio_program_sessions SET filename = ?, is_downloaded = 1 WHERE id = ?", filename, id)
+	_, err := db.Exec("UPDATE radio_program_sessions SET filename = ?, is_downloaded = 1, status = 'pending_transcribe', last_error = NULL WHERE id = ?", filename, id)
 	if err != nil {
 		fmt.Println("Error saving filename to database:", err)
 	}
