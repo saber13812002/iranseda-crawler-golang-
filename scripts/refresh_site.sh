@@ -42,6 +42,15 @@ run(){
     local n; n=$(git diff --cached --numstat | wc -l)
     git commit -q -m "auto: refresh site + subtitles ($(date +%Y-%m-%d_%H:%M))"
     echo "committed ($n changed paths)"
+    # Rebase onto remote before pushing: an external push (manual, or from
+    # another machine) must not wedge us. --autostash protects uncommitted
+    # tracked changes (venv/.pyc) through the rebase.
+    if git pull --rebase --autostash origin "$BRANCH" >/dev/null 2>&1; then
+      echo "rebase: OK"
+    else
+      echo "rebase: FAILED (aborting to keep tree clean; retry next run)"
+      git rebase --abort 2>/dev/null
+    fi
     if git push origin "$BRANCH" 2>&1 | tail -n 3; then
       echo "push: OK"
     else
