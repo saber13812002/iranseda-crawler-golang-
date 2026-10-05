@@ -1,68 +1,71 @@
-# IranSeda Whisper GPU service — deploy on the GPU server (53).
-#
-#   docker compose -f docker-compose.whisper.yml up -d --build
-#
-# Services:
-#   whisper-api    - OpenAI-compatible /v1/audio/transcriptions + queue endpoints (port 9500)
-#   whisper-worker - background loop: DB queue -> download -> transcribe -> ship SRT to 52
-#
-# Both pin to a single GPU via CUDA_VISIBLE_DEVICES (set to the GPU with free VRAM, e.g. 1).
-# The queue is the MySQL `radio` DB (server 52:3308), reachable over the LAN.
+# IranSeda Whisper — GPU worker + optional API on server 53.
+# Host networking (53's docker bridge DNS is broken). GPU0 via CDI.
+# Model (whisper-4-persian, CT2 int8) mounted read-only from /home/saber/whisper-models.
 services:
-  whisper-api:
+  whisper-worker:
     build:
       context: .
       dockerfile: Dockerfile.whisper
     image: iranseda-whisper:latest
-    container_name: iranseda-whisper-api
+    container_name: iranseda-whisper-worker
     restart: unless-stopped
-    environment: &whisper_env
-      CUDA_VISIBLE_DEVICES: "${WHISPER_GPU:-1}"
-      WHISPER_MODEL: "large-v3-turbo"
+    network_mode: host
+    working_dir: /app/whisper
+    command: ["python3", "worker.py"]
+    environment:
+      WHISPER_MODEL: /models/whisper-persian-v4-ct2
       WHISPER_LANGUAGE: "fa"
-      DB_HOST: "172.20.1.52"
+      WHISPER_COMPUTE: "int8"
+      CUDA_VISIBLE_DEVICES: "0"
+      DB_HOST: "172.20.1.53"
       DB_PORT: "3308"
       DB_USER: "n8nuser"
       DB_PASS: "StrongPassword123!"
       DB_NAME: "radio"
-    ports:
-      - "${WHISPER_PORT:-9500}:9500"
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-    healthcheck:
-      test: ["CMD", "python3", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:9500/health')"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  whisper-worker:
-    image: iranseda-whisper:latest
-    container_name: iranseda-whisper-worker
-    restart: unless-stopped
-    command: ["python3", "worker.py"]
-    environment:
-      <<: *whisper_env
       WORK_DIR: "/tmp/whisper-worker"
       BATCH_SIZE: "1"
       KEEP_MP4: "0"
       MAX_ATTEMPTS: "3"
       IDLE_SLEEP: "20"
-      DELAY_BETWEEN: "1"
-      # LAN ssh from the GPU server to 52 to ship finished SRTs.
-      SSH_TARGET: "saber@172.20.1.52"
-      REMOTE_DOWNLOADS: "/home/saber/saberprojects/iranseda/downloads"
-      SSH_KEY_PATH: "/app/keys/id_ed25519"
+      DELAY_BETWEEN: "2"
+      SSH_TARGET: ""
+      REMOTE_DOWNLOADS: "/home/saber/saberprojects/iranseda-crawler-golang-/downloads"
+      LOCAL_DOWNLOADS_DIR: "/home/saber/saberprojects/iranseda-crawler-golang-/downloads"
     volumes:
-      - ${HOME}/.ssh/id_ed25519:/app/keys/id_ed25519:ro
+      - ./downloads:/home/saber/saberprojects/iranseda-crawler-golang-/downloads
+      - ./services/whisper:/app/whisper
+      - /home/saber/whisper-models:/models:ro
     deploy:
       resources:
         reservations:
           devices:
             - driver: nvidia
-              count: 1
+              device_ids: ["0"]
+              capabilities: [gpu]
+
+  whisper-api:
+    image: iranseda-whisper:latest
+    container_name: iranseda-whisper-api
+    restart: unless-stopped
+    network_mode: host
+    working_dir: /app/whisper
+    command: ["python3", "-m", "uvicorn", "api:app", "--host", "0.0.0.0", "--port", "9500"]
+    environment:
+      WHISPER_MODEL: /models/whisper-persian-v4-ct2
+      WHISPER_LANGUAGE: "fa"
+      WHISPER_COMPUTE: "int8"
+      CUDA_VISIBLE_DEVICES: "0"
+      DB_HOST: "172.20.1.53"
+      DB_PORT: "3308"
+      DB_USER: "n8nuser"
+      DB_PASS: "StrongPassword123!"
+      DB_NAME: "radio"
+    volumes:
+      - /home/saber/whisper-models:/models:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["0"]
               capabilities: [gpu]

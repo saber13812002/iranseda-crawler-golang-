@@ -10,6 +10,25 @@ from faster_whisper.transcribe import Segment
 
 DB_TIMEOUT = 10
 
+# Where the crawler saves fetched media on the host. Mounted into the worker
+# container so it can REUSE files instead of re-downloading them.
+LOCAL_DOWNLOADS_DIR = os.getenv(
+    "LOCAL_DOWNLOADS_DIR",
+    "/home/saber/saberprojects/iranseda-crawler-golang-/downloads",
+)
+
+# Browser-like header. The radio.iranseda.ir epgarchivePart endpoint sits behind
+# an anti-bot layer that returns a 15-byte doctype stub / 503 / connection reset
+# to a plain python-requests default User-Agent.
+UA = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+)
+
+
+class LocalMediaMissing(Exception):
+    """Media is not on disk and cannot be re-fetched (endpoint blocked/absent)."""
+
 
 def db_conn():
     return pymysql.connect(
@@ -72,29 +91,67 @@ def filename_from_link(link: str) -> str:
     return f"epg-ch{ch}-e{e}.mp4"
 
 
-def download_media(link: str, dest_dir: str, timeout: int = 300) -> str:
-    """Download one session's media file; returns the local file path."""
-    page = requests.get(link_to_archive_page(link), timeout=60)
-    page.raise_for_status()
-    dl_url = extract_dl_url(page.text)
+def find_local_media(filename: str, link: str, dest_dir: str = None) -> str:
+    """
+    Locate an already-downloaded media file without re-downloading.
+
+    The crawler stores files (radio-<ch>-<date>-<time>.mp4) in LOCAL_DOWNLOADS_DIR.
+    Prefer the DB-provided filename, then the name derived from the link.
+    Returns an existing path, or '' when the file is not present.
+    """
+    dest_dir = dest_dir or LOCAL_DOWNLOADS_DIR
+    candidates = []
+    if filename:
+        candidates.append(filename)
+    candidates.append(filename_from_link(link))
+    for name in candidates:
+        p = os.path.join(dest_dir, name)
+        try:
+            if os.path.exists(p) and os.path.getsize(p) > 100_000:
+                return p
+        except OSError:
+            continue
+    return ""
+
+
+def download_media(link: str, dest_dir: str, timeout: int = 120) -> str:
+    """
+    Download one session's media file; returns the local file path.
+
+    Raises LocalMediaMissing when the file cannot be fetched (anti-bot stub,
+    503, reset, or no link found) so the caller can hand the row back to the
+    crawler instead of burning retry attempts.
+    """
+    page_url = link_to_archive_page(link)
+    try:
+        page = requests.get(page_url, timeout=30, headers={"User-Agent": UA})
+        page.raise_for_status()
+    except requests.RequestException as exc:
+        raise LocalMediaMissing(f"archive page fetch failed: {type(exc).__name__}")
+    html = page.text or ""
+    if len(html) < 500:  # anti-bot stub (e.g. the 15-byte doctype) - not a real page
+        raise LocalMediaMissing(f"archive page returned anti-bot stub ({len(html)} bytes)")
+    dl_url = extract_dl_url(html)
     if not dl_url:
-        raise RuntimeError("no direct download link on archive page")
+        raise LocalMediaMissing("no direct download link on archive page")
     if dl_url.startswith("/"):
         dl_url = "https://radio.iranseda.ir" + dl_url
 
     os.makedirs(dest_dir, exist_ok=True)
-    path = os.path.join(dest_dir, filename_from_link(link))
-    with requests.get(dl_url, stream=True, timeout=timeout) as r:
-        r.raise_for_status()
-        name = filename_from_content_disposition(r.headers)
-        if not name.endswith((".mp3", ".mp4")):
-            name += ".mp4"
-        path = os.path.join(dest_dir, name)
-        with open(path, "wb") as f:
-            for chunk in r.iter_content(chunk_size=1 << 16):
-                f.write(chunk)
+    try:
+        with requests.get(dl_url, stream=True, timeout=timeout, headers={"User-Agent": UA}) as r:
+            r.raise_for_status()
+            name = filename_from_content_disposition(r.headers)
+            if not name.endswith((".mp3", ".mp4")):
+                name += ".mp4"
+            path = os.path.join(dest_dir, name)
+            with open(path, "wb") as f:
+                for chunk in r.iter_content(chunk_size=1 << 16):
+                    f.write(chunk)
+    except requests.RequestException as exc:
+        raise LocalMediaMissing(f"media download failed: {type(exc).__name__}")
     if os.path.getsize(path) < 100_000:  # sane minimum for a radio file
-        raise RuntimeError(f"downloaded file too small: {os.path.getsize(path)} bytes")
+        raise LocalMediaMissing(f"downloaded file too small: {os.path.getsize(path)} bytes")
     return path
 
 
@@ -106,7 +163,7 @@ def get_model(model_name: str = None, device: str = "cuda"):
     key = (model_name, device)
     if key not in _model_cache:
         _model_cache[key] = faster_whisper.WhisperModel(
-            model_name, device=device, compute_type="float16" if device == "cuda" else "int8"
+            model_name, device=device, compute_type=os.getenv("WHISPER_COMPUTE", "int8")
         )
     return _model_cache[key]
 

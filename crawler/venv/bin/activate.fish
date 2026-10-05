@@ -33,7 +33,7 @@ end
 # Unset irrelevant variables.
 deactivate nondestructive
 
-set -gx VIRTUAL_ENV /mnt/data/saberprojects/iranseda-crawler-golang-/crawler/venv
+set -gx VIRTUAL_ENV /home/saber/saberprojects/iranseda-crawler-golang-/crawler/venv
 
 set -gx _OLD_VIRTUAL_PATH $PATH
 set -gx PATH "$VIRTUAL_ENV/"bin $PATH

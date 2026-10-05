@@ -1,7 +1,7 @@
 import os
 import re
 
-downloads_path = "./downloads"
+downloads_path = os.getenv("DOWNLOADS_PATH", "./downloads")
 
 def convert_srt_to_txt(srt_path, txt_path):
     with open(srt_path, 'r', encoding='utf-8') as f:

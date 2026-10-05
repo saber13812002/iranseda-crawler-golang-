@@ -1,8 +1,6 @@
-#!/mnt/data/saberprojects/iranseda-crawler-golang-/crawler/venv/bin/python3
-# -*- coding: utf-8 -*-
-import re
+#!/home/saber/saberprojects/iranseda-crawler-golang-/crawler/venv/bin/python
 import sys
-from charset_normalizer import cli
+from charset_normalizer.cli import cli_detect
 if __name__ == '__main__':
-    sys.argv[0] = re.sub(r'(-script\.pyw|\.exe)?$', '', sys.argv[0])
-    sys.exit(cli.cli_detect())
+    sys.argv[0] = sys.argv[0].removesuffix('.exe')
+    sys.exit(cli_detect())

@@ -1,41 +1,28 @@
-# IranSeda Whisper service (API + worker), GPU build.
-# Built on server 53 (H100). The resulting container runs on a CUDA GPU.
-# Build with the classic builder + host networking:
-#   DOCKER_BUILDKIT=0 docker build --network=host -f Dockerfile.whisper -t iranseda-whisper:latest .
-FROM nvidia/cuda:12.4.1-cudnn-runtime-ubuntu22.04
+# IranSeda Whisper worker/api — GPU image on server 53 (FULLY OFFLINE build).
+#
+# Base whisper-web-whisper:latest already has working CUDA (torch 2.13+cu130),
+# faster-whisper 1.2.1, ctranslate2 4.8, ffmpeg. We only add pymysql/requests
+# from pre-downloaded local wheels (server 53's build networking is broken:
+# read-only /etc/resolv.conf, IPv6-blackhole DNS, dead baked-in proxy).
+#
+# The Whisper model (whisper-4-persian = nezamisafa/whisper-persian-v4, CT2
+# int8 + tokenizer) is NOT baked in; it is mounted read-only at runtime from
+# /home/saber/whisper-models.
+#
+# Build:  docker build -f Dockerfile.whisper -t iranseda-whisper:latest .
+FROM whisper-web-whisper:latest
+# Clear the base image entrypoint (it boots its own web service + model conversion).
+ENTRYPOINT []
 
-ENV DEBIAN_FRONTEND=noninteractive \
-    PYTHONUNBUFFERED=1 \
-    PIP_NO_CACHE_DIR=1
+ENV PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
 
-# Server 53's Docker daemon forces dead nameservers (5.202.100.x) into build
-# containers even with --network=host, so pin working ones here. This file
-# persists into later layers.
-RUN printf 'nameserver 172.20.1.10\nnameserver 8.8.8.8\n' > /etc/resolv.conf && \
-    apt-get update && apt-get install -y --no-install-recommends \
-        python3.11 python3.11-venv python3-pip ffmpeg openssh-client \
-        build-essential git \
-    && rm -rf /var/lib/apt/lists/* \
-    && ln -sf /usr/bin/python3.11 /usr/local/bin/python
+COPY wheels/ /tmp/wheels/
+RUN env -u http_proxy -u https_proxy -u HTTP_PROXY -u HTTPS_PROXY \
+    pip3 install --no-cache-dir --no-index --find-links=/tmp/wheels \
+      "pymysql>=1.1" "requests>=2.31" "python-multipart>=0.0.9" \
+    && python3 -c "import pymysql, requests, multipart; print('deps ok')" \
+    && rm -rf /tmp/wheels
 
-WORKDIR /app
-
-# Install Python deps first (better layer caching).
-COPY services/whisper/requirements.txt /app/requirements.txt
-RUN pip3 install --break-system-packages -r /app/requirements.txt
-
-# Pre-cache the whisper model into the image so containers start fast.
-ARG WHISPER_MODEL=large-v3-turbo
-ENV WHISPER_MODEL=${WHISPER_MODEL}
-RUN python3 -c "from faster_whisper.utils import download_model; download_model('large-v3-turbo'); print('cached large-v3-turbo')" || \
-    echo "model pre-cache skipped (offline build); will download on first run"
-
-# Application code.
-COPY services/whisper/ /app/
-
-# ffmpeg for faster-whisper audio decode.
-RUN ln -sf /usr/bin/ffmpeg /usr/local/bin/ffmpeg
-
-EXPOSE 9500
-
-CMD ["python3", "-m", "uvicorn", "api:app", "--host", "0.0.0.0", "--port", "9500"]
+COPY services/whisper/ /app/whisper/
+WORKDIR /app/whisper
+CMD ["python3", "worker.py"]

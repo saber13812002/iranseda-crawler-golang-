@@ -3,25 +3,31 @@ Whisper queue worker (runs inside the GPU container on server 53).
 
 Loop:
   1. pick next sessions (status = 'pending_transcribe')
-  2. download media from radio.iranseda.ir (by session link)
+  2. REUSE the crawler's already-downloaded media when it exists on disk.
+     (The radio.iranseda.ir epgarchivePart endpoint is JS/anti-bot gated and
+      returns a stub to plain HTTP clients, so re-downloading from here is not
+      reliable - the crawler is the download owner.)
   3. transcribe with faster-whisper (GPU)
-  4. ship SRT (and optional MP4) to server 52 over LAN ssh
-  5. report result -> DB (subtitled / failed with attempts + last_error)
+  4. ship SRT to REMOTE_DOWNLOADS (server 52 over LAN ssh, or local dir)
+  5. report result -> DB (subtitled / failed / handed back to pending_download)
 
 Statuses:
-  pending_transcribe  -> waiting in queue
-  transcribing        -> being processed by a worker
-  subtitled           -> SRT delivered to server 52
-  failed              -> last attempt failed (attempts < MAX_ATTEMPTS), retried
-  failed_permanent    -> parked after MAX_ATTEMPTS failures
+  pending_download  -> needs (re)fetch; owned by the crawler, not this worker
+  pending_transcribe-> waiting in queue (media already on disk)
+  transcribing      -> being processed by a worker
+  subtitled         -> SRT delivered
+  failed            -> last attempt failed (attempts < MAX_ATTEMPTS), retried
+  failed_permanent  -> parked after MAX_ATTEMPTS failures
 
 Env:
-  WORK_DIR      scratch dir (default /tmp/whisper-worker)
-  BATCH_SIZE    how many to pull per DB read (default 1)
-  KEEP_MP4      1 = also copy media to 52 (default 0, delete after)
-  IDLE_SLEEP    seconds to sleep when queue empty (default 30)
-  MAX_ATTEMPTS  failures before parking (default 3)
-  DELAY_BETWEEN seconds between sessions (default 1)
+  WORK_DIR            scratch dir (default /tmp/whisper-worker)
+  LOCAL_DOWNLOADS_DIR crawler media dir to reuse (mounted, default set in compose)
+  BATCH_SIZE          how many to pull per DB read (default 1)
+  KEEP_MP4            1 = also copy media to 52 (default 0)
+  IDLE_SLEEP          seconds to sleep when queue empty (default 30)
+  MAX_ATTEMPTS        failures before parking (default 3)
+  DELAY_BETWEEN       seconds between sessions (default 1)
+  SSH_TARGET          e.g. root@172.20.1.52 to scp results (default '' = local copy)
 """
 import logging
 import os
@@ -41,8 +47,11 @@ IDLE_SLEEP = int(os.getenv("IDLE_SLEEP", "30"))
 MAX_ATTEMPTS = int(os.getenv("MAX_ATTEMPTS", "3"))
 DELAY_BETWEEN = int(os.getenv("DELAY_BETWEEN", "1"))
 KEEP_MP4 = os.getenv("KEEP_MP4", "0") == "1"
-SSH_TARGET = os.getenv("SSH_TARGET", "saber@172.20.1.52")
-REMOTE_DOWNLOADS = os.getenv("REMOTE_DOWNLOADS", "/home/saber/saberprojects/iranseda/downloads")
+SSH_TARGET = os.getenv("SSH_TARGET", "")
+REMOTE_DOWNLOADS = os.getenv(
+    "REMOTE_DOWNLOADS",
+    "/home/saber/saberprojects/iranseda-crawler-golang-/downloads",
+)
 SSH_KEY = os.getenv("SSH_KEY_PATH", "")  # e.g. /app/keys/id_ed25519 (mounted in container)
 
 
@@ -52,7 +61,7 @@ def _next_sessions(limit: int):
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT id, link, attempts FROM radio_program_sessions
+                SELECT id, link, attempts, filename FROM radio_program_sessions
                 WHERE status = 'pending_transcribe'
                 ORDER BY id LIMIT %s
                 """,
@@ -111,9 +120,32 @@ def _finish(sid: int, ok: bool, srt_filename=None, mp4_filename=None, error=None
         conn.close()
 
 
+def _handoff_to_download(sid: int, reason: str):
+    """Reclassify a row whose media is not on disk back to the download layer."""
+    conn = common.db_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE radio_program_sessions
+                SET status = 'pending_download', last_error = %s
+                WHERE id = %s
+                """,
+                (str(reason)[:500], sid),
+            )
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def _copy_to_52(files):
     existing = [f for f in files if f and os.path.exists(f)]
     if not existing:
+        return
+    if not SSH_TARGET:
+        os.makedirs(REMOTE_DOWNLOADS, exist_ok=True)
+        for f in existing:
+            shutil.copy(f, os.path.join(REMOTE_DOWNLOADS, os.path.basename(f)))
         return
     cmd = ["scp", "-o", "BatchMode=yes", "-o", "ConnectTimeout=15", "-o", "StrictHostKeyChecking=accept-new"]
     if SSH_KEY:
@@ -124,16 +156,29 @@ def _copy_to_52(files):
         raise RuntimeError(f"scp to 52 failed: {res.stderr[:300]}")
 
 
-def process_session(session: dict) -> bool:
-    sid, link, attempts = session["id"], session["link"], session["attempts"]
+def process_session(session: dict):
+    """Returns 'subtitled' | 'handed_off' | 'failed'."""
+    sid = session["id"]
+    link = session["link"]
+    attempts = session["attempts"]
+    filename = session.get("filename") or ""
     log.info("session %s: start (attempt %d) %s", sid, attempts + 1, link)
 
     os.makedirs(WORK_DIR, exist_ok=True)
-    media_path = srt_path = None
-    try:
-        media_path = common.download_media(link, WORK_DIR)
-        media_name = os.path.basename(media_path)
 
+    # Reuse the crawler's local file. No re-download from the gated endpoint.
+    media_path = common.find_local_media(filename, link)
+    if not media_path:
+        log.info("session %s: media not on disk; handing off to pending_download", sid)
+        _handoff_to_download(
+            sid,
+            "media not on disk; re-download required (epgarchivePart endpoint is JS-gated)",
+        )
+        return "handed_off"
+
+    media_name = os.path.basename(media_path)
+    srt_path = None
+    try:
         srt_text = common.transcribe_to_srt(media_path)
         srt_name = os.path.splitext(media_name)[0] + ".srt"
         srt_path = os.path.join(WORK_DIR, srt_name)
@@ -144,28 +189,25 @@ def process_session(session: dict) -> bool:
         _copy_to_52([srt_path] + ([media_path] if KEEP_MP4 else []))
         _finish(sid, True, srt_name, media_name)
         log.info("session %s: DONE", sid)
-        return True
+        return "subtitled"
 
     except Exception as exc:  # noqa: BLE001
         log.error("session %s FAILED: %s", sid, exc)
         _finish(sid, False, error=exc)
-        for p in (media_path, srt_path):
-            if p and os.path.exists(p):
-                try:
-                    os.remove(p)
-                except OSError:
-                    pass
-        return False
-    finally:
-        if media_path and not KEEP_MP4 and os.path.exists(media_path):
+        if srt_path and os.path.exists(srt_path):
             try:
-                os.remove(media_path)
+                os.remove(srt_path)
             except OSError:
                 pass
+        return "failed"
+    finally:
+        # Never delete the shared local media - the crawler and other tools need it.
+        pass
 
 
 def main():
-    log.info("worker starting; work_dir=%s batch=%d keep_mp4=%s", WORK_DIR, BATCH_SIZE, KEEP_MP4)
+    log.info("worker starting; work_dir=%s batch=%d keep_mp4=%s local_dir=%s",
+             WORK_DIR, BATCH_SIZE, KEEP_MP4, common.LOCAL_DOWNLOADS_DIR)
     common.get_model()  # preload model once
     while True:
         try:

@@ -1,4 +1,4 @@
-#!/mnt/data/saberprojects/iranseda-crawler-golang-/crawler/venv/bin/python3
+#!/home/saber/saberprojects/iranseda-crawler-golang-/crawler/venv/bin/python
 # -*- coding: utf-8 -*-
 import re
 import sys

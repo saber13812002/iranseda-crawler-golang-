@@ -53,14 +53,20 @@ def fetch_programs(conn):
         """)
         return cur.fetchall()
 
-def fetch_sessions_for_program(conn, program_id: int):
+def fetch_sessions_for_program(conn, program_ids):
+    if isinstance(program_ids, int):
+        program_ids = [program_ids]
+    program_ids = list(program_ids)
+    if not program_ids:
+        return [], {}
+    ph_prog = ",".join(["%s"] * len(program_ids))
     with conn.cursor() as cur:
-        cur.execute("""
+        cur.execute(f"""
             SELECT id, program_id, link, created_at, filename, is_downloaded
             FROM radio_program_sessions
-            WHERE program_id = %s
+            WHERE program_id IN ({ph_prog})
             ORDER BY created_at DESC, id DESC
-        """, (program_id,))
+        """, program_ids)
         sessions = cur.fetchall()
 
         # Fetch attached files (if any)
@@ -98,6 +104,23 @@ def find_subtitles_for_session(filename: str):
             rel_cleaned = os.path.join("downloads", "cleaned", cleaned_candidate.name)
             results.append({"type": ext.lstrip("."), "name": cleaned_candidate.name, "repo_rel": rel_cleaned, "raw_url": gh_raw_url(rel_cleaned), "label": "متن کامل"})
     return results
+
+def build_url_program_map(conn):
+    """Map each ACTIVE program url -> all program_ids (active + legacy siblings)
+    sharing that url, so historical sessions on legacy rows count under the
+    current (active) program row."""
+    from collections import defaultdict
+    with conn.cursor() as cur:
+        cur.execute("SELECT id, url, IFNULL(is_legacy, 0) AS legacy FROM radio_programs")
+        rows = cur.fetchall()
+    by_url = defaultdict(list)
+    active_urls = set()
+    for r in rows:
+        if r["url"]:
+            by_url[r["url"]].append(r["id"])
+            if r["legacy"] == 0:
+                active_urls.add(r["url"])
+    return {u: by_url[u] for u in active_urls}
 
 def full_iranseda_url(db_link: str):
     # db_link like '../epgarchivePart/?VALID=TRUE&ch=14&e=.....'
@@ -288,7 +311,13 @@ def get_latest_programs_with_cleaned(programs, stats_by_program_id, limit=3):
     programs_with_cleaned.sort(key=lambda x: x['cleaned_count'], reverse=True)
     return programs_with_cleaned[:limit]
 
-def render_index(programs, stats_by_program_id):
+def get_whisper_queue_stats(conn):
+    with conn.cursor() as cur:
+        cur.execute("SELECT status, COUNT(*) AS n FROM radio_program_sessions GROUP BY status")
+        rows = {r["status"]: r["n"] for r in cur.fetchall()}
+    return rows, sum(rows.values())
+
+def render_index(programs, stats_by_program_id, whisper_stats=None, whisper_total=0):
     # Get time-based statistics
     time_stats = get_time_based_stats()
     
@@ -339,6 +368,28 @@ def render_index(programs, stats_by_program_id):
     </div>
     """
     
+    whisper_html = ""
+    if whisper_stats:
+        def _wcard(key, fa, en):
+            v = whisper_stats.get(key, 0)
+            return ('<div class="stat-item"><span class="stat-label">'
+                    + fa + ' / ' + en + ':</span>'
+                    + '<span class="stat-value">' + str(v) + '</span></div>')
+        whisper_html = (
+            '<div class="whisper-stats">'
+            '<h3>وضعیت صف زیرنویس Whisper / Subtitle Queue</h3>'
+            '<div class="stats-grid">'
+            + _wcard('subtitled', 'انجام‌شده', 'Subtitled')
+            + _wcard('pending_transcribe', 'در صف', 'Queued')
+            + _wcard('transcribing', 'در حال پردازش', 'Transcribing')
+            + _wcard('pending_download', 'در انتظار دانلود', 'Pending download')
+            + _wcard('failed', 'ناموفق (در صف تکرار)', 'Failed (retry)')
+            + _wcard('failed_permanent', 'ناموفق قطعی', 'Failed (parked)')
+            + '</div>'
+            + '<div class="whisper-total">مجموع سشن‌ها: ' + str(whisper_total) + '</div>'
+            + '</div>'
+        )
+
     # Build latest programs section
     latest_programs_html = ""
     if latest_programs:
@@ -442,6 +493,9 @@ h1 {{ color: #2c3e50; margin-bottom: 8px; }}
 .meta {{ color: #7f8c8d; font-size: 14px; }}
 .time-stats {{ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 8px; margin-bottom: 24px; }}
 .time-stats h3 {{ margin: 0 0 16px 0; text-align: center; font-size: 18px; }}
+.whisper-stats {{ background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white; padding: 20px; border-radius: 8px; margin-bottom: 24px; }}
+.whisper-stats h3 {{ margin: 0 0 16px 0; text-align: center; font-size: 18px; }}
+.whisper-total {{ text-align: center; margin-top: 14px; font-size: 15px; opacity: 0.95; }}
 .stats-grid {{ display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }}
 .stat-item {{ background: rgba(255,255,255,0.1); padding: 12px; border-radius: 6px; text-align: center; }}
 .stat-label {{ display: block; font-size: 12px; opacity: 0.9; margin-bottom: 4px; }}
@@ -501,6 +555,8 @@ function sortTable(n, isNumeric=false, isDate=false) {{
 </header>
 
 {time_stats_html}
+
+{whisper_html}
 
 {latest_programs_html}
 
@@ -681,9 +737,11 @@ def generate():
         print(f"📊 Found {len(programs)} programs")
         
         # Compute stats per program
+        url_to_ids = build_url_program_map(conn)
         stats_by_program_id = {}
         for p in programs:
-            sessions, _files = fetch_sessions_for_program(conn, p["id"])
+            prog_ids = url_to_ids.get(p.get("url"), [p["id"]])
+            sessions, _files = fetch_sessions_for_program(conn, prog_ids)
             total_sessions = len(sessions)
             subtitle_count = 0
             cleaned_count = 0
@@ -725,13 +783,14 @@ def generate():
             }
 
         # Generate index page
-        index_html = render_index(programs, stats_by_program_id)
+        whisper_stats, whisper_total = get_whisper_queue_stats(conn)
+        index_html = render_index(programs, stats_by_program_id, whisper_stats, whisper_total)
         (DOCS_DIR / "index.html").write_text(index_html, encoding="utf-8")
         print("✅ Generated index.html")
         
         # Generate program pages
         for i, p in enumerate(programs, 1):
-            sessions, files_by_session = fetch_sessions_for_program(conn, p["id"])
+            sessions, files_by_session = fetch_sessions_for_program(conn, url_to_ids.get(p.get("url"), [p["id"]]))
             html = render_program_page(p, sessions, files_by_session)
             (PROGRAMS_DIR / f"{p['id']}.html").write_text(html, encoding="utf-8")
             print(f"✅ Generated program {i}/{len(programs)}: {p['id']}.html ({len(sessions)} sessions)")
