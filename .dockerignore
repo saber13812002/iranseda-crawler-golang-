@@ -1,0 +1,12 @@
+downloads/
+logs/
+docs/
+crawler/
+web-viewer/
+n8n_workflows/
+venv/
+myenv/
+__pycache__/
+*.pyc
+*.log
+scripts/
