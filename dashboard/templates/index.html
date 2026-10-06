@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>داشبورد iranseda — سرور 53</title>
+<style>
+:root{
+  --bg:#0e1116; --panel:#161b23; --panel2:#1c2330; --line:#2a3342;
+  --txt:#e6ebf2; --mut:#8b98ab; --ok:#3fb96f; --warn:#e0a83c; --bad:#e05c5c; --acc:#4f9cf7;
+  --chip:#232c3b;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font-family:"Vazirmatn","Segoe UI",Tahoma,sans-serif;font-size:14px}
+a{color:var(--acc);text-decoration:none}
+a:hover{text-decoration:underline}
+header{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:14px 20px;border-bottom:1px solid var(--line);background:var(--panel)}
+header h1{font-size:17px;margin:0;font-weight:700}
+header .sub{color:var(--mut);font-size:12px}
+header .links{margin-inline-start:auto;display:flex;gap:8px}
+.badge{display:inline-flex;align-items:center;gap:6px;background:var(--chip);border:1px solid var(--line);border-radius:20px;padding:3px 10px;font-size:12px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--mut)}
+.dot.ok{background:var(--ok);box-shadow:0 0 6px var(--ok)}
+.dot.warn{background:var(--warn)}
+.dot.bad{background:var(--bad);box-shadow:0 0 6px var(--bad)}
+main{padding:18px 20px;max-width:1280px;margin:0 auto}
+h2{font-size:15px;margin:26px 0 12px;color:var(--txt);border-inline-start:3px solid var(--acc);padding-inline-start:9px}
+.grid{display:grid;gap:12px}
+.grid.cols-4{grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}
+.grid.cols-2{grid-template-columns:repeat(auto-fit,minmax(420px,1fr))}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
+.card h3{margin:0 0 8px;font-size:13px;color:var(--mut);font-weight:600}
+.tile .num{font-size:26px;font-weight:700}
+.tile .lbl{color:var(--mut);font-size:12px;margin-top:2px}
+.small{font-size:12px;color:var(--mut)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:right;padding:6px 8px;border-bottom:1px solid var(--line)}
+th{color:var(--mut);font-weight:600;font-size:12px}
+tr:hover td{background:var(--panel2)}
+.btn{background:var(--panel2);color:var(--txt);border:1px solid var(--line);border-radius:7px;padding:6px 12px;cursor:pointer;font-family:inherit;font-size:13px}
+.btn:hover{border-color:var(--acc)}
+.btn.primary{background:var(--acc);border-color:var(--acc);color:#0b1220;font-weight:700}
+.btn.danger{color:var(--bad);border-color:#5a3030}
+.btn.small{padding:3px 9px;font-size:12px}
+input,select{background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:7px;padding:7px 10px;font-family:inherit;font-size:13px;width:100%}
+label{display:block;font-size:12px;color:var(--mut);margin:8px 0 4px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.row>div{flex:1;min-width:130px}
+svg text{font-family:inherit}
+.chart{width:100%;height:150px}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--mut);margin-top:6px}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:2px;margin-inline-end:5px}
+.lg-new::before{background:var(--acc)}
+.lg-sub::before{background:var(--ok)}
+.lg-id::before{background:var(--warn)}
+.mono{font-family:ui-monospace,Consolas,monospace;direction:ltr;text-align:left}
+.flash{padding:8px 12px;border-radius:8px;margin:8px 0;font-size:13px;display:none}
+.flash.ok{display:block;background:#14291c;border:1px solid #2c5c40}
+.flash.err{display:block;background:#2c1919;border:1px solid #5c3030}
+.pill{border-radius:12px;padding:2px 9px;font-size:11px;border:1px solid var(--line)}
+.pill.ok{color:var(--ok);border-color:#2c5c40;background:#14291c}
+.pill.bad{color:var(--bad);border-color:#5c3030;background:#2c1919}
+.pill.run{color:var(--warn);border-color:#5c4a20;background:#2c2614}
+details{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin-top:8px}
+summary{cursor:pointer;color:var(--mut);font-size:13px}
+</style>
+</head>
+<body>
+<header>
+  <h1>داشبورد iranseda <span class="sub">— سرور 53</span></h1>
+  <span class="badge" id="db-badge"><span class="dot" id="db-dot"></span> DB radio</span>
+  <span class="badge" id="worker-badge"><span class="dot" id="worker-dot"></span> whisper worker</span>
+  <span class="badge" id="site-badge"><span class="dot" id="site-dot"></span> سایت رادیو</span>
+  <span class="badge" id="litellm-badge"><span class="dot" id="litellm-dot"></span> LiteLLM</span>
+  <div class="links">
+    <button class="btn small" onclick="setAuth()">توکن داشبورد</button>
+    <a class="btn small" href="/health" target="_blank">health</a>
+    <a class="btn small" href="/metrics" target="_blank">metrics</a>
+  </div>
+</header>
+<main>
+
+<div id="flash" class="flash"></div>
+
+<h2>سلامت سیستم</h2>
+<div class="grid cols-4" id="health-tiles"></div>
+
+<h2>آمار و روند</h2>
+<div class="grid cols-4" id="stat-tiles"></div>
+<div class="grid cols-2">
+  <div class="card">
+    <h3>۳۰ روز اخیر — جدید / ترنسکریپت‌شده</h3>
+    <svg class="chart" id="chart-30d" viewBox="0 0 600 150" preserveAspectRatio="none"></svg>
+    <div class="legend"><span class="lg-new">جلسه جدید</span><span class="lg-sub">ترنسکریپت کامل</span></div>
+    <div class="small" style="margin-top:6px">نکته: قله‌ی ۱۰-۰۵ بک‌فیل جمع‌بندی است، نه نرخ روزمره.</div>
+  </div>
+  <div class="card">
+    <h3>رشد max id (ماهانه)</h3>
+    <svg class="chart" id="chart-maxid" viewBox="0 0 600 150" preserveAspectRatio="none"></svg>
+    <div class="legend"><span class="lg-id">بزرگ‌ترین id هر ماه</span></div>
+  </div>
+</div>
+<div class="grid cols-2" style="margin-top:12px">
+  <div class="card">
+    <h3>وضعیت صف‌ها</h3>
+    <table id="queue-table"><tbody></tbody></table>
+  </div>
+  <div class="card">
+    <h3>خطاهای اخیر</h3>
+    <table id="fail-table"><thead><tr><th>id</th><th>وضعیت</th><th>خطا</th></tr></thead><tbody></tbody></table>
+  </div>
+</div>
+<div class="card" style="margin-top:12px">
+  <h3>جدیدترین جلسات (از DB)</h3>
+  <table id="recent-table"><thead><tr><th>id</th><th>برنامه</th><th>وضعیت</th><th>ساخته‌شده</th><th>فایل</th></tr></thead><tbody></tbody></table>
+</div>
+
+<h2>جاب‌ها</h2>
+<div class="grid cols-2" id="jobs-grid"></div>
+<div class="card" style="margin-top:12px">
+  <h3>اجراهای دستی اخیر</h3>
+  <table id="runs-table"><thead><tr><th>آغاز</th><th>جاب</th><th>وضعیت</th><th>پایان</th><th class="mono">یادداشت</th></tr></thead><tbody></tbody></table>
+</div>
+
+<h2>تنظیمات</h2>
+<div id="flash2" class="flash"></div>
+<div class="grid cols-2">
+  <div class="card">
+    <h3>پارامترهای .env (دانلود / نگهداری)</h3>
+    <form id="env-form"></form>
+    <div style="margin-top:10px"><button class="btn primary" onclick="saveEnv()">ذخیره</button></div>
+  </div>
+  <div class="card">
+    <h3>زمان‌بندی (cron سرور 53)</h3>
+    <form id="cron-form"></form>
+    <div class="small">فرمت cron پنج‌تایی: دقیقه ساعت روز-ماه ماه روز-هفته — مثال: */30 * * * *</div>
+    <div style="margin-top:10px"><button class="btn primary" onclick="saveCron()">ذخیره و اعمال</button></div>
+  </div>
+  <div class="card">
+    <h3>پارامترهای Whisper (compose — با restart خودکار اعمال)</h3>
+    <form id="whisper-form"></form>
+    <div style="margin-top:10px"><button class="btn primary" onclick="saveWhisper()">ذخیره و restart</button></div>
+  </div>
+  <div class="card">
+    <h3>LiteLLM (اتصال داشبورد)</h3>
+    <form id="envvars-form"></form>
+    <div class="small">این مقدارها برای مدیریت مدل‌ها در داشبورد استفاده می‌شود.</div>
+    <div style="margin-top:10px"><button class="btn primary" onclick="saveEnvVars()">ذخیره</button></div>
+  </div>
+</div>
+
+<h2>مدل‌های LiteLLM</h2>
+<div class="grid cols-2">
+  <div class="card">
+    <h3>فهرست مدل‌ها</h3>
+    <div id="llm-models" class="small">در حال بارگذاری…</div>
+  </div>
+  <div class="card">
+    <h3>افزودن مدل جدید</h3>
+    <form onsubmit="return addLlmModel()">
+      <label>نام در LiteLLM (model_name)</label><input id="llm-name" required placeholder="persian-llm-fast">
+      <div class="row">
+        <div><label>مدل پایه (model)</label><input id="llm-model" required placeholder="openai/gpt-4o"></div>
+        <div><label>api_base (اختیاری)</label><input id="llm-base" placeholder="http://...:8000/v1"></div>
+        <div><label>mode</label>
+          <select id="llm-mode">
+            <option value="chat">chat</option>
+            <option value="embedding">embedding</option>
+            <option value="audio_transcription">audio_transcription</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:10px"><button class="btn primary" type="submit">افزودن</button></div>
+    </form>
+    <details><summary>حذف مدل</summary>
+      <div class="row" style="margin-top:8px">
+        <div style="flex:2"><label>model_name</label><input id="llm-del-name"></div>
+        <div><label>model_id (اختیاری)</label><input id="llm-del-id" class="mono"></div>
+      </div>
+      <div style="margin-top:8px"><button class="btn danger" onclick="delLlmModel()">حذف</button></div>
+    </details>
+  </div>
+</div>
+
+<p class="small" style="margin:26px 0 40px">بروز خودکار هر ۳۰ ثانیه — <a href="/health">/health</a> · <a href="/metrics">/metrics</a> (Prometheus)</p>
+</main>
+
+<script>
+const $=s=>document.querySelector(s);
+let AUTH=localStorage.getItem("d53_auth")||"";
+function needAuth(){
+  if(AUTH)return false;
+  const t=prompt("توکن داشبورد (DASH_AUTH_TOKEN) را وارد کنید:");
+  if(t&&t.trim()){AUTH=t.trim();localStorage.setItem("d53_auth",AUTH);}
+  return !AUTH;
+}
+function flash(msg,ok){const el=$("#flash");el.textContent=msg;el.className="flash "+(ok?"ok":"err");setTimeout(()=>el.className="flash",5000);}
+function flash2(msg,ok){const el=$("#flash2");el.textContent=msg;el.className="flash "+(ok?"ok":"err");setTimeout(()=>el.className="flash",5000);}
+async function api(path,opts={}){
+  const headers=Object.assign({},opts.headers||{});
+  if(AUTH)headers["Authorization"]="Bearer "+AUTH;
+  opts.headers=headers;
+  const r=await fetch(path,opts);
+  if(r.status===401){
+    if(confirm("توکن نامعتبر است. توکن جدید وارد شود؟")){
+      localStorage.removeItem("d53_auth");location.reload();
+    }
+    throw new Error("unauthorized");
+  }
+  return r.json();
+}
+function setDot(id,cls){$(id).className="dot "+cls;}
+function tile(num,lbl,cls=""){return `<div class="card tile"><div class="num ${cls}">${num}</div><div class="lbl">${lbl}</div></div>`;}
+function esc(s){return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+function setAuth(){
+  const t=prompt("توکن داشبورد (DASH_AUTH_TOKEN):",AUTH);
+  if(t===null)return;
+  AUTH=t.trim();
+  if(AUTH)localStorage.setItem("d53_auth",AUTH);else localStorage.removeItem("d53_auth");
+  location.reload();
+}
+
+async function loadHealth(){
+  const h=await api("/api/health");const s=await api("/api/stats");
+  const db=h.db&&h.db.ok; setDot("#db-dot",db?"ok":"bad");
+  const wup=(h.containers["iranseda-whisper-worker"]||"").toLowerCase().startsWith("up");
+  setDot("#worker-dot",wup?"ok":"bad");
+  setDot("#site-dot",h.site&&h.site.reachable?"ok":"bad");
+  // litellm
+  let lh={ok:false}; try{lh=await api("/api/litellm/health");}catch(e){}
+  setDot("#litellm-dot",lh.ok?"ok":"bad");
+
+  const tiles=[];
+  tiles.push(tile((h.db&&h.db.server_now)||"—","سرعت ساعت سرور (DB)"));
+  tiles.push(h.disk?`<div class="card tile"><div class="num">${h.disk.pct}</div><div class="lbl">دیسک /home — ${h.disk.used} از ${h.disk.size} (${h.disk.avail} خالی)</div></div>`:tile("—","دیسک"));
+  tiles.push(tile(wup?"فعال":"خاموش","worker ترنسکریپت (GPU)",wup?"":"bad-txt"));
+  tiles.push(tile((wup&&s)?s.max_id:"—","بزرگ‌ترین id جلسه"));
+  $("#health-tiles").innerHTML=tiles.join("");
+
+  const q={};(s.status||[]).forEach(r=>q[r.status]=r.count);
+  const st=(s.status||[]);
+  $("#queue-table").innerHTML="<tbody>"+st.map(r=>`<tr><td>${esc(r.status)}</td><td class="mono">${r.count}</td></tr>`).join("")+"</tbody>";
+
+  $("#stat-tiles").innerHTML=
+    tile(s.total_sessions||"—","مجموع جلسات")+
+    tile(q.subtitled||0,"کامل‌شده (سرفایل دارد)")+
+    tile((q.pending_download||0)+(q.pending_transcribe||0)+(q.transcribing||0),"در انتظار پردازش")+
+    tile(q.failed_permanent||0,"ناموفق دائمی");
+
+  draw30d(s); drawMaxid(s);
+
+  $("#fail-table tbody").innerHTML=(s.failures||[]).map(f=>`<tr><td class="mono">${f.id}</td><td>${esc(f.status)}</td><td class="mono" style="font-size:11px">${esc(f.error)}</td></tr>`).join("")||'<tr><td colspan="3" class="small">—</td></tr>';
+  $("#recent-table tbody").innerHTML=(s.recent_new||[]).map(r=>`<tr><td class="mono">${r.id}</td><td>${r.program_id}</td><td>${esc(r.status)}</td><td class="mono">${esc(r.created_at)}</td><td class="mono" style="font-size:11px">${esc(r.filename)}</td></tr>`).join("");
+}
+
+function draw30d(s){
+  const svg=$("#chart-30d");const W=600,H=150,P=22;
+  const a=s.last30d_created||[],b=s.last30d_subtitled||[];
+  const days=Array.from({length:30},(_,i)=>{const d=new Date();d.setDate(d.getDate()-(29-i));return d.toISOString().slice(0,10);});
+  const ca={},cb={};a.forEach(r=>ca[r.day]=r.count);b.forEach(r=>cb[r.day]=r.count);
+  const max=Math.max(1,...days.map(d=>ca[d]||0),...days.map(d=>cb[d]||0));
+  let out="";
+  const bw=(W-2*P)/30;
+  days.forEach((d,i)=>{
+    const x=P+i*bw;
+    const h1=(ca[d]||0)/max*(H-2*P),h2=(cb[d]||0)/max*(H-2*P);
+    out+=`<rect x="${x+1}" y="${H-P-h1/2}" width="${bw/2-1}" height="${h1/2}" fill="#4f9cf7"><title>${d}: ${ca[d]||0} جدید</title></rect>`;
+    out+=`<rect x="${x+bw/2}" y="${H-P-h2/2}" width="${bw/2-1}" height="${h2/2}" fill="#3fb96f"><title>${d}: ${cb[d]||0} ترنسکریپت</title></rect>`;
+  });
+  out+=`<line x1="${P}" y1="${H-P}" x2="${W-P}" y2="${H-P}" stroke="#2a3342"/>`;
+  out+=`<text x="${W-P}" y="${12}" fill="#8b98ab" font-size="10" text-anchor="end">max=${max}</text>`;
+  svg.innerHTML=out;
+}
+function drawMaxid(s){
+  const svg=$("#chart-maxid");const W=600,H=150,P=30;
+  const pts=s.monthly_maxid||[];
+  if(pts.length<2){svg.innerHTML='<text x="20" y="80" fill="#8b98ab">داده کافی نیست</text>';return;}
+  const xs=pts.map((p,i)=>P+i*(W-2*P)/(pts.length-1));
+  const ys=pts.map(p=>H-P-(p.maxid/pts[pts.length-1].maxid)*(H-2*P));
+  let out=`<polyline points="${xs.map((x,i)=>x+","+ys[i]).join(" ")}" fill="none" stroke="#e0a83c" stroke-width="2"/>`;
+  pts.forEach((p,i)=>{out+=`<circle cx="${xs[i]}" cy="${ys[i]}" r="3" fill="#e0a83c"><title>${p.month}: max id ${p.maxid} (${p.count} جلسه)</title></circle>`;});
+  out+=`<text x="${xs[xs.length-1]}" y="${ys[ys.length-1]-8}" fill="#e0a83c" font-size="11" text-anchor="end">${pts[pts.length-1].maxid}</text>`;
+  out+=`<text x="${xs[0]}" y="${H-8}" fill="#8b98ab" font-size="10">${pts[0].month}</text>`;
+  out+=`<text x="${xs[xs.length-1]}" y="${H-8}" fill="#8b98ab" font-size="10" text-anchor="end">${pts[pts.length-1].month}</text>`;
+  svg.innerHTML=out;
+}
+
+async function loadJobs(){
+  const j=await api("/api/jobs");
+  const jobs=[
+    {key:"pipeline",name:"کانال کشف + دانلود (run_pipeline)",last:j.pipeline&&j.pipeline.last_end,btn:true},
+    {key:"refresh_site",name:"تولید سایت + push (refresh_site)",last:j.refresh_site&&j.refresh_site.last_end,btn:true},
+    {key:"worker",name:"worker ترنسکریپت Whisper",last:"زنده: "+(j["iranseda-whisper-worker"].transcribed_last_5m||0)+" فایل در ۵ دقیقه اخیر",log:j["iranseda-whisper-worker"].last_log},
+    {key:"db",name:"MySQL (radio)",last:"کانتینر: "+j["iranseda-mysql"].status,btn:false},
+  ];
+  $("#jobs-grid").innerHTML=jobs.map(jb=>`
+    <div class="card">
+      <h3>${jb.name}</h3>
+      <div class="small">آخرین پایان: <span class="mono">${esc(jb.last||"—")}</span></div>
+      ${jb.log?`<div class="mono small" dir="ltr" style="margin-top:6px">${jb.log.map(esc).join("<br>")}</div>`:""}
+      ${jb.btn?`<div style="margin-top:10px"><button class="btn" onclick="triggerJob('${jb.key}')">اجرای دستی همین حالا</button></div>`:""}
+    </div>`).join("");
+  const runs=await api("/api/runs");
+  $("#runs-table tbody").innerHTML=runs.map(r=>`<tr><td class="mono">${esc(r.started_at)}</td><td>${esc(r.job)}</td>
+    <td><span class="pill ${r.status==="running"?"run":r.status==="done"?"ok":"bad"}">${r.status}</span></td>
+    <td class="mono">${esc(r.finished_at||"—")}</td><td class="mono" style="font-size:11px">${esc((r.note||"").slice(-120))}</td></tr>`).join("")||'<tr><td colspan="5" class="small">—</td></tr>';
+}
+async function triggerJob(job){
+  flash("در حال اجرای "+job+" … (چند دقیقه طول می‌کشد)");
+  const r=await api("/api/jobs/"+job+"/run",{method:"POST"});
+  flash(r.ok?"جاب آغاز شد — پیگیری در «اجراهای دستی»":(r.error||"خطا"),r.ok);
+  setTimeout(loadJobs,2000);
+}
+
+async function loadSettings(){
+  const s=await api("/api/settings");
+  const keys=["MAX_DOWNLOADS","DOWNLOAD_DELAY","AUDIO_RETENTION_DAYS","GITHUB_BRANCH"];
+  const hints={MAX_DOWNLOADS:"حداکثر دانلود در هر اجرا",DOWNLOAD_DELAY:"تأخیر بین دانلودها (ثانیه)",AUDIO_RETENTION_DAYS:"نگه‌داشتاری فایل صوتی (روز، پس از ترنسکریپت)",GITHUB_BRANCH:"شاخه push سایت"};
+  $("#env-form").innerHTML=keys.map(k=>`<label>${hints[k]||k}</label><input data-env="${k}" class="mono" value="${esc(s.env[k]??"")}" ${["DB_PASS"].includes(k)?"type=password":""}>`).join("");
+  $("#cron-form").innerHTML=
+    `<label>زمان کشف + دانلود (pipeline)</label><input data-cron="pipeline" class="mono" value="${esc(s.schedule.pipeline)}">
+     <label>زمان سایت + push (refresh_site)</label><input data-cron="refresh_site" class="mono" value="${esc(s.schedule.refresh_site)}">`;
+  const wenv=s.whisper.worker||{};
+  const wkeys=["WHISPER_MODEL","WHISPER_LANGUAGE","WHISPER_COMPUTE","BATCH_SIZE","IDLE_SLEEP","MAX_ATTEMPTS","DELAY_BETWEEN","KEEP_MP4"];
+  const whints={WHISPER_MODEL:"مدل whisper (مسیر در /models)",WHISPER_LANGUAGE:"زبان",WHISPER_COMPUTE:"compute type",BATCH_SIZE:"تعداد جلسه هر دور",IDLE_SLEEP:"خواب بین کارها (ثانیه)",MAX_ATTEMPTS:"حداکثر تلاش",DELAY_BETWEEN:"فاصله جلسات (ثانیه)",KEEP_MP4:"کپی مدیا به 52 (1/0)"};
+  $("#whisper-form").innerHTML=wkeys.map(k=>`<label>${whints[k]||k}</label><input data-whisper="${k}" class="mono" value="${esc(wenv[k]??"")}">`).join("");
+  const de=s.dashboard_env||{};
+  $("#envvars-form").innerHTML=
+    `<label>Base URL LiteLLM</label><input data-envvar="LITELLM_BASE_URL" class="mono" value="${esc(de.LITELLM_BASE_URL||"http://172.20.1.52:4000")}">
+     <label>Master Key LiteLLM</label><input data-envvar="LITELLM_MASTER_KEY" class="mono" type="password" value="${esc(de.LITELLM_MASTER_KEY||"")}">`;
+}
+function collect(sel,attr){const o={};document.querySelectorAll(sel).forEach(i=>o[i.dataset[attr]]=i.value);return o;}
+async function saveEnv(){const b=collect("#env-form input","env");const r=await api("/api/settings/env",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});flash2(r.ok?"ذخیره شد":"خطا: "+(r.error||""),r.ok);}
+async function saveCron(){const b=collect("#cron-form input","cron");const r=await api("/api/settings/cron",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});flash2(r.ok?"زمان‌بندی اعمال شد":"خطا: "+(r.error||""),r.ok);}
+async function saveWhisper(){if(!confirm("ذخیره، کانتینرهای whisper را restart می‌کند (ترنسکریپت در حال کار متوقف می‌شود تا چند ثانیه). ادامه؟"))return;const b={worker:collect("#whisper-form input","whisper")};const r=await api("/api/settings/whisper",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});flash2(r.ok?"ذخیره شد و restart انجام شد: "+(r.output||""):"خطا: "+(r.error||""),r.ok);}
+async function saveEnvVars(){const b=collect("#envvars-form input","envvar");const r=await api("/api/settings/envvars",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});flash2(r.ok?"ذخیره شد":"خطا: "+(r.error||""),r.ok);}
+
+async function loadLlm(){
+  const h=await api("/api/litellm/health");
+  let el=$("#llm-models");
+  el.innerHTML=`<div class="small">LiteLLM: ${h.ok?"<span class='pill ok'>online</span>":"<span class='pill bad'>offline</span>"} — <span class="mono">${esc(h.base_url)}</span></div>`;
+  const m=await api("/api/litellm/models");
+  if(m.ok){
+    el.innerHTML+=`<ul style="margin:8px 0;padding:0;list-style:none">`+m.models.map(n=>
+      `<li style="padding:4px 0;border-bottom:1px solid var(--line)"><span class="mono" dir="ltr">${esc(n)}</span>
+       <a class="btn small danger" style="margin-inline-start:8px" href="#" onclick="delAsk('${esc(n)}');return false">حذف</a></li>`).join("")+"</ul>";
+  }else{el.innerHTML+=`<div class="small" style="color:var(--bad)">خطا: ${esc(m.error||"")}</div>`;}
+}
+function delAsk(name){$("#llm-del-name").value=name;document.querySelector("details").open=true;}
+async function addLlmModel(){
+  const body={model_name:$("#llm-name").value,model:$("#llm-model").value,api_base:$("#llm-base").value||undefined,mode:$("#llm-mode").value};
+  const r=await api("/api/litellm/models",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  flash2(r.ok?"مدل افزوده شد":"خطا: "+JSON.stringify(r.data||r.error).slice(0,200),r.ok);
+  if(r.ok)loadLlm();
+  return false;
+}
+async function delLlmModel(){
+  const name=$("#llm-del-name").value.trim();if(!name)return;
+  if(!confirm("حذف مدل "+name+"؟"))return;
+  const r=await api("/api/litellm/models/"+encodeURIComponent(name)+"?model_id="+encodeURIComponent($("#llm-del-id").value||""),{method:"DELETE"});
+  flash2(r.ok?"حذف شد":"خطا: "+JSON.stringify(r.data||r.error).slice(0,200),r.ok);
+  if(r.ok)loadLlm();
+}
+
+async function refresh(){
+  try{await Promise.all([loadHealth(),loadJobs()]);}catch(e){console.error(e);}
+}
+async function init(){
+  if(!AUTH && needAuth()){
+    const el=$("#flash");el.innerHTML="برای نمایش داده‌ها به <b>توکن داشبورد</b> نیاز است — دوباره «توکن داشبورد» را بزنید و وارد کنید.";el.className="flash err";
+    return;
+  }
+  await Promise.all([refresh(),loadSettings(),loadLlm()]);
+  setInterval(refresh,30000);
+}
+init();
+</script>
+</body>
+</html>

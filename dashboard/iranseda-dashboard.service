@@ -1,0 +1,21 @@
+[Unit]
+Description=iranseda dashboard (monitoring + control) on port 8990
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=saber
+Group=saber
+WorkingDirectory=/home/saber/saberprojects/iranseda-crawler-golang-/dashboard
+EnvironmentFile=/home/saber/saberprojects/iranseda-crawler-golang-/dashboard/dashboard.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/home/saber/saberprojects/iranseda-crawler-golang-/dashboard/venv/bin/python -m uvicorn app:app --host 0.0.0.0 --port ${PORT}
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=read-only
+
+[Install]
+WantedBy=multi-user.target

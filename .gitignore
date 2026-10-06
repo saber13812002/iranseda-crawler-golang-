@@ -4,3 +4,8 @@ downloads/*.mp3
 downloads/*.wav
 scripts/venv/*
 venv/*
+dashboard/venv/*
+dashboard/__pycache__/
+dashboard/dashboard.env
+dashboard/dashboard_state.json
+dashboard/dashboard_state.json.tmp
