@@ -632,11 +632,16 @@ def _stem_to_session_map(conn):
 
 
 def run_over_all_files(job_type, model=None, prompt_text=None, limit=None,
-                       only_new=True, conn=None, log=print):
+                       only_new=True, conn=None, log=print,
+                       shard=None, shards=1):
     """Process EVERY downloads/*.srt on disk for one job (the "run on all files"
     path). Idempotent when only_new: skips a stem whose primary output file
     already exists. Files are written for all stems; the DB row is upserted
-    only for stems that map to a real session id."""
+    only for stems that map to a real session id.
+
+    For parallel runs, pass shard=i / shards=n to process only stems where
+    index % n == i (disjoint subsets, so N workers each take 1/N with no
+    file/DB contention)."""
     own = conn is None
     conn = conn or _db_conn()
     cfg = _llm_cfg()
@@ -652,6 +657,8 @@ def run_over_all_files(job_type, model=None, prompt_text=None, limit=None,
 
     names = sorted(n for n in os.listdir(DOWNLOADS)
                    if n.endswith(".srt") and not n.endswith(".ffmpeg.failed"))
+    if shard is not None and shards > 1:
+        names = [n for i, n in enumerate(names) if i % shards == shard]
     stems = [os.path.splitext(n)[0] for n in names]
     total = len(stems)
     if limit:
@@ -825,6 +832,10 @@ def main():
                     help="max items; -1 (default) = 10 for `run`, ALL for `run-all`")
     ap.add_argument("--ids", default=None, help="comma-separated session ids")
     ap.add_argument("--all", action="store_true", help="do not skip already-done")
+    ap.add_argument("--shard", type=int, default=None,
+                    help="run-all: this worker's index (0-based) for parallel sharding")
+    ap.add_argument("--shards", type=int, default=1,
+                    help="run-all: total number of parallel workers")
     ap.add_argument("--n", type=int, default=1, help="report size")
     args = ap.parse_args()
 
@@ -849,7 +860,8 @@ def main():
         ensure_schema()
         run_over_all_files(args.job, model=args.model, prompt_text=prompt,
                            limit=(args.limit if args.limit > 0 else None),
-                           only_new=not args.all)
+                           only_new=not args.all, shard=args.shard,
+                           shards=args.shards)
     elif args.cmd == "report":
         items = report(args.n)
         if not items:
