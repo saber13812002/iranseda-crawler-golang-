@@ -362,10 +362,8 @@ def _set_cron_line(expr, script_path):
     new_line = f"{expr} {script_path} >/dev/null 2>&1"
     out = [l for l in lines if not pat.search(l)]
     out.append(new_line)
-    rc, o, e = _run(f"crontab -")  # noop guard
-    import io
-    proc = subprocess.run("crontab -", input="\n".join(out) + "\n", text=True,
-                          capture_output=True)
+    proc = subprocess.run(["crontab", "-"], input="\n".join(out) + "\n",
+                          text=True, capture_output=True)
     if proc.returncode != 0:
         raise RuntimeError(f"crontab write failed: {proc.stderr[:200]}")
     return proc
@@ -387,6 +385,238 @@ def save_schedule(updates):
     state["schedule"].update(applied)
     save_state(state)
     return get_schedule()
+
+
+# --------------------------------------------------------------------------
+# Active time-window + named "sessions" (سانس) that gate the GPU transcriber.
+#
+# The whisper worker is the ONLY thing gated. Discover / download / site-refresh
+# run 24/7 regardless (see scripts/). "Active" time = the union of all ENABLED
+# blocks. When the master switch is OFF the gate never stops the worker
+# (self-heals it if it's down), so the pipeline runs 24/7 until you opt in.
+#
+# The server runs in UTC but the user thinks in Tehran time, so everything here
+# is computed in Asia/Tehran (UTC+3:30). The gate runs as an in-process 60s
+# thread (start_gate_loop); when the dashboard is down the worker simply runs
+# 24/7 — the safe default.
+# --------------------------------------------------------------------------
+
+TEHRAN = "Asia/Tehran"
+DEFAULT_BLOCK = {"id": "main", "name": "پنجره‌ی اصلی", "start": "12:00", "end": "06:00", "enabled": True}
+GATE_TZ = None  # the timezone the in-process gate thread uses (set at startup)
+
+
+def _tznow(tz=TEHRAN):
+    from datetime import datetime, timezone, timedelta
+    try:
+        from zoneinfo import ZoneInfo
+        return datetime.now(ZoneInfo(tz))
+    except Exception:
+        # fallback: fixed UTC+3:30 (Iran has no DST)
+        return datetime.now(timezone.utc) - timedelta(hours=3, minutes=30)
+
+
+def _hhmm_to_min(s):
+    """Parse 'HH:MM' to minutes, or None if invalid (incl. out-of-range 0-23 / 0-59)."""
+    try:
+        h, m = str(s).strip().split(":")
+        h, m = int(h), int(m)
+        if 0 <= h <= 23 and 0 <= m <= 59:
+            return h * 60 + m
+        return None
+    except Exception:
+        return None
+
+
+def _in_block(now_min, start, end):
+    a = _hhmm_to_min(start)
+    b = _hhmm_to_min(end)
+    if a is None or b is None:
+        return False
+    if a == b:
+        return True  # treat 06:00–06:00 as full-day
+    if a < b:
+        return a <= now_min < b
+    return now_min >= a or now_min < b  # wraps midnight
+
+
+def _worker_running():
+    rc, out, _ = _run(
+        "docker inspect -f '{{.State.Status}}' iranseda-whisper-worker 2>/dev/null", timeout=15
+    )
+    return out.strip().lower() == "running"
+
+
+def _union_active(blocks, now_min):
+    return any(b.get("enabled") and _in_block(now_min, b.get("start"), b.get("end")) for b in blocks)
+
+
+_gate_running = False
+_gate_last_action = None  # (HH:MM:SS, message) — last gate action for the UI
+
+
+def get_window():
+    state = load_state()
+    w = state.get("window") or {}
+    tz = w.get("tz", TEHRAN)
+    enabled = bool(w.get("enabled", False))
+    blocks = w.get("blocks") or [json.loads(json.dumps(DEFAULT_BLOCK))]
+    now = _tznow(tz)
+    now_min = now.hour * 60 + now.minute
+    return {
+        "tz": tz,
+        "enabled": enabled,
+        "blocks": blocks,
+        "now": now.strftime("%Y-%m-%d %H:%M:%S"),
+        "in_window": _union_active(blocks, now_min),
+        "worker_running": _worker_running(),
+        "gate_active": _gate_running,
+        "last_action": _gate_last_action,
+    }
+
+
+def set_window(payload):
+    """payload: {enabled, tz, blocks:[{id,name,start,end,enabled}]}."""
+    blocks = []
+    for i, b in enumerate(payload.get("blocks") or []):
+        name = (b.get("name") or ("سانس " + str(i + 1))).strip()
+        start = b.get("start")
+        end = b.get("end")
+        if _hhmm_to_min(start) is None or _hhmm_to_min(end) is None:
+            raise ValueError(f"ساعت نامعتبر برای «{name}» (باید HH:MM باشد)")
+        blocks.append({
+            "id": str(b.get("id") or ("b" + str(i))),
+            "name": name[:40],
+            "start": start,
+            "end": end,
+            "enabled": bool(b.get("enabled", True)),
+        })
+    if not blocks:
+        blocks = [json.loads(json.dumps(DEFAULT_BLOCK))]
+    w = {
+        "tz": (payload.get("tz") or TEHRAN)[:40] or TEHRAN,
+        "enabled": bool(payload.get("enabled", False)),
+        "blocks": blocks,
+    }
+    state = load_state()
+    state["window"] = w
+    save_state(state)
+    return get_window()
+
+
+def _gate_cycle():
+    """One gate decision: start/stop the worker to match the window.
+    Stops unconditionally when out of window — the worker's startup recovery
+    requeues any file it was mid-way through, so stopping mid-file is safe
+    (the file is simply redone on the next start, reusing on-disk media).
+    Runs every ~60s in a thread."""
+    global _gate_last_action
+    try:
+        w = load_state().get("window") or {}
+        if not w.get("enabled"):
+            # feature off -> self-heal: keep the worker up
+            if not _worker_running():
+                _run("docker start iranseda-whisper-worker", timeout=60)
+                _gate_last_action = (time.strftime("%H:%M:%S"), "استارت (پنجره خاموش — خودکفایی)")
+            return
+        tz = w.get("tz", TEHRAN)
+        now = _tznow(tz)
+        now_min = now.hour * 60 + now.minute
+        running = _worker_running()
+        if _union_active(w.get("blocks") or [], now_min):
+            if not running:
+                _run("docker start iranseda-whisper-worker", timeout=60)
+                _gate_last_action = (time.strftime("%H:%M:%S"), "استارت (در پنجره فعال)")
+        else:
+            if running:
+                _run("docker stop iranseda-whisper-worker", timeout=90)
+                _gate_last_action = (time.strftime("%H:%M:%S"), "استاپ (خارج از پنجره)")
+    except Exception as e:  # noqa: BLE001
+        _gate_last_action = (time.strftime("%H:%M:%S"), "خطا: " + str(e)[:80])
+
+
+def _gate_loop():
+    global _gate_running
+    _gate_running = True
+    while True:
+        _gate_cycle()
+        time.sleep(60)
+
+
+def start_gate_loop():
+    """Start the in-process gate thread (idempotent)."""
+    global _gate_running
+    if not _gate_running:
+        run_in_thread(_gate_loop)
+
+
+def worker_set(action):
+    if action not in ("start", "stop"):
+        raise ValueError("action must be start or stop")
+    rc, out, err = _run(f"docker {action} iranseda-whisper-worker", timeout=60)
+    if rc != 0:
+        raise RuntimeError((out + err).strip()[:200])
+    return get_window()
+
+
+def _tz_offset_str(tz):
+    """Fixed UTC offset string for CONVERT_TZ, e.g. '+03:30'. Iran has no DST,
+    so a fixed offset is exact. Falls back to +03:30 (Tehran) on any problem."""
+    known = {"Asia/Tehran": "+03:30", "UTC": "+00:00", "Etc/UTC": "+00:00", "GMT": "+00:00"}
+    if tz in known:
+        return known[tz]
+    try:
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        off = datetime(2020, 1, 1, tzinfo=ZoneInfo(tz)).utcoffset()
+        total = int(off.total_seconds())
+        sign = "+" if total >= 0 else "-"
+        total = abs(total)
+        return f"{sign}{total // 3600:02d}:{(total % 3600) // 60:02d}"
+    except Exception:
+        return "+03:30"
+
+
+def window_activity(offset=0):
+    """Per-hour (configured tz) transcription + discovery for a day, 0..23.
+    offset: 0=today, -1=yesterday, -N=N days ago (calendar day in that tz).
+    The DB stores UTC; CONVERT_TZ maps it into the configured tz."""
+    w = load_state().get("window") or {}
+    tz = w.get("tz", TEHRAN)
+    off = _tz_offset_str(tz)
+    from datetime import timedelta
+    now = _tznow(tz)
+    try:
+        offset = int(offset)
+    except (TypeError, ValueError):
+        offset = 0
+    day = (now + timedelta(days=offset)).strftime("%Y-%m-%d")
+    tzcol = f"CONVERT_TZ(updated_at, '+00:00', '{off}')"
+    tzcol_c = f"CONVERT_TZ(created_at, '+00:00', '{off}')"
+    trans = {int(r["h"]): int(r["c"]) for r in _mysql_query(
+        f"SELECT HOUR({tzcol}) AS h, COUNT(*) c FROM radio_program_sessions "
+        f"WHERE is_subtitled=1 AND DATE({tzcol})='{day}' GROUP BY h")}
+    disc = {int(r["h"]): int(r["c"]) for r in _mysql_query(
+        f"SELECT HOUR({tzcol_c}) AS h, COUNT(*) c FROM radio_program_sessions "
+        f"WHERE DATE({tzcol_c})='{day}' GROUP BY h")}
+    blocks = w.get("blocks") or []
+    hours = []
+    for h in range(24):
+        hours.append({
+            "h": h,
+            "label": f"{h:02d}:00",
+            "transcribed": trans.get(h, 0),
+            "discovered": disc.get(h, 0),
+            "in_window": _union_active(blocks, h * 60 + 30),
+        })
+    return {
+        "day": day,
+        "tz": tz,
+        "offset": off,
+        "hours": hours,
+        "total_transcribed": sum(trans.values()),
+        "total_discovered": sum(disc.values()),
+    }
 
 
 # --------------------------------------------------------------------------

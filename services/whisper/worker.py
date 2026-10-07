@@ -205,10 +205,34 @@ def process_session(session: dict):
         pass
 
 
+def _recover_stale_transcribing():
+    """Requeue rows stuck in 'transcribing' (orphaned by a stopped/crashed
+    worker). At boot this instance has claimed nothing, so every 'transcribing'
+    row is an orphan -- send it back to the queue to be redone (media stays on
+    disk, so the redo reuses it)."""
+    try:
+        conn = common.db_conn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE radio_program_sessions SET status = 'pending_transcribe' "
+                    "WHERE status = 'transcribing'"
+                )
+                n = cur.rowcount
+            conn.commit()
+            if n:
+                log.info("startup recovery: requeued %d orphaned 'transcribing' session(s)", n)
+        finally:
+            conn.close()
+    except Exception as exc:  # noqa: BLE001
+        log.error("startup recovery failed (continuing): %s", exc)
+
+
 def main():
     log.info("worker starting; work_dir=%s batch=%d keep_mp4=%s local_dir=%s",
              WORK_DIR, BATCH_SIZE, KEEP_MP4, common.LOCAL_DOWNLOADS_DIR)
     common.get_model()  # preload model once
+    _recover_stale_transcribing()
     while True:
         try:
             sessions = _next_sessions(BATCH_SIZE)

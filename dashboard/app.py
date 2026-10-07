@@ -21,6 +21,10 @@ Endpoints:
   - `PUT  /api/settings/cron`   update schedule (pipeline / refresh_site)
   - `PUT  /api/settings/whisper`update whisper compose env (+ restart containers)
   - `PUT  /api/settings/envvars`update dashboard.env (LITELLM_*)
+  - `GET  /api/window`          active time-window (سانس) state
+  - `PUT  /api/window`          set window (enabled, tz, blocks[])
+  - `GET  /api/window/activity`per-hour transcription/discovery for a day
+  - `POST /api/worker/start|stop`manually start/stop the whisper worker
   - `GET /api/litellm/health`   LiteLLM liveness
   - `GET /api/litellm/models`   list models
   - `POST /api/litellm/models`  add a model
@@ -240,6 +244,37 @@ async def api_save_envvars(request: Request):
 
 
 # ---------------------------------------------------------------------------
+# active time-window (سانس) that gates the GPU transcriber
+# ---------------------------------------------------------------------------
+
+@app.get("/api/window")
+def api_window():
+    return logic.get_window()
+
+
+@app.put("/api/window")
+async def api_save_window(request: Request):
+    body = await request.json()
+    try:
+        return {"ok": True, "window": logic.set_window(body)}
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(400, detail=str(e)[:300])
+
+
+@app.get("/api/window/activity")
+def api_window_activity(offset: int = 0):
+    return logic.window_activity(offset)
+
+
+@app.post("/api/worker/{action}")
+def api_worker(action: str):
+    try:
+        return {"ok": True, "window": logic.worker_set(action)}
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(400, detail=str(e)[:300])
+
+
+# ---------------------------------------------------------------------------
 # LiteLLM
 # ---------------------------------------------------------------------------
 
@@ -271,6 +306,7 @@ def api_litellm_delete(model_name: str, model_id: str = ""):
 @app.on_event("startup")
 def _startup():
     logic.run_in_thread(_warm)
+    logic.start_gate_loop()
 
 
 def _warm():

@@ -122,6 +122,34 @@ summary{cursor:pointer;color:var(--mut);font-size:13px}
   <table id="runs-table"><thead><tr><th>آغاز</th><th>جاب</th><th>وضعیت</th><th>پایان</th><th class="mono">یادداشت</th></tr></thead><tbody></tbody></table>
 </div>
 
+<h2>پنجره‌ی زمانی و سانس‌ها (کنترل ترنسکریپت GPU)</h2>
+<div class="card" id="window-summary" style="margin-bottom:12px">در حال بارگذاری…</div>
+<div class="grid cols-2">
+  <div class="card">
+    <h3>پنجره / سانس‌ها</h3>
+    <div id="window-form">در حال بارگذاری…</div>
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn primary" onclick="saveWindow()">ذخیره و اعمال</button>
+      <button class="btn" onclick="workerStart()">شروع worker</button>
+      <button class="btn danger" onclick="workerStop()">توقف worker</button>
+    </div>
+    <div class="small" id="window-hint" style="margin-top:8px"></div>
+  </div>
+  <div class="card">
+    <h3>فعالیت ساعتی
+      <select id="act-offset" onchange="loadActivity()" style="margin-inline-start:8px">
+        <option value="0">امروز</option>
+        <option value="-1">دیروز</option>
+        <option value="-2">۲ روز قبل</option>
+        <option value="-3">۳ روز قبل</option>
+      </select>
+    </h3>
+    <svg class="chart" id="chart-24h" viewBox="0 0 600 150" preserveAspectRatio="none"></svg>
+    <div class="legend"><span class="lg-sub">ترنسکریپت</span><span class="lg-new">محتوای جدید</span><span style="color:#e0a83c">▮ پنجره فعال</span></div>
+    <div class="small" id="act-summary" style="margin-top:6px"></div>
+  </div>
+</div>
+
 <h2>تنظیمات</h2>
 <div id="flash2" class="flash"></div>
 <div class="grid cols-2">
@@ -363,7 +391,87 @@ async function delLlmModel(){
 }
 
 async function refresh(){
-  try{await Promise.all([loadHealth(),loadJobs()]);}catch(e){console.error(e);}
+  try{await Promise.all([loadHealth(),loadJobs(),loadWindow()]);}catch(e){console.error(e);}
+}
+function blkRow(b){return `<div class="row" style="align-items:flex-end;gap:8px;margin-bottom:8px">
+  <div style="flex:2"><label>نام سانس</label><input class="mono" data-bname value="${esc(b.name||'')}"></div>
+  <div><label>شروع</label><input class="mono" data-bstart value="${esc(b.start||'12:00')}" placeholder="12:00"></div>
+  <div><label>پایان</label><input class="mono" data-bend value="${esc(b.end||'06:00')}" placeholder="06:00"></div>
+  <div><label style="display:flex;align-items:center;gap:4px"><input type="checkbox" data-bon ${b.enabled!==false?"checked":""}> فعال</label></div>
+  <button class="btn small danger" onclick="this.closest('.row').remove()">×</button>
+</div>`;}
+async function loadWindow(){
+  try{
+    const w=await api("/api/window");
+    const on=w.enabled;
+    const gateTxt=(w.gate_active?"<span class='pill run'>کنترل‌کننده فعال (هر ۶۰ ثانیه)</span>":"<span class='pill bad'>کنترل‌کننده خاموش</span>");
+    const actTxt=w.last_action?`<span class="small">آخرین عمل: ${esc(w.last_action[1])} — <span class="mono">${esc(w.last_action[0])}</span></span>`:"";
+    const stateTxt=on?(w.in_window?"<span class='pill ok'>حالا در پنجره فعال</span>":"<span class='pill bad'>حالا خارج از پنجره</span>")
+                     :"<span class='pill run'>خاموش (پایپ‌لاین ۲۴/۷)</span>";
+    const workerTxt=(w.worker_running?"<span class='pill ok'>worker روشن</span>":"<span class='pill bad'>worker خاموش</span>");
+    $("#window-summary").innerHTML=`
+      <div class="row" style="gap:16px;flex-wrap:wrap;align-items:center">
+        <label style="display:flex;align-items:center;gap:6px;font-weight:700"><input type="checkbox" id="window-enabled" ${on?"checked":""}> فعال‌سازی پنجره (غیرفعال = ترنسکریپت ۲۴/۷)</label>
+        <span>${stateTxt}</span>
+        <span>${workerTxt}</span>
+        <span>${gateTxt}</span>
+        <span class="small">اکنون (تهران): <span class="mono">${esc(w.now)}</span></span>
+      </div>
+      <div style="margin-top:6px">${actTxt}</div>`;
+    $("#window-form").innerHTML=
+      `<label>منطقه زمانی</label><input class="mono" id="window-tz" value="${esc(w.tz)}">`+
+      (w.blocks||[]).map(blkRow).join("")+
+      `<button class="btn small" style="margin-top:4px" onclick="addBlock()">+ افزودن سانس</button>`;
+    $("#window-hint").textContent=on
+      ?"ترنسکریپت فقط در ساعات فعال (ترکیب سانس‌های روشن) اجرا می‌شود؛ بیرون از پنجره worker خاموش می‌شود و اگر فایل نیمه‌کاره‌ای باشد، در شروع بعد دوباره پردازش می‌شود."
+      :"پنجره خاموش است — worker همیشه روشن و ترنسکریپت ۲۴/۷ می‌چرخد. (کشف/دانلود/سایت همیشه ۲۴/۷ است.)";
+    await loadActivity();
+  }catch(e){console.error(e);}
+}
+function addBlock(){
+  const n=$("#window-form").querySelectorAll('[data-bname]').length+1;
+  const row=document.createElement("div");row.className="row";row.style.cssText="align-items:flex-end;gap:8px;margin-bottom:8px";
+  row.innerHTML=`<div style="flex:2"><label>نام سانس</label><input class="mono" data-bname value="سانس ${n}"></div>
+    <div><label>شروع</label><input class="mono" data-bstart value="18:00" placeholder="18:00"></div>
+    <div><label>پایان</label><input class="mono" data-bend value="20:00" placeholder="20:00"></div>
+    <div><label style="display:flex;align-items:center;gap:4px"><input type="checkbox" data-bon checked> فعال</label></div>
+    <button class="btn small danger" onclick="this.closest('.row').remove()">×</button>`;
+  $("#window-form").insertBefore(row,$("#window-form").lastElementChild);
+}
+function collectWindow(){
+  const blocks=[];
+  $("#window-form").querySelectorAll("[data-bname]").forEach(i=>{
+    const row=i.closest(".row");
+    blocks.push({name:i.value.trim(),start:row.querySelector("[data-bstart]").value.trim(),
+      end:row.querySelector("[data-bend]").value.trim(),enabled:row.querySelector("[data-bon]").checked});
+  });
+  return {enabled:$("#window-enabled").checked,tz:$("#window-tz").value.trim()||"Asia/Tehran",blocks};
+}
+async function saveWindow(){
+  const b=collectWindow();
+  const r=await api("/api/window",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});
+  flash2(r.ok?"پنجره ذخیره شد (کنترل‌کننده در کمتر از یک دقیقه اعمال می‌کند)":"خطا: "+(r.detail||r.error||""),r.ok);
+  if(r.ok){await loadWindow();loadJobs();}
+}
+async function workerStart(){const r=await api("/api/worker/start",{method:"POST"});flash2(r.ok?"worker شروع شد":"خطا: "+(r.detail||r.error||""),r.ok);if(r.ok){loadWindow();loadJobs();}}
+async function workerStop(){if(!confirm("worker ترنسکریپت خاموش شود؟ (فایل در حال کار اگر هست به‌خاطر می‌ماند تا کامل شود)"))return;const r=await api("/api/worker/stop",{method:"POST"});flash2(r.ok?"worker متوقف شد":"خطا: "+(r.detail||r.error||""),r.ok);if(r.ok){loadWindow();loadJobs();}}
+async function loadActivity(){
+  const off=($("#act-offset")?$("#act-offset").value:"0");
+  const a=await api("/api/window/activity?offset="+off);
+  const svg=$("#chart-24h");const W=600,H=150,P=22;
+  const max=Math.max(1,...a.hours.map(h=>h.transcribed),...a.hours.map(h=>h.discovered));
+  const bw=(W-2*P)/24;let out="";
+  a.hours.forEach((h,i)=>{
+    const x=P+i*bw;
+    if(h.in_window)out+=`<rect x="${x}" y="${P-8}" width="${bw}" height="${H-2*P+8}" fill="rgba(224,168,60,0.12)"/>`;
+    const ht=h.transcribed/max*(H-2*P),hd=h.discovered/max*(H-2*P);
+    out+=`<rect x="${x+1}" y="${H-P-ht/2}" width="${bw/2-1}" height="${ht/2}" fill="#3fb96f"><title>${h.label}: ${h.transcribed} ترنسکریپت</title></rect>`;
+    out+=`<rect x="${x+bw/2}" y="${H-P-hd/2}" width="${bw/2-1}" height="${hd/2}" fill="#4f9cf7"><title>${h.label}: ${h.discovered} محتوای جدید</title></rect>`;
+  });
+  out+=`<line x1="${P}" y1="${H-P}" x2="${W-P}" y2="${H-P}" stroke="#2a3342"/>`;
+  for(let hh=0;hh<24;hh+=4){const x=P+hh*bw;out+=`<text x="${x}" y="${H-6}" fill="#8b98ab" font-size="9">${hh}</text>`;}
+  svg.innerHTML=out;
+  $("#act-summary").innerHTML=`روز: <span class="mono">${esc(a.day)}</span> (${esc(a.tz)}) — ترنسکریپت: <b>${a.total_transcribed}</b> · محتوای جدید: <b>${a.total_discovered}</b>`;
 }
 async function init(){
   if(!AUTH && needAuth()){
