@@ -216,6 +216,7 @@ summary{cursor:pointer;color:var(--mut);font-size:13px}
 <script>
 const $=s=>document.querySelector(s);
 let AUTH=localStorage.getItem("d53_auth")||"";
+let windowLocked=false; // set while the user is editing a سانس/shift; blocks auto-refresh re-render until save
 function needAuth(){
   if(AUTH)return false;
   const t=prompt("توکن داشبورد (DASH_AUTH_TOKEN) را وارد کنید:");
@@ -400,35 +401,42 @@ function blkRow(b){return `<div class="row" style="align-items:flex-end;gap:8px;
   <div><label style="display:flex;align-items:center;gap:4px"><input type="checkbox" data-bon ${b.enabled!==false?"checked":""}> فعال</label></div>
   <button class="btn small danger" onclick="this.closest('.row').remove()">×</button>
 </div>`;}
-async function loadWindow(){
+async function loadWindow(force){
   try{
     const w=await api("/api/window");
-    const on=w.enabled;
-    const gateTxt=(w.gate_active?"<span class='pill run'>کنترل‌کننده فعال (هر ۶۰ ثانیه)</span>":"<span class='pill bad'>کنترل‌کننده خاموش</span>");
-    const actTxt=w.last_action?`<span class="small">آخرین عمل: ${esc(w.last_action[1])} — <span class="mono">${esc(w.last_action[0])}</span></span>`:"";
-    const stateTxt=on?(w.in_window?"<span class='pill ok'>حالا در پنجره فعال</span>":"<span class='pill bad'>حالا خارج از پنجره</span>")
-                     :"<span class='pill run'>خاموش (پایپ‌لاین ۲۴/۷)</span>";
-    const workerTxt=(w.worker_running?"<span class='pill ok'>worker روشن</span>":"<span class='pill bad'>worker خاموش</span>");
-    $("#window-summary").innerHTML=`
-      <div class="row" style="gap:16px;flex-wrap:wrap;align-items:center">
-        <label style="display:flex;align-items:center;gap:6px;font-weight:700"><input type="checkbox" id="window-enabled" ${on?"checked":""}> فعال‌سازی پنجره (غیرفعال = ترنسکریپت ۲۴/۷)</label>
-        <span>${stateTxt}</span>
-        <span>${workerTxt}</span>
-        <span>${gateTxt}</span>
-        <span class="small">اکنون (تهران): <span class="mono">${esc(w.now)}</span></span>
-      </div>
-      <div style="margin-top:6px">${actTxt}</div>`;
-    $("#window-form").innerHTML=
-      `<label>منطقه زمانی</label><input class="mono" id="window-tz" value="${esc(w.tz)}">`+
-      (w.blocks||[]).map(blkRow).join("")+
-      `<button class="btn small" style="margin-top:4px" onclick="addBlock()">+ افزودن سانس</button>`;
-    $("#window-hint").textContent=on
-      ?"ترنسکریپت فقط در ساعات فعال (ترکیب سانس‌های روشن) اجرا می‌شود؛ بیرون از پنجره worker خاموش می‌شود و اگر فایل نیمه‌کاره‌ای باشد، در شروع بعد دوباره پردازش می‌شود."
-      :"پنجره خاموش است — worker همیشه روشن و ترنسکریپت ۲۴/۷ می‌چرخد. (کشف/دانلود/سایت همیشه ۲۴/۷ است.)";
+    // While the user is editing a سانس/shift (and hasn't saved), the 30s
+    // auto-refresh must NOT redraw the shift form or it would wipe their
+    // unsaved edits. Still refresh the live status line + activity chart,
+    // which are safe to update.
+    if(!windowLocked || force){
+      const on=w.enabled;
+      const gateTxt=(w.gate_active?"<span class='pill run'>کنترل‌کننده فعال (هر ۶۰ ثانیه)</span>":"<span class='pill bad'>کنترل‌کننده خاموش</span>");
+      const actTxt=w.last_action?`<span class="small">آخرین عمل: ${esc(w.last_action[1])} — <span class="mono">${esc(w.last_action[0])}</span></span>`:"";
+      const stateTxt=on?(w.in_window?"<span class='pill ok'>حالا در پنجره فعال</span>":"<span class='pill bad'>حالا خارج از پنجره</span>")
+                       :"<span class='pill run'>خاموش (پایپ‌لاین ۲۴/۷)</span>";
+      const workerTxt=(w.worker_running?"<span class='pill ok'>worker روشن</span>":"<span class='pill bad'>worker خاموش</span>");
+      $("#window-summary").innerHTML=`
+        <div class="row" style="gap:16px;flex-wrap:wrap;align-items:center">
+          <label style="display:flex;align-items:center;gap:6px;font-weight:700"><input type="checkbox" id="window-enabled" ${on?"checked":""}> فعال‌سازی پنجره (غیرفعال = ترنسکریپت ۲۴/۷)</label>
+          <span>${stateTxt}</span>
+          <span>${workerTxt}</span>
+          <span>${gateTxt}</span>
+          <span class="small">اکنون (تهران): <span class="mono">${esc(w.now)}</span></span>
+        </div>
+        <div style="margin-top:6px">${actTxt}</div>`;
+      $("#window-form").innerHTML=
+        `<label>منطقه زمانی</label><input class="mono" id="window-tz" value="${esc(w.tz)}">`+
+        (w.blocks||[]).map(blkRow).join("")+
+        `<button class="btn small" style="margin-top:4px" onclick="addBlock()">+ افزودن سانس</button>`;
+      $("#window-hint").textContent=w.enabled
+        ?"ترنسکریپت فقط در ساعات فعال (ترکیب سانس‌های روشن) اجرا می‌شود؛ بیرون از پنجره worker خاموش می‌شود و اگر فایل نیمه‌کاره‌ای باشد، در شروع بعد دوباره پردازش می‌شود."
+        :"پنجره خاموش است — worker همیشه روشن و ترنسکریپت ۲۴/۷ می‌چرخد. (کشف/دانلود/سایت همیشه ۲۴/۷ است.)";
+    }
     await loadActivity();
   }catch(e){console.error(e);}
 }
 function addBlock(){
+  windowLocked=true; // user is adding a shift — hold off auto-refresh until they save
   const n=$("#window-form").querySelectorAll('[data-bname]').length+1;
   const row=document.createElement("div");row.className="row";row.style.cssText="align-items:flex-end;gap:8px;margin-bottom:8px";
   row.innerHTML=`<div style="flex:2"><label>نام سانس</label><input class="mono" data-bname value="سانس ${n}"></div>
@@ -448,10 +456,11 @@ function collectWindow(){
   return {enabled:$("#window-enabled").checked,tz:$("#window-tz").value.trim()||"Asia/Tehran",blocks};
 }
 async function saveWindow(){
+  windowLocked=true; // protect the in-progress edit while the PUT is in flight
   const b=collectWindow();
   const r=await api("/api/window",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});
   flash2(r.ok?"پنجره ذخیره شد (کنترل‌کننده در کمتر از یک دقیقه اعمال می‌کند)":"خطا: "+(r.detail||r.error||""),r.ok);
-  if(r.ok){await loadWindow();loadJobs();}
+  if(r.ok){windowLocked=false;await loadWindow(true);loadJobs();}
 }
 async function workerStart(){const r=await api("/api/worker/start",{method:"POST"});flash2(r.ok?"worker شروع شد":"خطا: "+(r.detail||r.error||""),r.ok);if(r.ok){loadWindow();loadJobs();}}
 async function workerStop(){if(!confirm("worker ترنسکریپت خاموش شود؟ (فایل در حال کار اگر هست به‌خاطر می‌ماند تا کامل شود)"))return;const r=await api("/api/worker/stop",{method:"POST"});flash2(r.ok?"worker متوقف شد":"خطا: "+(r.detail||r.error||""),r.ok);if(r.ok){loadWindow();loadJobs();}}
@@ -474,6 +483,13 @@ async function loadActivity(){
   $("#act-summary").innerHTML=`روز: <span class="mono">${esc(a.day)}</span> (${esc(a.tz)}) — ترنسکریپت: <b>${a.total_transcribed}</b> · محتوای جدید: <b>${a.total_discovered}</b>`;
 }
 async function init(){
+  // Lock the window/سانس section while the user is editing it so the 30s
+  // auto-refresh doesn't clobber unsaved edits (shift fields, tz, the enable
+  // toggle). Releasing on blur would fire the instant they click a button,
+  // so we only release on a successful save (see saveWindow) or a full reload.
+  document.addEventListener("focusin",e=>{
+    if(e.target.closest("#window-form, #window-summary")) windowLocked=true;
+  });
   if(!AUTH && needAuth()){
     const el=$("#flash");el.innerHTML="برای نمایش داده‌ها به <b>توکن داشبورد</b> نیاز است — دوباره «توکن داشبورد» را بزنید و وارد کنید.";el.className="flash err";
     return;
