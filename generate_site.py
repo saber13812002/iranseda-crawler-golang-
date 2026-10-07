@@ -87,22 +87,35 @@ def fetch_sessions_for_program(conn, program_ids):
         return sessions, files_by_session
 
 def find_subtitles_for_session(filename: str):
-    # Heuristic: srt/txt with same stem as mp3 filename
+    """All downloadable outputs for a session, in display order, each with an
+    emoji + Persian label. `cat` drives the per-program index counts:
+      srt = original whisper SRT, txt = original mechanical text,
+      full = full text (new .full.txt or legacy cleaned), summary,
+      correct_text, correct_srt (LLM post-processing outputs)."""
     results = []
     if not filename:
         return results
     stem = pathlib.Path(filename).stem
-    for ext in (".srt", ".txt"):
-        # Original extracted files in downloads/
-        candidate = DOWNLOADS_DIR / f"{stem}{ext}"
-        if candidate.exists() and not candidate.name.endswith('.ffmpeg.failed'):
-            rel = os.path.join("downloads", candidate.name)
-            results.append({"type": ext.lstrip("."), "name": candidate.name, "repo_rel": rel, "raw_url": gh_raw_url(rel), "label": "زیرنویس"})
-        # Cleaned transcripts in downloads/cleaned/
-        cleaned_candidate = DOWNLOADS_DIR / "cleaned" / f"{stem}{ext}"
-        if cleaned_candidate.exists() and not cleaned_candidate.name.endswith('.ffmpeg.failed'):
-            rel_cleaned = os.path.join("downloads", "cleaned", cleaned_candidate.name)
-            results.append({"type": ext.lstrip("."), "name": cleaned_candidate.name, "repo_rel": rel_cleaned, "raw_url": gh_raw_url(rel_cleaned), "label": "متن کامل"})
+    D = DOWNLOADS_DIR
+    C = D / "cleaned"
+    specs = [
+        (D, f"{stem}.srt",         "🎬", "زیرنویس",            "srt"),
+        (D, f"{stem}.txt",         "📝", "متن",                "txt"),
+        (C, f"{stem}.full.txt",    "📖", "متن کامل",           "full"),
+        (C, f"{stem}.correct.txt", "✍️", "متن تصحیح‌شده",        "correct_text"),
+        (C, f"{stem}.summary.txt", "🧾", "خلاصه",              "summary"),
+        (C, f"{stem}.correct.srt", "✨", "زیرنویس تصحیح‌شده",   "correct_srt"),
+        (C, f"{stem}.srt",         "📄", "متن کامل (سابق)",    "full"),
+        (C, f"{stem}.txt",         "📄", "متن کامل (سابق)",    "full"),
+    ]
+    for d, name, emoji, label, cat in specs:
+        if name.endswith(".ffmpeg.failed"):
+            continue
+        p = d / name
+        if p.exists():
+            rel = ("downloads/" + name) if d == D else ("downloads/cleaned/" + name)
+            results.append({"emoji": emoji, "name": name, "cat": cat,
+                            "repo_rel": rel, "raw_url": gh_raw_url(rel), "label": label})
     return results
 
 def build_url_program_map(conn):
@@ -219,23 +232,29 @@ def get_latest_cleaned_files(limit=10):
     if not cleaned_dir.exists():
         return cleaned_files
     
-    # Get all cleaned files with their modification times
+    # Get all LLM post-processing outputs with their modification times
     file_info = []
-    for srt_file in cleaned_dir.glob("*.srt"):
-        try:
-            # Skip files with .ffmpeg.failed suffix
-            if srt_file.name.endswith('.ffmpeg.failed'):
+    suffix_type = {
+        ".summary.txt": "🧾 خلاصه",
+        ".correct.txt": "✍️ متن تصحیح‌شده",
+        ".correct.srt": "✨ زیرنویس تصحیح‌شده",
+        ".full.txt": "📖 متن کامل",
+    }
+    for pattern in ("*.summary.txt", "*.correct.txt", "*.correct.srt", "*.full.txt"):
+        for f in cleaned_dir.glob(pattern):
+            try:
+                if f.name.endswith('.ffmpeg.failed'):
+                    continue
+                tail = f.name[-len(pattern):]  # e.g. ".summary.txt"
+                file_info.append({
+                    'file': f,
+                    'name': f.name,
+                    'mod_time': datetime.fromtimestamp(f.stat().st_mtime),
+                    'size': f.stat().st_size,
+                    'type': suffix_type.get(tail, ""),
+                })
+            except:
                 continue
-
-            mod_time = datetime.fromtimestamp(srt_file.stat().st_mtime)
-            file_info.append({
-                'file': srt_file,
-                'name': srt_file.name,
-                'mod_time': mod_time,
-                'size': srt_file.stat().st_size
-            })
-        except:
-            continue
     
     # Sort by modification time (newest first)
     file_info.sort(key=lambda x: x['mod_time'], reverse=True)
@@ -420,6 +439,7 @@ def render_index(programs, stats_by_program_id, whisper_stats=None, whisper_tota
         for file_info in latest_cleaned_files:
             file_rows.append(f"""
             <tr>
+              <td>{html_escape(file_info.get('type',''))}</td>
               <td><a href="{file_info['raw_url']}" target="_blank" rel="noopener" class="file-link">{html_escape(file_info['filename'])}</a></td>
               <td>{html_escape(file_info['program_name'])}</td>
               <td>{file_info['date']}</td>
@@ -429,10 +449,11 @@ def render_index(programs, stats_by_program_id, whisper_stats=None, whisper_tota
         
         latest_files_html = f"""
         <div class="latest-files">
-          <h3>📁 آخرین فایل‌های متن کامل / Latest Cleaned Files</h3>
+          <h3>✨ آخرین خروجی‌های پردازش LLM / Latest LLM Outputs</h3>
           <table class="files-table">
             <thead>
               <tr>
+                <th>نوع / Type</th>
                 <th>نام فایل / Filename</th>
                 <th>برنامه / Program</th>
                 <th>تاریخ / Date</th>
@@ -567,8 +588,8 @@ function sortTable(n, isNumeric=false, isDate=false) {{
       <th class="sortable" onclick="sortTable(0, false, false)">نام</th>
       <th class="sortable" onclick="sortTable(1, false, false)">زمان/توضیح</th>
       <th class="sortable" onclick="sortTable(2, true, false)">تعداد قسمت</th>
-      <th class="sortable" onclick="sortTable(3, true, false)">زیرنویس</th>
-      <th class="sortable" onclick="sortTable(4, true, false)">متن کامل</th>
+      <th class="sortable" onclick="sortTable(3, true, false)">🎬 زیرنویس</th>
+      <th class="sortable" onclick="sortTable(4, true, false)">📖 متن کامل</th>
       <th class="sortable" onclick="sortTable(5, false, true)">اولین تاریخ</th>
       <th class="sortable" onclick="sortTable(6, false, true)">آخرین تاریخ</th>
     </tr>
@@ -620,15 +641,14 @@ def render_program_page(program, sessions, files_by_session):
         subs = find_subtitles_for_session(mp3_name)
         attach = files_by_session.get(s["id"], [])
 
-        # Subtitle links
+        # Subtitle / LLM-output links (each with an emoji + label)
         subs_html = ""
         if subs:
             links = []
             for sub in subs:
-                css = "sub-link" if sub.get("label") == "زیرنویس" else "file-link"
-                label_prefix = "زیرنویس:" if sub.get("label") == "زیرنویس" else "متن کامل:" if sub.get("label") == "متن کامل" else "فایل:"
-                links.append(f'<span>{label_prefix} <a href="{sub["raw_url"]}" target="_blank" rel="noopener" class="{css}">{html_escape(sub["name"])}</a></span>')
-            subs_html = f'<div class="subs"><strong>متن‌ها:</strong> {" | ".join(links)}</div>'
+                links.append(f'<span>{sub["emoji"]} <b>{html_escape(sub["label"])}</b>: '
+                             f'<a href="{sub["raw_url"]}" target="_blank" rel="noopener" class="file-link">{html_escape(sub["name"])}</a></span>')
+            subs_html = f'<div class="subs"><strong>📚 متن‌ها و خروجی‌ها:</strong> <br>{" ".join(links)}</div>'
 
         # Attached files
         attach_html = ""
@@ -693,6 +713,8 @@ h1 {{ margin: 0 0 16px 0; }}
 .session-meta span {{ margin-left: 12px; }}
 .session-links {{ margin-top: 8px; }}
 .session-links > div {{ margin-bottom: 6px; }}
+.subs span {{ display: inline-block; background: #eef2f6; border: 1px solid #dde4ec; border-radius: 14px; padding: 3px 10px; margin: 3px 4px 3px 0; font-size: 13px; }}
+.subs span b {{ color: #2c3e50; margin-left: 4px; }}
 .mp3-link a {{ color: #e74c3c; font-weight: bold; }}
 .sub-link {{ color: #27ae60; }}
 .file-link {{ color: #8e44ad; }}
@@ -761,17 +783,11 @@ def generate():
                         first_dt = dt if first_dt is None or dt < first_dt else first_dt
                         last_dt = dt if last_dt is None or dt > last_dt else last_dt
                 subs = find_subtitles_for_session(s.get("filename") or "")
-                if subs:
-                    # Count separately by label
-                    for sub in subs:
-                        if sub.get("label") == "زیرنویس":
-                            subtitle_count += 1
-                            break
-                if subs:
-                    for sub in subs:
-                        if sub.get("label") == "متن کامل":
-                            cleaned_count += 1
-                            break
+                cats = {sub.get("cat") for sub in subs}
+                if "srt" in cats:
+                    subtitle_count += 1
+                if "full" in cats:
+                    cleaned_count += 1
             stats_by_program_id[p["id"]] = {
                 "total_sessions": total_sessions,
                 "subtitle_count": subtitle_count,

@@ -511,6 +511,31 @@ def _mark_error(conn, sid, job_type, model, job_id, error):
     conn.commit()
 
 
+def backfill_fulltext_from_disk(log=print):
+    """Mechanically produce downloads/cleaned/<stem>.full.txt for EVERY
+    downloads/*.srt on disk — file-driven (no DB, no LLM), the "produce full
+    text for all SRTs" pass. Idempotent: skips a .full.txt that already exists.
+    Uses the original .txt if present (faster/identical), else strips the SRT
+    timestamps."""
+    os.makedirs(CLEANED, exist_ok=True)
+    made = skipped = 0
+    for name in sorted(os.listdir(DOWNLOADS)):
+        if not name.endswith(".srt") or name.endswith(".ffmpeg.failed"):
+            continue
+        stem = os.path.splitext(name)[0]
+        out = os.path.join(CLEANED, stem + ".full.txt")
+        if os.path.exists(out):
+            skipped += 1
+            continue
+        txt = read_txt(os.path.join(DOWNLOADS, stem + ".txt"))
+        if not txt:
+            txt, _ = srt_to_text(os.path.join(DOWNLOADS, name))
+        _write(out, txt)
+        made += 1
+    log(f"fulltext-all: {made} written, {skipped} already present")
+    return {"made": made, "skipped": skipped}
+
+
 # ---------------------------------------------------------------------------
 # quality report (before/after)
 # ---------------------------------------------------------------------------
@@ -587,7 +612,7 @@ def report_markdown(items):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["ensure-schema", "discover", "run", "report"])
+    ap.add_argument("cmd", choices=["ensure-schema", "discover", "run", "report", "fulltext-all"])
     ap.add_argument("--job", default="summary", choices=JOB_TYPES)
     ap.add_argument("--model", default=os.environ.get("LLM_MODEL", "qwen38-nothinking"))
     ap.add_argument("--prompt", default=None, help="override prompt text (or read from file with @path)")
@@ -616,6 +641,8 @@ def main():
         if not items:
             print("(no qualifying sessions yet — run jobs first)")
         print(report_markdown(items))
+    elif args.cmd == "fulltext-all":
+        backfill_fulltext_from_disk()
 
 
 if __name__ == "__main__":
