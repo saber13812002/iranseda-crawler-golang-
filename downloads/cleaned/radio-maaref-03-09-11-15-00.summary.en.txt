@@ -1,0 +1,7 @@
+This radio program examined criminal liability defenses for AI systems, including lack of free will, insanity, and factual or legal mistakes.
+Legal experts argue that if an AI system voluntarily enters a situation leading to a crime, it can be held accountable.
+However, from a jurisprudential perspective, current AI is considered "weak" and lacks a human soul, so liability is attributed to the creator, designer, or user.
+The concept of "insanity" in AI is compared to severe system malfunctions, such as damage caused by toxic gases.
+Regarding legal mistakes, if a system's data is incomplete, it cannot be deemed guilty, which contradicts the definition of strong AI.
+Strong AI, possessing complete big data and precise algorithms, should not be subject to factual or legal errors.
+Therefore, any errors in current systems stem from data or design flaws, placing ultimate responsibility on the humans involved in its creation and use.
