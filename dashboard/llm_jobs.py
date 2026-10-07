@@ -7,22 +7,29 @@ phase / job / output file (stored 1:many under downloads/cleaned/ AND in the
 llm_output DB table so a new job can be re-run over everything later):
 
   full_text          strip timestamps (mechanical, no LLM) -> <stem>.full.txt
-  summary            LLM summary of the full text            -> <stem>.summary.txt
-  correct_text       LLM-cleaned full text                    -> <stem>.correct.txt
-  correct_subtitles  LLM-cleaned SRT (keeps timestamps)       -> <stem>.correct.srt
+  summary            bilingual LLM summary (FA + EN)      -> <stem>.summary.txt
+                                                            + <stem>.summary.en.txt
+  correct_text       LLM-cleaned full text                -> <stem>.correct.txt
+  correct_subtitles  LLM-cleaned SRT (keeps timestamps)   -> <stem>.correct.srt
 
 Prompts live in the DB (prompts table) with per-job defaults seeded on first
 run. Model auto-discovery reads the proxy's /v1/models.
+
+The summary is bilingual: a single LLM call returns a Persian summary and an
+English summary, split into the two `content` / `content_en` DB columns and
+two files, so each language is its own first-class field.
 
 Runs as a script on server 53 (dashboard venv). Importable by the dashboard:
     import llm_jobs
     llm_jobs.discover_models(base_url, key)
     llm_jobs.run_batch("summary", model, prompt_text, limit=10)
+    llm_jobs.run_over_all_files("summary", model, prompt_text)   # every .srt on disk
 
 CLI:
     python llm_jobs.py ensure-schema
     python llm_jobs.py discover
     python llm_jobs.py run --job summary --limit 10 --model qwen38-nothinking
+    python llm_jobs.py run-all --job summary --model qwen38-nothinking
     python llm_jobs.py report --n 3
 """
 import argparse
@@ -132,6 +139,7 @@ SCHEMA = [
         prompt_id INT,
         job_id INT,
         content MEDIUMTEXT,
+        content_en MEDIUMTEXT,
         srt_content MEDIUMTEXT,
         file_relpath VARCHAR(300),
         started_at DATETIME,
@@ -146,15 +154,22 @@ SCHEMA = [
     """,
 ]
 
+# One-time column upgrades for tables created before the field was added.
+MIGRATIONS = [
+    ("llm_output", "content_en", "ALTER TABLE llm_output ADD COLUMN content_en MEDIUMTEXT AFTER content"),
+]
+
 DEFAULT_PROMPTS = {
     # key: (job_type, name, master_prompt)
     "summary": (
-        "summary", "خلاصه‌نویسی",
-        "تو یک ویراستار خبریِ فارسی‌زبان هستی. متن زیر پیاده‌سازیِ صوتیِ یک "
-        "برنامه‌ی رادیویی است (ممکن است خطاهای شنیداری داشته باشد). یک خلاصه‌ی "
-        "ساده، روان و فشرده‌ی فارسی با ۵ تا ۸ جمله بنویس که مهم‌ترین نکات و "
-        "نتیجه‌ی بحث را می‌رساند. فقط خود خلاصه را بنویس؛ عنوان، بولت، توضیح "
-        "اضافی یا هر چیزی غیر از متن خلاصه نیآور."
+        "summary", "خلاصه‌نویسی دوزبانه (فارسی + انگلیسی)",
+        "تو یک ویراستار خبریِ دوزبانه (فارسی / انگلیسی) هستی. متن زیر پیاده‌سازیِ "
+        "صوتیِ یک برنامه‌ی رادیوییِ فارسی است (ممکن است خطای شنیداری داشته باشد). "
+        "یک خلاصه‌ی فشرده و روان (۵ تا ۸ جمله) بنویس که مهم‌ترین نکات و نتیجه‌ی بحث "
+        "را می‌رساند. خروجی را دقیقاً در دو بخشِ زیر و همین ترتیب بده و هیچ چیز "
+        "دیگه‌ای (عنوان، بولت، توضیح) اضافه نکن؛ هر بخش فقط متن خودِ خلاصه است:\n"
+        "خلاصه‌ی فارسی:\n<خلاصه‌ی کامل به فارسی>\n"
+        "English Summary:\n<the same summary written in fluent English>"
     ),
     "correct_text": (
         "correct_text", "تصحیح متن کامل",
@@ -179,6 +194,14 @@ DEFAULT_PROMPTS = {
 
 JOB_TYPES = ["full_text", "summary", "correct_text", "correct_subtitles"]
 
+# primary output file suffix per job (used for idempotency + the site)
+_JOB_SUFFIX = {
+    "full_text": ".full.txt",
+    "summary": ".summary.txt",
+    "correct_text": ".correct.txt",
+    "correct_subtitles": ".correct.srt",
+}
+
 
 def ensure_schema(conn=None):
     own = conn is None
@@ -187,6 +210,13 @@ def ensure_schema(conn=None):
         with conn.cursor() as cur:
             for ddl in SCHEMA:
                 cur.execute(ddl)
+            for table, col, ddl in MIGRATIONS:
+                cur.execute(
+                    "SELECT COUNT(*) AS c FROM information_schema.COLUMNS "
+                    "WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=%s AND COLUMN_NAME=%s",
+                    (table, col))
+                if not cur.fetchone()["c"]:
+                    cur.execute(ddl)
             # seed default prompts
             for key, (job, name, prompt) in DEFAULT_PROMPTS.items():
                 cur.execute(
@@ -194,6 +224,10 @@ def ensure_schema(conn=None):
                     "VALUES (%s, %s, %s, %s, 1)",
                     (key, job, name, prompt),
                 )
+            # keep the summary prompt in sync when the default wording changes
+            cur.execute(
+                "UPDATE prompts SET name=%s, prompt=%s WHERE job_type='summary' AND is_default=1",
+                (DEFAULT_PROMPTS["summary"][1], DEFAULT_PROMPTS["summary"][2]))
         conn.commit()
     finally:
         if own:
@@ -299,8 +333,36 @@ def _clean_llm_text(content):
     c = re.sub(r"\n?```$", "", c)
     c = re.sub(r"^(?:متن[ :]|خلاصه[ :]|پاسخ[ :]|نتیجه[ :])\s*", "", c)
     lines = [l for l in c.split("\n") if l.strip() != ""]
-    # drop leading single bullet header lines like "خلاصه:"
     return "\n".join(lines).strip()
+
+
+def split_summary_bilingual(content):
+    """Split a bilingual model summary into (persian, english).
+
+    The model is asked to emit two labeled blocks:
+        خلاصه‌ی فارسی:\n<fa>
+        English Summary:\n<en>
+    We split on the English marker and strip each block's own label line.
+    If no English marker is found, the whole text is treated as Persian and
+    the English side is left empty (caller may fall back)."""
+    c = (content or "").strip()
+    c = re.sub(r"^```[a-zA-Z]*\n?", "", c)
+    c = re.sub(r"\n?```$", "", c)
+    m = re.search(r"(?im)^\s*English\s*Summary\s*[:\-–—]\s*", c)
+    if not m:
+        m = re.search(r"(?im)^\s*(?:English|EN)\s*[:\-–—]\s*", c)
+    if m:
+        fa = c[:m.start()]
+        en = c[m.end():]
+    else:
+        fa, en = c, ""
+    fa = re.sub(r"(?im)^\s*خلاصه(?:ی)?\s*فارسی\s*[:\-–—]\s*", "", fa)
+    en = re.sub(r"(?im)^\s*(?:English\s*)?Summary\s*[:\-–—]\s*", "", en)
+    fa = _clean_llm_text(fa)
+    en = re.sub(r"^\s*```[a-zA-Z]*\n?", "", en.strip())
+    en = re.sub(r"\n?```\s*$", "", en)
+    en = re.sub(r"(?im)^\s*English\s*Summary\s*[:\-–—]?\s*$", "", en).strip()
+    return fa.strip(), en.strip()
 
 
 def extract_corrected_texts(out, n_expected):
@@ -340,13 +402,20 @@ def build_srt(blocks, corrected_lines):
 # per-session processing
 # ---------------------------------------------------------------------------
 
-def process_session(session, job_type, prompt_text, model, conn, base_url=None, key=None):
-    """Returns dict describing the written output (or an error)."""
+def _process_core(session, job_type, prompt_text, model, conn, base_url=None, key=None,
+                  persist=True):
+    """Do the LLM/file work for one session (a dict with 'id' (int|None) and
+    'filename'). Writes output file(s) under cleaned/; persists to llm_output
+    only when `persist` is True AND a real session id is present. Returns a
+    dict describing the written output (or an error)."""
     stem = os.path.splitext(session.get("filename") or "")[0]
     if not stem:
         return {"ok": False, "error": "no filename"}
+    sid = session.get("id")
     started = datetime.now()
     os.makedirs(CLEANED, exist_ok=True)
+    content_en = None
+    pt = ot = None
 
     if job_type == "full_text":
         full, _srt, _blocks, _ = load_session_input(session)
@@ -354,54 +423,75 @@ def process_session(session, job_type, prompt_text, model, conn, base_url=None, 
         file_rel = f"downloads/cleaned/{stem}.full.txt"
         _write(os.path.join(CLEANED, f"{stem}.full.txt"), content)
         srt_content = None
-    else:
+    elif job_type == "correct_subtitles":
         full, srt_text, blocks, _ = load_session_input(session)
-        if job_type == "correct_subtitles":
-            if not blocks:
-                return {"ok": False, "error": "no srt blocks"}
-            # feed the raw srt (trimmed)
-            user = srt_text[:24000]
-            out, pt, ot = call_llm(model, prompt_text, user, base_url, key,
-                                   max_tokens=4096)
-            lines = extract_corrected_texts(out, len(blocks))
-            srt_content = build_srt(blocks, lines)
-            content = None
-            file_rel = f"downloads/cleaned/{stem}.correct.srt"
-            _write(os.path.join(CLEANED, f"{stem}.correct.srt"), srt_content)
-        else:  # summary / correct_text
-            user = (full or srt_text)
-            if not user:
-                return {"ok": False, "error": "no transcript text"}
-            max_tok = 1024 if job_type == "summary" else 4096
-            out, pt, ot = call_llm(model, prompt_text, user[:24000], base_url, key,
-                                   max_tokens=max_tok)
-            content = _clean_llm_text(out)
-            suffix = "summary.txt" if job_type == "summary" else "correct.txt"
-            file_rel = f"downloads/cleaned/{stem}.{suffix}"
-            _write(os.path.join(CLEANED, os.path.basename(file_rel)), content)
-            srt_content = None
+        if not blocks:
+            return {"ok": False, "error": "no srt blocks"}
+        out, pt, ot = call_llm(model, prompt_text, srt_text[:24000], base_url, key,
+                               max_tokens=4096)
+        lines = extract_corrected_texts(out, len(blocks))
+        srt_content = build_srt(blocks, lines)
+        content = None
+        file_rel = f"downloads/cleaned/{stem}.correct.srt"
+        _write(os.path.join(CLEANED, f"{stem}.correct.srt"), srt_content)
+    elif job_type == "summary":
+        full, srt_text, blocks, _ = load_session_input(session)
+        user = full or srt_text
+        if not user:
+            return {"ok": False, "error": "no transcript text"}
+        out, pt, ot = call_llm(model, prompt_text, user[:24000], base_url, key,
+                               max_tokens=1600)
+        fa, en = split_summary_bilingual(out)
+        if not fa and not en:
+            fa = _clean_llm_text(out)
+        content = fa
+        content_en = en or None
+        file_rel = f"downloads/cleaned/{stem}.summary.txt"
+        _write(os.path.join(CLEANED, f"{stem}.summary.txt"), fa)
+        if en:
+            _write(os.path.join(CLEANED, f"{stem}.summary.en.txt"), en)
+        srt_content = None
+    else:  # correct_text
+        full, srt_text, blocks, _ = load_session_input(session)
+        user = full or srt_text
+        if not user:
+            return {"ok": False, "error": "no transcript text"}
+        out, pt, ot = call_llm(model, prompt_text, user[:24000], base_url, key,
+                               max_tokens=4096)
+        content = _clean_llm_text(out)
+        file_rel = f"downloads/cleaned/{stem}.correct.txt"
+        _write(os.path.join(CLEANED, f"{stem}.correct.txt"), content)
+        srt_content = None
 
-    # persist (1:many, unique per session+job+model)
-    with conn.cursor() as cur:
-        cur.execute(
-            """
-            INSERT INTO llm_output
-              (session_id, job_type, model, content, srt_content, file_relpath,
-               started_at, finished_at, status, prompt_id, input_tokens, output_tokens)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,'done',%s,%s,%s)
-            ON DUPLICATE KEY UPDATE
-              content=VALUES(content), srt_content=VALUES(srt_content),
-              file_relpath=VALUES(file_relpath), finished_at=VALUES(finished_at),
-              status='done', error=NULL,
-              input_tokens=VALUES(input_tokens), output_tokens=VALUES(output_tokens)
-            """,
-            (session["id"], job_type, model, content, srt_content, file_rel,
-             started, datetime.now(),
-             _prompt_id_for(conn, job_type), pt if job_type != "full_text" else None,
-             ot if job_type != "full_text" else None),
-        )
-    conn.commit()
+    if persist and sid is not None and conn is not None:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO llm_output
+                  (session_id, job_type, model, content, content_en, srt_content,
+                   file_relpath, started_at, finished_at, status, prompt_id,
+                   input_tokens, output_tokens)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,'done',%s,%s,%s)
+                ON DUPLICATE KEY UPDATE
+                  content=VALUES(content), content_en=VALUES(content_en),
+                  srt_content=VALUES(srt_content), file_relpath=VALUES(file_relpath),
+                  finished_at=VALUES(finished_at), status='done', error=NULL,
+                  input_tokens=VALUES(input_tokens), output_tokens=VALUES(output_tokens)
+                """,
+                (sid, job_type, model, content, content_en, srt_content, file_rel,
+                 started, datetime.now(),
+                 _prompt_id_for(conn, job_type),
+                 pt if job_type != "full_text" else None,
+                 ot if job_type != "full_text" else None),
+            )
+        conn.commit()
     return {"ok": True, "file_rel": file_rel, "chars": len(content or srt_content or "")}
+
+
+def process_session(session, job_type, prompt_text, model, conn, base_url=None, key=None):
+    """Back-compat wrapper around _process_core with DB persistence."""
+    return _process_core(session, job_type, prompt_text, model, conn,
+                         base_url=base_url, key=key, persist=True)
 
 
 def _prompt_id_for(conn, job_type):
@@ -418,7 +508,7 @@ def _write(path, text):
 
 
 # ---------------------------------------------------------------------------
-# batch runner
+# batch runner (DB-driven, by session id)
 # ---------------------------------------------------------------------------
 
 def _pick_sessions(conn, limit=None, session_ids=None, only_new=True):
@@ -430,9 +520,6 @@ def _pick_sessions(conn, limit=None, session_ids=None, only_new=True):
                 f"WHERE id IN ({ph}) AND is_subtitled=1 ORDER BY id", session_ids)
         else:
             where = "is_subtitled=1 AND srt_filename IS NOT NULL AND srt_filename <> ''"
-            if only_new:
-                # skip sessions that already have output for this job (handled by caller)
-                pass
             cur.execute(
                 f"SELECT id, filename, program_id FROM radio_program_sessions "
                 f"WHERE {where} ORDER BY id DESC LIMIT %s", (limit or 100,))
@@ -454,7 +541,6 @@ def run_batch(job_type, model=None, prompt_text=None, limit=None,
             r = cur.fetchone()
             prompt_text = r["prompt"] if r else ""
 
-    # sessions to process (optionally skipping already-done for this model)
     sessions = _pick_sessions(conn, limit, session_ids, only_new)
     if only_new and job_type != "full_text":
         done_ids = set()
@@ -511,12 +597,109 @@ def _mark_error(conn, sid, job_type, model, job_id, error):
     conn.commit()
 
 
+# ---------------------------------------------------------------------------
+# file-driven runner (over EVERY .srt on disk — "run on all files")
+# ---------------------------------------------------------------------------
+
+def _stem_to_session_map(conn):
+    """Map every on-disk-usable stem -> a session id (filename + srt_filename)."""
+    m = {}
+    with conn.cursor() as cur:
+        cur.execute("SELECT id, filename, srt_filename FROM radio_program_sessions "
+                    "WHERE is_subtitled=1")
+        for r in cur.fetchall():
+            for k in (os.path.splitext(r["filename"] or "")[0],
+                      os.path.splitext(r["srt_filename"] or "")[0]):
+                if k and k not in m:
+                    m[k] = r["id"]
+    return m
+
+
+def run_over_all_files(job_type, model=None, prompt_text=None, limit=None,
+                       only_new=True, conn=None, log=print):
+    """Process EVERY downloads/*.srt on disk for one job (the "run on all files"
+    path). Idempotent when only_new: skips a stem whose primary output file
+    already exists. Files are written for all stems; the DB row is upserted
+    only for stems that map to a real session id."""
+    own = conn is None
+    conn = conn or _db_conn()
+    cfg = _llm_cfg()
+    model = model or os.environ.get("LLM_MODEL") or "qwen38-nothinking"
+    if job_type not in JOB_TYPES:
+        raise ValueError(f"bad job_type {job_type}")
+    if prompt_text is None:
+        with conn.cursor() as cur:
+            cur.execute("SELECT prompt FROM prompts WHERE job_type=%s AND is_default=1 "
+                        "ORDER BY id LIMIT 1", (job_type,))
+            r = cur.fetchone()
+            prompt_text = r["prompt"] if r else ""
+
+    names = sorted(n for n in os.listdir(DOWNLOADS)
+                   if n.endswith(".srt") and not n.endswith(".ffmpeg.failed"))
+    stems = [os.path.splitext(n)[0] for n in names]
+    total = len(stems)
+    if limit:
+        stems = stems[:limit]
+    stem2id = _stem_to_session_map(conn)
+    suffix = _JOB_SUFFIX[job_type]
+
+    job_id = None
+    now = datetime.now()
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO llm_job (job_type, model, started_at, total, note) "
+            "VALUES (%s,%s,%s,%s,%s)",
+            (job_type, model, now, len(stems), "all-files"))
+        job_id = cur.lastrowid
+    conn.commit()
+
+    done = failed = skipped = unmatched = 0
+    for i, stem in enumerate(stems, 1):
+        primary = os.path.join(CLEANED, stem + suffix)
+        if only_new and os.path.exists(primary):
+            skipped += 1
+            continue
+        sid = stem2id.get(stem)
+        if sid is None:
+            unmatched += 1
+        log(f"[{job_type}] {i}/{len(stems)} {stem} (sid={sid})")
+        sess = {"id": sid, "filename": stem + ".mp4"}
+        try:
+            res = _process_core(sess, job_type, prompt_text, model, conn,
+                                base_url=cfg["base_url"], key=cfg["key"],
+                                persist=(sid is not None))
+            if res.get("ok"):
+                done += 1
+            else:
+                failed += 1
+                if sid is not None:
+                    _mark_error(conn, sid, job_type, model, job_id, res.get("error"))
+        except Exception as e:  # noqa: BLE001
+            failed += 1
+            log(f"    error: {str(e)[:200]}")
+            if sid is not None:
+                try:
+                    _mark_error(conn, sid, job_type, model, job_id, str(e)[:400])
+                except Exception:  # noqa: BLE001
+                    pass
+
+    with conn.cursor() as cur:
+        cur.execute("UPDATE llm_job SET finished_at=%s, done=%s, failed=%s WHERE id=%s",
+                    (datetime.now(), done, failed, job_id))
+    conn.commit()
+    log(f"[{job_type}] all-files done: {done} ok, {failed} failed, "
+        f"{skipped} skipped(exist), {unmatched} unmatched (job_id={job_id})")
+    if own:
+        conn.close()
+    return {"job_id": job_id, "total": len(stems), "done": done,
+            "failed": failed, "skipped": skipped, "unmatched": unmatched}
+
+
 def backfill_fulltext_from_disk(log=print):
     """Mechanically produce downloads/cleaned/<stem>.full.txt for EVERY
-    downloads/*.srt on disk — file-driven (no DB, no LLM), the "produce full
-    text for all SRTs" pass. Idempotent: skips a .full.txt that already exists.
-    Uses the original .txt if present (faster/identical), else strips the SRT
-    timestamps."""
+    downloads/*.srt on disk — file-driven (no DB, no LLM). Idempotent: skips a
+    .full.txt that already exists. Uses the original .txt if present, else
+    strips the SRT timestamps."""
     os.makedirs(CLEANED, exist_ok=True)
     made = skipped = 0
     for name in sorted(os.listdir(DOWNLOADS)):
@@ -537,7 +720,7 @@ def backfill_fulltext_from_disk(log=print):
 
 
 # ---------------------------------------------------------------------------
-# quality report (before/after)
+# quality report (before/after, bilingual)
 # ---------------------------------------------------------------------------
 
 def _head(text, n=12):
@@ -547,7 +730,8 @@ def _head(text, n=12):
 
 def report(n=1):
     """Return up to n sessions that have summary + correct_text (+ correct_srt),
-    with original full text for a before/after comparison."""
+    with original full text for a before/after comparison. The summary is
+    returned as two fields: `summary` (Persian) and `summary_en` (English)."""
     conn = _db_conn()
     out = []
     try:
@@ -556,6 +740,7 @@ def report(n=1):
                 """
                 SELECT o.session_id, o.model,
                        MAX(CASE WHEN o.job_type='summary'      THEN o.content END) AS summary,
+                       MAX(CASE WHEN o.job_type='summary'      THEN o.content_en END) AS summary_en,
                        MAX(CASE WHEN o.job_type='correct_text' THEN o.content END) AS correct
                 FROM llm_output o
                 GROUP BY o.session_id, o.model
@@ -579,6 +764,7 @@ def report(n=1):
                     "original": full,
                     "original_head": _head(full),
                     "summary": row["summary"],
+                    "summary_en": row["summary_en"],
                     "correct_text": row["correct"],
                     "correct_srt_head": _head((cr or {}).get("srt_content")),
                 })
@@ -595,8 +781,10 @@ def report_markdown(items):
         out.append("=" * 72)
         out.append("\n--- متن کامل (مانند اصلی از whisper) — ۱۲ خط اول ---\n")
         out.append(it["original_head"] or "(ناموجود)")
-        out.append("\n\n--- خلاصه (LLM) ---\n")
+        out.append("\n\n--- خلاصه (فارسی, LLM) ---\n")
         out.append(it["summary"] or "(ناموجود)")
+        out.append("\n\n--- Summary (English, LLM) ---\n")
+        out.append(it.get("summary_en") or "(ناموجود)")
         out.append("\n\n--- متن کامل تصحیح‌شده (LLM) — ۱۲ خط اول ---\n")
         out.append(_head(it["correct_text"]) or "(ناموجود)")
         if it.get("correct_srt_head"):
@@ -612,7 +800,8 @@ def report_markdown(items):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("cmd", choices=["ensure-schema", "discover", "run", "report", "fulltext-all"])
+    ap.add_argument("cmd", choices=["ensure-schema", "discover", "run", "run-all",
+                                    "report", "fulltext-all"])
     ap.add_argument("--job", default="summary", choices=JOB_TYPES)
     ap.add_argument("--model", default=os.environ.get("LLM_MODEL", "qwen38-nothinking"))
     ap.add_argument("--prompt", default=None, help="override prompt text (or read from file with @path)")
@@ -636,6 +825,13 @@ def main():
         run_batch(args.job, model=args.model, prompt_text=prompt,
                   limit=None if ids else args.limit, session_ids=ids,
                   only_new=not args.all)
+    elif args.cmd == "run-all":
+        prompt = args.prompt
+        if prompt and prompt.startswith("@"):
+            prompt = open(prompt[1:], encoding="utf-8").read()
+        ensure_schema()
+        run_over_all_files(args.job, model=args.model, prompt_text=prompt,
+                           limit=args.limit, only_new=not args.all)
     elif args.cmd == "report":
         items = report(args.n)
         if not items:

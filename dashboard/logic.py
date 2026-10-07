@@ -985,6 +985,7 @@ def llm_run(payload):
     ids = payload.get("ids") or None
     if ids:
         ids = [int(x) for x in ids]
+    all_files = bool(payload.get("all_files"))
     all_flag = bool(payload.get("all"))
     handle = f"{job}-{int(time.time())}"
     with _llm_run_lock:
@@ -997,9 +998,13 @@ def llm_run(payload):
         with _llm_run_lock:
             _llm_run_state[handle]["detail"] = "شروع شد"
         try:
-            res = _llm().run_batch(job, model=model, prompt_text=prompt_text,
-                                   limit=None if ids else limit, session_ids=ids,
-                                   only_new=not all_flag)
+            if all_files:
+                res = _llm().run_over_all_files(job, model=model, prompt_text=prompt_text,
+                                                 limit=limit, only_new=not all_flag)
+            else:
+                res = _llm().run_batch(job, model=model, prompt_text=prompt_text,
+                                       limit=None if ids else limit, session_ids=ids,
+                                       only_new=not all_flag)
             with _llm_run_lock:
                 _llm_run_state[handle].update(
                     {"status": "done", "finished_at": _now_iso(), "result": res,

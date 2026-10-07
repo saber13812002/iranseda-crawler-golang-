@@ -104,6 +104,7 @@ def find_subtitles_for_session(filename: str):
         (C, f"{stem}.full.txt",    "📖", "متن کامل",           "full"),
         (C, f"{stem}.correct.txt", "✍️", "متن تصحیح‌شده",        "correct_text"),
         (C, f"{stem}.summary.txt", "🧾", "خلاصه",              "summary"),
+        (C, f"{stem}.summary.en.txt", "🌐", "خلاصه انگلیسی",   "summary_en"),
         (C, f"{stem}.correct.srt", "✨", "زیرنویس تصحیح‌شده",   "correct_srt"),
         (C, f"{stem}.srt",         "📄", "متن کامل (سابق)",    "full"),
         (C, f"{stem}.txt",         "📄", "متن کامل (سابق)",    "full"),
@@ -236,11 +237,12 @@ def get_latest_cleaned_files(limit=10):
     file_info = []
     suffix_type = {
         ".summary.txt": "🧾 خلاصه",
+        ".summary.en.txt": "🌐 خلاصه انگلیسی",
         ".correct.txt": "✍️ متن تصحیح‌شده",
         ".correct.srt": "✨ زیرنویس تصحیح‌شده",
         ".full.txt": "📖 متن کامل",
     }
-    for pattern in ("*.summary.txt", "*.correct.txt", "*.correct.srt", "*.full.txt"):
+    for pattern in ("*.summary.txt", "*.summary.en.txt", "*.correct.txt", "*.correct.srt", "*.full.txt"):
         for f in cleaned_dir.glob(pattern):
             try:
                 if f.name.endswith('.ffmpeg.failed'):

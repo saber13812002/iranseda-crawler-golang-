@@ -233,6 +233,7 @@ summary{cursor:pointer;color:var(--mut);font-size:13px}
     <div><label>session idها (اختیاری)</label><input id="llm-ids" class="mono" placeholder="مثال 5741,5742"></div>
   </div>
   <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <label style="display:flex;align-items:center;gap:5px"><input type="checkbox" id="llm-all-files"> 📂 روی همه فایل‌های دیسک (downloads/*.srt)</label>
     <label style="display:flex;align-items:center;gap:5px"><input type="checkbox" id="llm-all"> تکراری‌ها را هم دوباره (default: فقط جدید)</label>
     <button class="btn primary" onclick="llmStartRun()">▶️ اجرای جاب</button>
     <span class="small" id="llm-run-status"></span>
@@ -493,10 +494,11 @@ async function llmStartRun(){
   const job=$("#llm-job").value;
   const model=$("#llm-model-sel").value;
   if(job!=="full_text"&&!model){flash("مدل را انتخاب کنید (یا «کشف خودکار» را بزنید)",false);return;}
+  const allFiles=$("#llm-all-files").checked;
   const ids=($("#llm-ids").value||"").split(",").map(x=>x.trim()).filter(Boolean);
-  const body={job_type:job,model:job==="full_text"?"(بدون‌مدل)":model,limit:parseInt($("#llm-limit").value||"10",10),all:$("#llm-all").checked};
+  const body={job_type:job,model:job==="full_text"?"(بدون‌مدل)":model,limit:parseInt($("#llm-limit").value||"10",10),all:$("#llm-all").checked,all_files:allFiles};
   const pid=_llmPromptId(); if(pid)body.prompt_id=pid;
-  if(ids.length)body.ids=ids;
+  if(!allFiles&&ids.length)body.ids=ids;
   $("#llm-run-status").textContent="در حال آغاز…";
   const r=await api("/api/llm/run",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
   if(r.ok){$("#llm-run-status").textContent="جاب آغاز شد ✓ — پیگیری در «اجراهای اخیر»";flash("جاب LLM آغاز شد",true);setTimeout(loadLlmRuns,1500);}
@@ -532,9 +534,11 @@ async function loadLlmReport(){
   el.textContent=
     `📄 ${it.filename||"جلسه "+it.session_id}  (مدل: ${it.model})\n`+
     `\n── 🎙 متن کامل (از whisper) ──\n${(it.original||"").slice(0,600)}\n`+
-    `\n── 🧾 خلاصه (LLM) ──\n${it.summary||"(ناموجود)"}\n`+
+    `\n── 🧾 خلاصه — فارسی (LLM) ──\n${it.summary||"(ناموجود)"}\n`+
+    `\n── 🌐 Summary — English (LLM) ──\n${(it.summary_en||"(ناموجود)")+"\n"}`+
     `\n── ✍️ متن کامل تصحیح‌شده (LLM) ──\n${(it.correct_text||"").slice(0,600)}\n`;
-  $("#llm-report-file").textContent= it.filename? `· <a href="/downloads/cleaned/${it.filename.replace(/\.\w+$/,"").replace(/\.full$/,"")}.full.txt" target="_blank">📝 متن کامل</a> · <a href="/downloads/cleaned/${it.filename.replace(/\.\w+$/,"")}.correct.txt" target="_blank">✍️ تصحیح‌شده</a> · <a href="/downloads/cleaned/${it.filename.replace(/\.\w+$/,"")}.summary.txt" target="_blank">🧾 خلاصه</a>`:"";
+  const stem=it.filename?it.filename.replace(/\.\w+$/,""):"";
+  $("#llm-report-file").textContent= stem? `· <a href="/downloads/cleaned/${stem}.full.txt" target="_blank">📝 متن کامل</a> · <a href="/downloads/cleaned/${stem}.correct.txt" target="_blank">✍️ تصحیح‌شده</a> · <a href="/downloads/cleaned/${stem}.summary.txt" target="_blank">🧾 خلاصه فارسی</a> · <a href="/downloads/cleaned/${stem}.summary.en.txt" target="_blank">🌐 Summary EN</a>`:"";
 }
 function llmSavePrompt(){
   const job=$("#llm-edit-job").value;
