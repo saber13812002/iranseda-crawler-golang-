@@ -821,7 +821,8 @@ def main():
     ap.add_argument("--job", default="summary", choices=JOB_TYPES)
     ap.add_argument("--model", default=os.environ.get("LLM_MODEL", "qwen38-nothinking"))
     ap.add_argument("--prompt", default=None, help="override prompt text (or read from file with @path)")
-    ap.add_argument("--limit", type=int, default=10)
+    ap.add_argument("--limit", type=int, default=-1,
+                    help="max items; -1 (default) = 10 for `run`, ALL for `run-all`")
     ap.add_argument("--ids", default=None, help="comma-separated session ids")
     ap.add_argument("--all", action="store_true", help="do not skip already-done")
     ap.add_argument("--n", type=int, default=1, help="report size")
@@ -839,15 +840,16 @@ def main():
         ensure_schema()
         ids = [int(x) for x in args.ids.split(",")] if args.ids else None
         run_batch(args.job, model=args.model, prompt_text=prompt,
-                  limit=None if ids else args.limit, session_ids=ids,
-                  only_new=not args.all)
+                  limit=None if ids else (args.limit if args.limit > 0 else 10),
+                  session_ids=ids, only_new=not args.all)
     elif args.cmd == "run-all":
         prompt = args.prompt
         if prompt and prompt.startswith("@"):
             prompt = open(prompt[1:], encoding="utf-8").read()
         ensure_schema()
         run_over_all_files(args.job, model=args.model, prompt_text=prompt,
-                           limit=args.limit, only_new=not args.all)
+                           limit=(args.limit if args.limit > 0 else None),
+                           only_new=not args.all)
     elif args.cmd == "report":
         items = report(args.n)
         if not items:
