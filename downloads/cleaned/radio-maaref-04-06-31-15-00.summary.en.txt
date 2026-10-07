@@ -1,0 +1,8 @@
+This radio program examines the conditions for "hadd theft" from ATMs based on Islamic jurisprudence and Article 268 of the Islamic Penal Code.
+The primary requirement for hadd theft is "breaking the lock" or unauthorized access to the storage location, which includes physical destruction or hacking the PIN.
+If the card owner voluntarily shares the PIN or writes it on the card, the condition of breaking the lock is not met, classifying the act as discretionary theft or breach of trust.
+The key distinction between cyber theft and discretionary theft is that all executive operations in cyber theft must occur within the digital space.
+If a hacker withdraws cash after bypassing security, it is considered discretionary theft, whereas merely transferring data digitally constitutes cyber theft.
+Finding a lost bank card and using it to withdraw funds is classified as cyber fraud rather than theft.
+To prevent crimes, listeners are advised not to share PINs, avoid simple passwords, and ignore suspicious text messages.
+In case of a crime, victims should preserve bank receipts and promptly file a complaint with judicial authorities using multiple potential legal titles.
