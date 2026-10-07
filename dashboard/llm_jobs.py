@@ -336,6 +336,26 @@ def _clean_llm_text(content):
     return "\n".join(lines).strip()
 
 
+def _strip_label(text):
+    """Drop leading label header line(s) the model may add (e.g. 'خلاصه‌ی
+    فارسی:' or 'English Summary:'). A leading line counts as a label only if
+    it's short AND ends in a separator (colon/dash) — real body sentences end
+    in a period, so they are never stripped. Robust to ZWNJ variants."""
+    lines = (text or "").strip().split("\n")
+    i = 0
+    while i < len(lines):
+        l = lines[i].strip()
+        if not l:
+            i += 1
+            continue
+        ends_sep = l.rstrip() and l.rstrip()[-1] in ":،:：-–—"
+        if len(l) < 48 and ends_sep:
+            i += 1
+        else:
+            break
+    return "\n".join(lines[i:]).strip()
+
+
 def split_summary_bilingual(content):
     """Split a bilingual model summary into (persian, english).
 
@@ -356,12 +376,8 @@ def split_summary_bilingual(content):
         en = c[m.end():]
     else:
         fa, en = c, ""
-    fa = re.sub(r"(?im)^\s*خلاصه(?:ی)?\s*فارسی\s*[:\-–—]\s*", "", fa)
-    en = re.sub(r"(?im)^\s*(?:English\s*)?Summary\s*[:\-–—]\s*", "", en)
-    fa = _clean_llm_text(fa)
-    en = re.sub(r"^\s*```[a-zA-Z]*\n?", "", en.strip())
-    en = re.sub(r"\n?```\s*$", "", en)
-    en = re.sub(r"(?im)^\s*English\s*Summary\s*[:\-–—]?\s*$", "", en).strip()
+    fa = _strip_label(fa)
+    en = _strip_label(en)
     return fa.strip(), en.strip()
 
 
