@@ -1,0 +1,7 @@
+The radio program "Andisheha," featuring Dr. Hamid Mohseni, explored the epistemological and ethical challenges posed by artificial intelligence.
+Key concerns include the technology's autonomous learning capabilities and self-directed systems, which challenge traditional definitions of moral responsibility.
+Privacy violations through the collection of personal data and user chats are identified as significant security threats.
+Determining liability in autonomous vehicle accidents and the reliability of AI in jurisprudential and medical matters require a re-evaluation of Islamic jurisprudence.
+While AI can serve as a "jurisprudential assistant" for searching resources, it cannot replace human judgment due to data limitations and epistemological errors.
+Recent research indicates that AI models lack sufficient data in Islamic humanities, and publishing AI-generated articles faces legal and ethical hurdles.
+Finally, it was emphasized that in critical situations such as surgery or life-and-death decisions, the final decision-maker must remain human rather than an algorithm.
