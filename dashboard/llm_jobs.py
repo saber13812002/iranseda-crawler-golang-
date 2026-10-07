@@ -159,6 +159,67 @@ MIGRATIONS = [
     ("llm_output", "content_en", "ALTER TABLE llm_output ADD COLUMN content_en MEDIUMTEXT AFTER content"),
 ]
 
+# One-time index drops. The original llm_job schema had UNIQUE KEY uq
+# (job_type, started_at), which collides when parallel shards insert a job row
+# in the same second — it's not a real invariant, so drop it.
+DROP_INDEXES = [
+    ("llm_job", "uq", "ALTER TABLE llm_job DROP INDEX uq"),
+]
+
+
+def _ensure_schema_once(cur):
+    for ddl in SCHEMA:
+        cur.execute(ddl)
+    for table, col, ddl in MIGRATIONS:
+        cur.execute(
+            "SELECT COUNT(*) AS c FROM information_schema.COLUMNS "
+            "WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=%s AND COLUMN_NAME=%s",
+            (table, col))
+        if not cur.fetchone()["c"]:
+            cur.execute(ddl)
+    for table, idx, ddl in DROP_INDEXES:
+        cur.execute(
+            "SELECT COUNT(*) AS c FROM information_schema.STATISTICS "
+            "WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=%s AND INDEX_NAME=%s",
+            (table, idx))
+        if cur.fetchone()["c"]:
+            cur.execute(ddl)
+    # seed default prompts
+    for key, (job, name, prompt) in DEFAULT_PROMPTS.items():
+        cur.execute(
+            "INSERT IGNORE INTO prompts (slug, job_type, name, prompt, is_default) "
+            "VALUES (%s, %s, %s, %s, 1)",
+            (key, job, name, prompt),
+        )
+    # keep the summary prompt in sync when the default wording changes
+    cur.execute(
+        "UPDATE prompts SET name=%s, prompt=%s WHERE job_type='summary' AND is_default=1",
+        (DEFAULT_PROMPTS["summary"][1], DEFAULT_PROMPTS["summary"][2]))
+
+
+def ensure_schema(conn=None, retries=5):
+    """Idempotent schema/seed setup. Retries on deadlock: several parallel
+    shards may call this at startup, and concurrent DDL + the prompt UPDATE
+    can deadlock (MySQL 1213)."""
+    own = conn is None
+    conn = conn or _db_conn()
+    try:
+        for attempt in range(retries):
+            try:
+                with conn.cursor() as cur:
+                    _ensure_schema_once(cur)
+                conn.commit()
+                break
+            except Exception:  # noqa: BLE001 — only deadlock retried below
+                conn.rollback()
+                if attempt == retries - 1:
+                    raise
+                time.sleep(0.5 * (attempt + 1))
+    finally:
+        if own:
+            conn.close()
+
+
 DEFAULT_PROMPTS = {
     # key: (job_type, name, master_prompt)
     "summary": (
@@ -202,41 +263,6 @@ _JOB_SUFFIX = {
     "correct_subtitles": ".correct.srt",
 }
 
-
-def ensure_schema(conn=None):
-    own = conn is None
-    conn = conn or _db_conn()
-    try:
-        with conn.cursor() as cur:
-            for ddl in SCHEMA:
-                cur.execute(ddl)
-            for table, col, ddl in MIGRATIONS:
-                cur.execute(
-                    "SELECT COUNT(*) AS c FROM information_schema.COLUMNS "
-                    "WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME=%s AND COLUMN_NAME=%s",
-                    (table, col))
-                if not cur.fetchone()["c"]:
-                    cur.execute(ddl)
-            # seed default prompts
-            for key, (job, name, prompt) in DEFAULT_PROMPTS.items():
-                cur.execute(
-                    "INSERT IGNORE INTO prompts (slug, job_type, name, prompt, is_default) "
-                    "VALUES (%s, %s, %s, %s, 1)",
-                    (key, job, name, prompt),
-                )
-            # keep the summary prompt in sync when the default wording changes
-            cur.execute(
-                "UPDATE prompts SET name=%s, prompt=%s WHERE job_type='summary' AND is_default=1",
-                (DEFAULT_PROMPTS["summary"][1], DEFAULT_PROMPTS["summary"][2]))
-        conn.commit()
-    finally:
-        if own:
-            conn.close()
-
-
-# ---------------------------------------------------------------------------
-# model discovery
-# ---------------------------------------------------------------------------
 
 def discover_models(base_url=None, key=None, timeout=20):
     cfg = _llm_cfg()
