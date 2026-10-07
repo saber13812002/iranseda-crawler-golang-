@@ -210,6 +210,67 @@ summary{cursor:pointer;color:var(--mut);font-size:13px}
   </div>
 </div>
 
+<h2>جاب‌های LLM — خلاصه / تصحیح متن / تصحیح زیرنویس 🤖</h2>
+<div class="card" style="margin-bottom:12px">
+  <h3>تعریف و اجرای جاب (هر یک فاز مجزا + خروجی مجزا)</h3>
+  <div class="row">
+    <div><label>نوع جاب (phase)</label>
+      <select id="llm-job">
+        <option value="full_text">📝 متن کامل (حذف تایم‌کد — بدون LLM)</option>
+        <option value="summary">🧾 خلاصه‌نویسی</option>
+        <option value="correct_text">✍️ تصحیح متن کامل</option>
+        <option value="correct_subtitles">🎬 تصحیح زیرنویس (SRT)</option>
+      </select>
+    </div>
+    <div><label>مدل (از LiteLLM)</label>
+      <select id="llm-model-sel"></select>
+      <button class="btn small" type="button" onclick="llmDiscoverModels()" style="margin-top:4px">🔍 کشف خودکار مدل‌ها</button>
+    </div>
+    <div><label>پرامپت (تعریف جاب از پرامپت)</label>
+      <select id="llm-prompt-sel"></select>
+    </div>
+    <div style="max-width:120px"><label>تعداد (limit)</label><input id="llm-limit" class="mono" type="number" value="10"></div>
+    <div><label>session idها (اختیاری)</label><input id="llm-ids" class="mono" placeholder="مثال 5741,5742"></div>
+  </div>
+  <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    <label style="display:flex;align-items:center;gap:5px"><input type="checkbox" id="llm-all"> تکراری‌ها را هم دوباره (default: فقط جدید)</label>
+    <button class="btn primary" onclick="llmStartRun()">▶️ اجرای جاب</button>
+    <span class="small" id="llm-run-status"></span>
+  </div>
+  <details style="margin-top:10px"><summary>ویرایش / تعریف پرامپت (مستر‌پرامپت پیش‌فرض هر phase)</summary>
+    <div class="row" style="margin-top:8px">
+      <div><label>phase</label>
+        <select id="llm-edit-job">
+          <option value="summary">🧾 خلاصه‌نویسی</option>
+          <option value="correct_text">✍️ تصحیح متن کامل</option>
+          <option value="correct_subtitles">🎬 تصحیح زیرنویس (SRT)</option>
+        </select>
+      </div>
+      <div><label>پرامپت پایه (از لیست)</label><select id="llm-edit-prompt-sel"></select></div>
+    </div>
+    <label style="margin-top:6px">نام</label><input id="llm-edit-name">
+    <label>متن پرامپت</label><textarea id="llm-edit-prompt" rows="5" style="width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:7px;padding:8px;font-family:inherit;font-size:13px;direction:rtl"></textarea>
+    <div style="margin-top:8px;display:flex;gap:8px">
+      <label style="display:flex;align-items:center;gap:5px"><input type="checkbox" id="llm-edit-default"> پیش‌فرض این phase</label>
+      <button class="btn primary" onclick="llmSavePrompt()">ذخیره پرامپت</button>
+    </div>
+  </details>
+</div>
+<div class="grid cols-2">
+  <div class="card">
+    <h3>اجراهای اخیر 📊</h3>
+    <div id="llm-runs" class="small">در حال بارگذاری…</div>
+    <h3 style="margin-top:14px">خروجی‌های اخیر (1→N) 📦</h3>
+    <div style="max-height:260px;overflow:auto">
+      <table id="llm-outputs"><thead><tr><th>جلسه</th><th>phase</th><th>مدل</th><th>وضعیت</th></tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+  <div class="card">
+    <h3>گزارش کیفیت — قبل / بعد 🔎 <span id="llm-report-file" class="small"></span></h3>
+    <div id="llm-report" class="small" style="white-space:pre-wrap;direction:rtl;line-height:1.7">در حال بارگذاری…</div>
+  </div>
+</div>
+
 <p class="small" style="margin:26px 0 40px">بروز خودکار هر ۳۰ ثانیه — <a href="/health">/health</a> · <a href="/metrics">/metrics</a> (Prometheus)</p>
 </main>
 
@@ -391,8 +452,103 @@ async function delLlmModel(){
   if(r.ok)loadLlm();
 }
 
+/* ------------------------- LLM jobs ------------------------- */
+let _llmPrompts=[];
+function _llmFillSelect(sel,opts,def){sel.innerHTML=opts.map(o=>`<option value="${o.value}" ${o.value===def?"selected":""}>${o.label}</option>`).join("");}
+function _llmPromptOptions(job){
+  const list=_llmPrompts.filter(p=>job==="full_text"?true:p.job_type===job);
+  return list.map(p=>({value:String(p.id),label:(p.is_default?"★ ":"")+esc(p.name)}));
+}
+async function llmDiscoverModels(){
+  $("#llm-model-sel").innerHTML='<option value="">در حال کشف…</option>';
+  const r=await api("/api/llm/models");
+  if(r.ok){
+    const ids=(r.models||[]).map(m=>m.id);
+    if(ids.length)_llmFillSelect($("#llm-model-sel"),ids.map(i=>({value:i,label:i+(r.chat&&r.chat.includes(i)?"":" (non-chat)")})), ids.find(i=>i==="qwen38-nothinking")||ids[0]);
+    else $("#llm-model-sel").innerHTML='<option value="">مدلی یافت نشد</option>';
+    flash("کشف شد: "+ids.length+" مدل","ok");
+  }else{flash("کشف خطا: "+(r.error||""),false);loadLlmJobDefaults();}
+}
+function loadLlmJobDefaults(){ // seed the model select from LiteLLM list if empty
+  const sel=$("#llm-model-sel");
+  if(sel.options.length<=1){
+    api("/api/litellm/models").then(m=>{
+      if(m.ok&&m.models.length)_llmFillSelect(sel,m.models.map(i=>({value:i,label:i})),m.models.includes("qwen38-nothinking")?"qwen38-nothinking":m.models[0]);
+    }).catch(()=>{});
+  }
+}
+async function loadLlmPrompts(){
+  const r=await api("/api/llm/prompts");
+  if(!r.ok)return;
+  _llmPrompts=r.prompts||[];
+  _llmFillSelect($("#llm-prompt-sel"),_llmPromptOptions($("#llm-job").value));
+  _llmFillSelect($("#llm-edit-prompt-sel"),_llmPromptOptions($("#llm-edit-job").value));
+  // default the edit form to the selected job's default prompt
+  const ej=$("#llm-edit-job").value;
+  const def=_llmPrompts.find(p=>p.job_type===ej&&p.is_default)||_llmPrompts.find(p=>p.job_type===ej);
+  if(def){$("#llm-edit-name").value=def.name;$("#llm-edit-prompt").value=def.prompt;$("#llm-edit-default").checked=!!def.is_default;}
+}
+function _llmPromptId(){return $("#llm-prompt-sel")?parseInt($("#llm-prompt-sel").value||"0",10)||null:null;}
+async function llmStartRun(){
+  const job=$("#llm-job").value;
+  const model=$("#llm-model-sel").value;
+  if(job!=="full_text"&&!model){flash("مدل را انتخاب کنید (یا «کشف خودکار» را بزنید)",false);return;}
+  const ids=($("#llm-ids").value||"").split(",").map(x=>x.trim()).filter(Boolean);
+  const body={job_type:job,model:job==="full_text"?"(بدون‌مدل)":model,limit:parseInt($("#llm-limit").value||"10",10),all:$("#llm-all").checked};
+  const pid=_llmPromptId(); if(pid)body.prompt_id=pid;
+  if(ids.length)body.ids=ids;
+  $("#llm-run-status").textContent="در حال آغاز…";
+  const r=await api("/api/llm/run",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  if(r.ok){$("#llm-run-status").textContent="جاب آغاز شد ✓ — پیگیری در «اجراهای اخیر»";flash("جاب LLM آغاز شد",true);setTimeout(loadLlmRuns,1500);}
+  else{$("#llm-run-status").textContent="خطا: "+(r.detail||r.error||"");}
+}
+async function loadLlmRuns(){
+  const r=await api("/api/llm/runs");
+  const el=$("#llm-runs");
+  if(!r.ok){el.textContent="—";return;}
+  const runs=(r.runs||[]).map(([h,v])=>[h,v]);
+  if(!runs.length){el.textContent="هنوز جابی اجرا نشده.";return;}
+  el.innerHTML=runs.map(([h,v])=>`<div style="padding:4px 0;border-bottom:1px solid var(--line)">
+    <span class="pill ${v.status==="running"?"run":v.status==="done"?"ok":"bad"}">${v.status}</span>
+    <b>${esc(v.label)}</b> · <span class="mono">${esc(v.model)}</span><br>
+    <span class="small">${esc(v.detail||"")} — <span class="mono">${esc(v.started_at||"")}</span>${v.finished_at?` → <span class="mono">${esc(v.finished_at)}</span>`:""}</span>
+  </div>`).join("");
+}
+async function loadLlmOutputs(){
+  const r=await api("/api/llm/outputs");
+  if(!r.ok)return;
+  $("#llm-outputs tbody").innerHTML=(r.outputs||[]).map(o=>`<tr>
+    <td class="mono">${o.session_id}<div class="small" style="font-size:10px">${esc((o.filename||"").slice(0,26))}</div></td>
+    <td>${esc(_llmJobTypes[o.job_type]||o.job_type)}</td>
+    <td class="mono" style="font-size:11px">${esc(o.model)}</td>
+    <td><span class="pill ${o.status==="done"?"ok":"bad"}">${o.status}</span></td></tr>`).join("")||'<tr><td colspan="4" class="small">—</td></tr>';
+}
+const _llmJobTypes={full_text:"📝 متن کامل",summary:"🧾 خلاصه",correct_text:"✍️ تصحیح متن",correct_subtitles:"🎬 تصحیح SRT"};
+async function loadLlmReport(){
+  const r=await api("/api/llm/report?n=1");
+  const el=$("#llm-report");
+  if(!r.ok||!r.items||!r.items.length){el.textContent="هنوز خروجی کامل (خلاصه + تصحیح) برای نمایش نیست — یک جاب را اجرا کنید.";return;}
+  const it=r.items[0];
+  el.textContent=
+    `📄 ${it.filename||"جلسه "+it.session_id}  (مدل: ${it.model})\n`+
+    `\n── 🎙 متن کامل (از whisper) ──\n${(it.original||"").slice(0,600)}\n`+
+    `\n── 🧾 خلاصه (LLM) ──\n${it.summary||"(ناموجود)"}\n`+
+    `\n── ✍️ متن کامل تصحیح‌شده (LLM) ──\n${(it.correct_text||"").slice(0,600)}\n`;
+  $("#llm-report-file").textContent= it.filename? `· <a href="/downloads/cleaned/${it.filename.replace(/\.\w+$/,"").replace(/\.full$/,"")}.full.txt" target="_blank">📝 متن کامل</a> · <a href="/downloads/cleaned/${it.filename.replace(/\.\w+$/,"")}.correct.txt" target="_blank">✍️ تصحیح‌شده</a> · <a href="/downloads/cleaned/${it.filename.replace(/\.\w+$/,"")}.summary.txt" target="_blank">🧾 خلاصه</a>`:"";
+}
+function llmSavePrompt(){
+  const job=$("#llm-edit-job").value;
+  const body={job_type:job,name:$("#llm-edit-name").value.trim(),prompt:$("#llm-edit-prompt").value.trim(),is_default:$("#llm-edit-default").checked};
+  const pid=parseInt($("#llm-edit-prompt-sel").value||"0",10); if(pid)body.id=pid;
+  api("/api/llm/prompts",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)})
+    .then(r=>{flash2(r.ok?"پرامپت ذخیره شد":"خطا: "+(r.detail||r.error||""),r.ok);if(r.ok)loadLlmPrompts();})
+    .catch(e=>flash2("خطا: "+e,false));
+}
+$("#llm-job").addEventListener("change",()=>{const d=_llmPrompts.find(p=>p.job_type===$("#llm-job").value&&p.is_default);_llmFillSelect($("#llm-prompt-sel"),_llmPromptOptions($("#llm-job").value),d?String(d.id):null);});
+$("#llm-edit-job").addEventListener("change",()=>{const opts=_llmPromptOptions($("#llm-edit-job").value);_llmFillSelect($("#llm-edit-prompt-sel"),opts.length?opts:[{value:"",label:"(پیش‌فرض این phase)"}]);const d=_llmPrompts.find(p=>p.job_type===$("#llm-edit-job").value&&p.is_default)||_llmPrompts.find(p=>p.job_type===$("#llm-edit-job").value);if(d){$("#llm-edit-name").value=d.name;$("#llm-edit-prompt").value=d.prompt;$("#llm-edit-default").checked=!!d.is_default;}});
+
 async function refresh(){
-  try{await Promise.all([loadHealth(),loadJobs(),loadWindow()]);}catch(e){console.error(e);}
+  try{await Promise.all([loadHealth(),loadJobs(),loadWindow(),loadLlmRuns(),loadLlmOutputs(),loadLlmReport()]);}catch(e){console.error(e);}
 }
 function blkRow(b){return `<div class="row" style="align-items:flex-end;gap:8px;margin-bottom:8px">
   <div style="flex:2"><label>نام سانس</label><input class="mono" data-bname value="${esc(b.name||'')}"></div>
@@ -494,7 +650,8 @@ async function init(){
     const el=$("#flash");el.innerHTML="برای نمایش داده‌ها به <b>توکن داشبورد</b> نیاز است — دوباره «توکن داشبورد» را بزنید و وارد کنید.";el.className="flash err";
     return;
   }
-  await Promise.all([refresh(),loadSettings(),loadLlm()]);
+  await Promise.all([refresh(),loadSettings(),loadLlm(),loadLlmPrompts()]);
+  loadLlmJobDefaults();
   setInterval(refresh,30000);
 }
 init();

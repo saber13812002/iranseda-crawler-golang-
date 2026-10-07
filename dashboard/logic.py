@@ -843,3 +843,206 @@ def system_health():
         if len(p) >= 2:
             h["containers"][p[0]] = p[1].strip()
     return h
+
+
+# --------------------------------------------------------------------------
+# LLM post-processing jobs
+#   full_text / summary / correct_text / correct_subtitles — each a separate
+#   phase + job + output (files under downloads/cleaned/ AND rows in llm_output).
+#   Prompts live in the DB (prompts table, one default per job_type).
+#   All heavy lifting is in llm_jobs.py (imported lazily, same venv).
+# --------------------------------------------------------------------------
+
+LLM_JOB_TYPES = ["full_text", "summary", "correct_text", "correct_subtitles"]
+_LLM_JOB_LABELS = {
+    "full_text": "متن کامل (حذف تایم‌کد)",
+    "summary": "خلاصه‌نویسی",
+    "correct_text": "تصحیح متن کامل",
+    "correct_subtitles": "تصحیح زیرنویس (SRT)",
+}
+
+_LLM_MOD = None
+_llm_run_state = {}
+_llm_run_lock = threading.Lock()
+
+
+def _now_iso():
+    from datetime import datetime
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+def _llm():
+    """Lazily import llm_jobs (sibling module, same dashboard/ dir + venv)."""
+    global _LLM_MOD
+    if _LLM_MOD is None:
+        import sys
+        if BASE_DIR not in sys.path:
+            sys.path.insert(0, BASE_DIR)
+        import llm_jobs
+        _LLM_MOD = llm_jobs
+    return _LLM_MOD
+
+
+def llm_discover_models():
+    """Auto-discovery: read the LiteLLM proxy's /v1/models."""
+    try:
+        return _llm().discover_models()
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": str(e)[:300]}
+
+
+def llm_prompts():
+    conn = _llm()._db_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, slug, job_type, name, prompt, is_default, created_at "
+                "FROM prompts ORDER BY job_type, is_default DESC, id")
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+    return {"ok": True, "prompts": rows, "job_types": LLM_JOB_TYPES, "labels": _LLM_JOB_LABELS}
+
+
+def llm_save_prompt(payload):
+    """payload: {id?, job_type, name, prompt, is_default?} — update if id, else insert."""
+    job = (payload.get("job_type") or "").strip()
+    if job not in LLM_JOB_TYPES:
+        raise ValueError("bad job_type")
+    prompt = (payload.get("prompt") or "").strip()
+    if not prompt:
+        raise ValueError("پرامپت خالی است")
+    name = (payload.get("name") or job).strip() or job
+    is_default = 1 if payload.get("is_default") else 0
+    conn = _llm()._db_conn()
+    try:
+        with conn.cursor() as cur:
+            if payload.get("id"):
+                cur.execute("UPDATE prompts SET name=%s, prompt=%s, is_default=%s WHERE id=%s",
+                            (name, prompt, is_default, payload["id"]))
+            else:
+                slug = (payload.get("slug") or "").strip() or f"{job}-{int(time.time())}"
+                cur.execute(
+                    "INSERT INTO prompts (slug, job_type, name, prompt, is_default) "
+                    "VALUES (%s,%s,%s,%s,%s)", (slug, job, name, prompt, is_default))
+        conn.commit()
+    finally:
+        conn.close()
+    return {"ok": True}
+
+
+def llm_set_default_prompt(prompt_id):
+    conn = _llm()._db_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT job_type FROM prompts WHERE id=%s", (prompt_id,))
+            r = cur.fetchone()
+            if not r:
+                raise ValueError("پرامپت یافت نشد")
+            cur.execute("UPDATE prompts SET is_default=0 WHERE job_type=%s", (r["job_type"],))
+            cur.execute("UPDATE prompts SET is_default=1 WHERE id=%s", (prompt_id,))
+        conn.commit()
+    finally:
+        conn.close()
+    return {"ok": True}
+
+
+def llm_delete_prompt(prompt_id):
+    conn = _llm()._db_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT is_default FROM prompts WHERE id=%s", (prompt_id,))
+            r = cur.fetchone()
+            if r and r["is_default"]:
+                raise ValueError("پرامپت پیش‌فرض حذف نمی‌شود؛ ابتدا دیگری را پیش‌فرض کنید")
+            cur.execute("DELETE FROM prompts WHERE id=%s", (prompt_id,))
+        conn.commit()
+    finally:
+        conn.close()
+    return {"ok": True}
+
+
+def llm_run(payload):
+    """Start a job batch in a background thread (define-a-job-from-prompt).
+    payload: {job_type, model?, prompt_id?, prompt?, limit?, ids?[], all?}."""
+    job = (payload.get("job_type") or "").strip()
+    if job not in LLM_JOB_TYPES:
+        raise ValueError("bad job_type")
+    model = (payload.get("model") or "qwen38-nothinking").strip()
+    prompt_text = None
+    if payload.get("prompt"):
+        prompt_text = payload["prompt"].strip()
+    elif payload.get("prompt_id"):
+        conn = _llm()._db_conn()
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SELECT prompt FROM prompts WHERE id=%s", (payload["prompt_id"],))
+                r = cur.fetchone()
+            prompt_text = r["prompt"] if r else None
+        finally:
+            conn.close()
+    limit = int(payload.get("limit") or 10)
+    ids = payload.get("ids") or None
+    if ids:
+        ids = [int(x) for x in ids]
+    all_flag = bool(payload.get("all"))
+    handle = f"{job}-{int(time.time())}"
+    with _llm_run_lock:
+        _llm_run_state[handle] = {
+            "job_type": job, "label": _LLM_JOB_LABELS.get(job, job), "model": model,
+            "status": "running", "started_at": _now_iso(), "detail": "در صف", "result": None,
+        }
+
+    def _work():
+        with _llm_run_lock:
+            _llm_run_state[handle]["detail"] = "شروع شد"
+        try:
+            res = _llm().run_batch(job, model=model, prompt_text=prompt_text,
+                                   limit=None if ids else limit, session_ids=ids,
+                                   only_new=not all_flag)
+            with _llm_run_lock:
+                _llm_run_state[handle].update(
+                    {"status": "done", "finished_at": _now_iso(), "result": res,
+                     "detail": f"{res.get('done',0)} انجام شد، {res.get('failed',0)} خطا"})
+        except Exception as e:  # noqa: BLE001
+            with _llm_run_lock:
+                _llm_run_state[handle].update(
+                    {"status": "error", "finished_at": _now_iso(), "detail": str(e)[:300]})
+
+    run_in_thread(_work)
+    return {"ok": True, "handle": handle}
+
+
+def llm_runs(limit=8):
+    with _llm_run_lock:
+        items = sorted(_llm_run_state.items(),
+                       key=lambda kv: kv[1].get("started_at", ""), reverse=True)
+    return {"ok": True, "runs": items[:limit]}
+
+
+def llm_outputs(limit=30):
+    conn = _llm()._db_conn()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT o.session_id, s.filename, o.job_type, o.model, o.status, o.error, "
+                "o.input_tokens, o.output_tokens, o.finished_at, o.file_relpath "
+                "FROM llm_output o LEFT JOIN radio_program_sessions s ON s.id=o.session_id "
+                "ORDER BY o.id DESC LIMIT %s", (limit,))
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+    for r in rows:
+        r["input_tokens"] = r.get("input_tokens") or 0
+        r["output_tokens"] = r.get("output_tokens") or 0
+        if r.get("error") is None:
+            r["error"] = ""
+    return {"ok": True, "outputs": rows}
+
+
+def llm_report(n=1):
+    try:
+        items = _llm().report(n)
+        return {"ok": True, "items": items, "markdown": _llm().report_markdown(items)}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": str(e)[:300]}

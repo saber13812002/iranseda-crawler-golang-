@@ -29,6 +29,15 @@ Endpoints:
   - `GET /api/litellm/models`   list models
   - `POST /api/litellm/models`  add a model
   - `DELETE /api/litellm/models/{name}`  delete a model
+  - `GET  /api/llm/models`      auto-discover models from LiteLLM /v1/models
+  - `GET  /api/llm/prompts`     list prompts (per job_type, with defaults)
+  - `POST /api/llm/prompts`     create / update a prompt
+  - `POST /api/llm/prompts/{id}/default`  make a prompt the job default
+  - `DELETE /api/llm/prompts/{id}`       delete a prompt
+  - `POST /api/llm/run`          start a job batch (job_type/model/prompt/limit/ids)
+  - `GET  /api/llm/runs`         recent job runs (in-process)
+  - `GET  /api/llm/outputs`      recent llm_output rows (1:many)
+  - `GET  /api/llm/report`       before/after quality report for a session
 
 Auth: every route EXCEPT /, /health and /metrics requires `Authorization:
 Bearer <DASH_AUTH_TOKEN>` (header or ?token=*** When DASH_AUTH_TOKEN is
@@ -301,6 +310,77 @@ async def api_litellm_add(request: Request):
 @app.delete("/api/litellm/models/{model_name}")
 def api_litellm_delete(model_name: str, model_id: str = ""):
     return logic.litellm_delete_model(model_name, model_id)
+
+
+# ---------------------------------------------------------------------------
+# LLM post-processing jobs (full_text / summary / correct_text / correct_subtitles)
+# ---------------------------------------------------------------------------
+
+@app.get("/api/llm/models")
+def api_llm_discover():
+    return logic.llm_discover_models()
+
+
+@app.get("/api/llm/prompts")
+def api_llm_prompts():
+    return logic.llm_prompts()
+
+
+@app.post("/api/llm/prompts")
+async def api_llm_save_prompt(request: Request):
+    body = await request.json()
+    try:
+        return logic.llm_save_prompt(body)
+    except ValueError as e:
+        raise HTTPException(400, detail=str(e))
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(500, detail=str(e)[:300])
+
+
+@app.post("/api/llm/prompts/{prompt_id}/default")
+def api_llm_set_default(prompt_id: int):
+    try:
+        return logic.llm_set_default_prompt(prompt_id)
+    except ValueError as e:
+        raise HTTPException(400, detail=str(e))
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(500, detail=str(e)[:300])
+
+
+@app.delete("/api/llm/prompts/{prompt_id}")
+def api_llm_delete_prompt(prompt_id: int):
+    try:
+        return logic.llm_delete_prompt(prompt_id)
+    except ValueError as e:
+        raise HTTPException(400, detail=str(e))
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(500, detail=str(e)[:300])
+
+
+@app.post("/api/llm/run")
+async def api_llm_run(request: Request):
+    body = await request.json()
+    try:
+        return logic.llm_run(body)
+    except ValueError as e:
+        raise HTTPException(400, detail=str(e))
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(500, detail=str(e)[:300])
+
+
+@app.get("/api/llm/runs")
+def api_llm_runs():
+    return logic.llm_runs()
+
+
+@app.get("/api/llm/outputs")
+def api_llm_outputs():
+    return logic.llm_outputs()
+
+
+@app.get("/api/llm/report")
+def api_llm_report(n: int = 1):
+    return logic.llm_report(n)
 
 
 @app.on_event("startup")
