@@ -242,18 +242,17 @@ def get_latest_cleaned_files(limit=10):
         ".correct.srt": "✨ زیرنویس تصحیح‌شده",
         ".full.txt": "📖 متن کامل",
     }
-    for pattern in ("*.summary.txt", "*.summary.en.txt", "*.correct.txt", "*.correct.srt", "*.full.txt"):
-        for f in cleaned_dir.glob(pattern):
+    for suffix, label in suffix_type.items():
+        for f in cleaned_dir.glob("*" + suffix):
             try:
                 if f.name.endswith('.ffmpeg.failed'):
                     continue
-                tail = f.name[-len(pattern):]  # e.g. ".summary.txt"
                 file_info.append({
                     'file': f,
                     'name': f.name,
                     'mod_time': datetime.fromtimestamp(f.stat().st_mtime),
                     'size': f.stat().st_size,
-                    'type': suffix_type.get(tail, ""),
+                    'type': label,
                 })
             except:
                 continue
@@ -293,6 +292,7 @@ def get_latest_cleaned_files(limit=10):
                     'time': f"{hour}:{minute}",
                     'mod_time': info['mod_time'],
                     'size': info['size'],
+                    'type': info['type'],
                     'raw_url': config.get_github_raw_url(f"downloads/cleaned/{filename}")
                 })
             except:
@@ -304,6 +304,7 @@ def get_latest_cleaned_files(limit=10):
                     'time': info['mod_time'].strftime("%H:%M"),
                     'mod_time': info['mod_time'],
                     'size': info['size'],
+                    'type': info['type'],
                     'raw_url': config.get_github_raw_url(f"downloads/cleaned/{filename}")
                 })
     
