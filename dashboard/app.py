@@ -51,6 +51,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
 from fastapi.templating import Jinja2Templates
 
 import logic
+import boost
 
 app = FastAPI(title="iranseda dashboard")
 templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "templates"))
@@ -195,6 +196,30 @@ def metrics():
             g("iranseda_program_episodes", c.get("episodes", 0), "Episodes per program", labels=label)
             g("iranseda_program_subtitled", c.get("subtitled", 0), "Subtitled episodes per program", labels=label)
             g("iranseda_program_fulltext", c.get("fulltext", 0), "Full-text outputs per program", labels=label)
+    # Boost / idle-GPU controller state (mode, workers, load, backlog)
+    try:
+        bs = boost.status()
+        last = bs.get("last") or {}
+        g("iranseda_boost_mode", {"NORMAL": 0, "BOOST": 1, "PAUSED": 2}.get((bs.get("boost") or {}).get("mode", "NORMAL"), 0),
+          "Boost controller mode (0 NORMAL / 1 BOOST / 2 PAUSED)")
+        g("iranseda_boost_enabled", 1 if (bs.get("boost") or {}).get("enabled") else 0, "Boost scheduler enabled")
+        g("iranseda_boost_active_workers", bs.get("active", 0), "Running boost LLM shard workers")
+        g("iranseda_boost_target_workers", last.get("target", 0), "Boost worker target after auto-throttle")
+        g("iranseda_boost_throttled", 1 if last.get("throttled") else 0, "Boost is being throttled by load (1/0)")
+        g("iranseda_boost_skipping", 1 if last.get("skipping") else 0, "Boost withheld by the interactive-traffic guard (1/0)")
+        g("iranseda_boost_load_level", last.get("level", -1), "Load level (-1 n/a, 0 LOW, 1 MEDIUM, 2 HIGH, 3 CRITICAL)")
+        g("iranseda_boost_job_backlog", bs.get("backlog", 0), "Remaining files for the boost job")
+        load = last.get("load") or {}
+        if load.get("ok"):
+            g("iranseda_boost_model_running", load.get("vllm_running", 0) + load.get("sglang_running", 0),
+              "Requests running on the boost model (incl. our workers)")
+            g("iranseda_boost_model_waiting", load.get("vllm_waiting", 0) + load.get("sglang_queue", 0),
+              "Requests waiting/queued on the boost model")
+            g("iranseda_boost_gpu_util_max", max(load.get("gpu0_util", 0), load.get("gpu1_util", 0)),
+              "Max SM utilisation across the H100s (0-1)")
+            g("iranseda_boost_sglang_token_usage", load.get("sglang_token", 0), "sglang KV token usage (0-1)")
+    except Exception:  # noqa: BLE001
+        pass
     # site
     g("iranseda_site_reachable", 1 if h.get("site", {}).get("reachable") else 0, "radio.iranseda.ir reachable (1) or not (0)")
     # disk
@@ -329,6 +354,46 @@ def api_worker(action: str):
 
 
 # ---------------------------------------------------------------------------
+# night / holiday GPU-boost controller (NORMAL / BOOST / PAUSED)
+# ---------------------------------------------------------------------------
+
+@app.get("/api/boost")
+def api_boost_status():
+    return {"ok": True, "boost": boost.status()}
+
+
+@app.put("/api/boost")
+async def api_boost_set(request: Request):
+    body = await request.json()
+    try:
+        return {"ok": True, "boost": boost.set_boost(body)}
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(400, detail=str(e)[:300])
+
+
+@app.post("/api/boost/{action}")
+def api_boost_action(action: str):
+    """action: start | stop | normal | pause | emergency_stop"""
+    try:
+        if action == "start":
+            return {"ok": True, "boost": boost.start()}
+        if action == "normal":
+            return {"ok": True, "boost": boost.normal()}
+        if action == "pause":
+            return {"ok": True, "boost": boost.pause()}
+        if action == "stop":
+            # stop = pause (reversible); the aggressive kill is emergency_stop
+            return {"ok": True, "boost": boost.pause()}
+        if action == "emergency_stop":
+            return {"ok": True, "boost": boost.stop_all()}
+        raise ValueError("unknown boost action: %s" % action)
+    except ValueError as e:
+        raise HTTPException(400, detail=str(e))
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(500, detail=str(e)[:300])
+
+
+# ---------------------------------------------------------------------------
 # LiteLLM
 # ---------------------------------------------------------------------------
 
@@ -432,6 +497,7 @@ def api_llm_report(n: int = 1):
 def _startup():
     logic.run_in_thread(_warm)
     logic.start_gate_loop()
+    boost.ensure_started()
 
 
 def _warm():
