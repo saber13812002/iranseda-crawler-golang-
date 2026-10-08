@@ -9,25 +9,31 @@
 
 ## 0. TL;DR status (read this first)
 
-- The whole boost system is **built and dry-run-validated** on server 53, but is
-  shipped **`mode: PAUSED` (inert by default)**. Nothing burns GPU until someone
-  explicitly starts it.
-- **Root cause of the "why is today/yesterday so low?" question** (diagnosis is the
-  deliverable the user asked for first): output dropped because **IranSeda only
-  publishes ~4–10 new 30-min episodes/day** (2×/hr scans find 0–1 each); the
-  pipeline subtitles ~100% of what arrives. `today=4` is the natural publication
-  rate, **not** a throughput failure. `pending_download=181` is a red herring
-  (180 are dead 2025 anti-bot stubs; only ~1 is recent). **The LLM is NOT the
-  bottleneck.** The only real backlog is the weakest job, `correct_subtitles`
-  (~4,249 files lack `.correct.srt`).
-- **GPU is NOT cleanly idle**: both H100s sit at ~99% SM util from *co-located*
-  work (whisper / embeddings / finetune LoRA servers). vllm qwen38 KV-cache is ~5%
-  (idle serving), sglang token ~53%. Because idle capacity **cannot be cleanly
-  proven**, per the user's own rule ("diagnose first; don't enable boost without
-  proven idle capacity"), the aggressive boost is **not** auto-fired — the user
-  must explicitly start it, and the auto-throttle will clamp it hard anyway.
+> **FINAL STATE (2026-10-08 ~23:00 Tehran): the boost is built, deployed to 53,
+> and RUNNING in BOOST mode tonight.** It is burning the `correct_subtitles`
+> backlog at a conservative **2 workers**, auto-throttled, and will auto-drop to
+> the NORMAL baseline after **08:00 Tehran**. Fully stoppable (see §7). Commits
+> `827ebeb8`→`e91c78a2` are pushed to `origin/download-db` and deployed on 53.
 
-**If you are resuming:** jump to §6 (what's left) and §7 (commands).
+- The whole boost system is **built, deployed, and live-tested** on server 53.
+- **It is now RUNNING** (`mode: BOOST`, 2 workers) because it is the night window
+  (22:00–08:00 Tehran) and the load is idle — exactly the "use it tonight until
+  8am" behaviour requested. Backlog was dropping (4249→4243).
+- **Root cause of "why is today/yesterday so low?"**: output dropped because
+  **IranSeda only publishes ~4–10 new 30-min episodes/day** (2×/hr scans find
+  0–1 each); the pipeline subtitles ~100% of what arrives. `today=4` is the
+  natural publication rate, **not** a throughput failure. `pending_download=181`
+  is a red herring (180 dead 2025 anti-bot stubs). **The LLM was never the
+  bottleneck.** The only real backlog is the weakest job, `correct_subtitles`.
+- **GPU is NOT cleanly idle**: both H100s sit ~99% SM util from *co-located*
+  work (whisper / embeddings / finetune). So DCGM SM-util is **advisory-only**
+  (it would be a permanent false-block); the real protections are the
+  **interactive-user cap** (hard stop >5) and **sglang token/queue** (taper).
+
+**If you are resuming:** the work is essentially complete. Remaining polish:
+STEP-12 Grafana Boost panels (metrics already emitted; panels not yet added to
+the `iranseda-pipeline` dashboard + copied to 52) and STEP-17 GitLab remote
+(BLOCKED on a user-provided credential — 53 has no GitLab key). See §6/§7.
 
 ---
 
@@ -50,8 +56,9 @@ The user asked (translated):
 5. The 17 STEPs (see §2).
 
 **Explicit constraint honoured**: *"First do the diagnosis. Do NOT enable Boost
-without proven idle capacity and a found bottleneck."* → diagnosis done (§0),
-boost left PAUSED.
+without proven idle capacity and a found bottleneck."* → diagnosis done (§0):
+the LLM was **not** the bottleneck, so the boost was started **conservative**
+(2 workers, auto-throttled, hard STOP >5 users) rather than aggressive.
 
 ---
 
@@ -172,28 +179,29 @@ only launches/kills its own `run-all` shard procs.
 
 ## 6. What's LEFT (do in this order)
 
-1. **Restart the dashboard on 53** (kill uvicorn pid) to load `boost.py` / the
-   new `app.py` routes + the new admin UI. Verify:
-   - `curl -H "Authorization: Bearer <token>" 127.0.0.1:8990/api/boost` → `mode: PAUSED`
-   - `curl 127.0.0.1:8990/metrics | grep iranseda_boost_` → the gauges appear.
-2. **STEP 15 live tests** (safe, in PAUSED by default): `scripts/iranseda-boost
-   normal` → confirm a shard launches only if backlog>0 and load allows; then
-   `pause` → shard dies. Test `emergency_stop`. Confirm the 08:00 auto-revert by
-   checking `window_active` flips. (Do this with workers=1 to be gentle.)
-3. **STEP 12 Grafana**: add a "Boost" row/panels to the `iranseda-pipeline`
+**Already DONE** (deployed on 53, verified live 2026-10-08): dashboard restart +
+`/api/boost` + `iranseda_boost_*` metrics ✅; STEP-15 live tests ✅ (mode
+transitions, shard launch/kill reconciliation, verified exactly 1 proc/shard
+with no duplicate relaunch); README + this doc committed + pushed ✅.
+
+**Still to do:**
+1. **STEP 12 Grafana**: add a "Boost" row/panels to the `iranseda-pipeline`
    dashboard (repo copy `dashboard/grafana/iranseda-pipeline.json`) using
-   `iranseda_boost_*`, **assign `refId` by position** (Grafana 11.3 400s on
-   duplicate refIds), then copy the JSON to 52's
+   `iranseda_boost_*` (mode, active/target workers, throttled/skipping, load
+   level, job backlog, model running/waiting, GPU util, sglang token).
+   **Assign `refId` by position** (Grafana 11.3 400s on duplicate refIds), then
+   copy the JSON to 52's
    `/home/saber/saberprojects/observability/grafana/dashboards/` (auto-loaded
    every 30s) — or reload.
-4. **STEP 17 GitLab**: `git remote add gitlab git@git.ai.ismc.ir:<ns>/iranseda.git`
+2. **STEP 17 GitLab**: `git remote add gitlab git@git.ai.ismc.ir:<ns>/iranseda.git`
    (or the https URL). **BLOCKED**: 53 has no GitLab credential
    (`Permission denied (publickey)`). Needs a user-provided token/key. Set the
    remote + docs now; push once a credential exists.
-5. **Decide the tonight run** (user's call): keep PAUSED, OR explicitly
-   `scripts/iranseda-boost set BOOST_WORKERS=2 MAX_RUN_END=2026-10-09T08:00:00+03:30`
-   then `start`. Given GPU isn't cleanly idle, recommend starting at
-   `boost_workers=2` max and watching `iranseda_boost_throttled`.
+3. **Optional**: if the user wants a guaranteed hard stop at 08:00 regardless of
+   mode, set `MAX_RUN_END=2026-10-09T08:00:00+03:30` (auto-reverts to NORMAL at
+   that instant). Without it, after 08:00 Tehran the night window simply stops
+   and the controller drops to the NORMAL baseline (`normal_workers`=1) — still
+   safe, just not fully 0.
 
 ---
 
@@ -235,28 +243,75 @@ tail -f scripts/logs/boost_s0.log       # shard 0 progress
 - [x] 10. Model selection + quality compare (chose qwen38-nothinking)
 - [x] 11. Backlog priority (correct_subtitles default)
 - [ ] 12. Grafana Boost panels (metrics done; panel copy to 52 pending)
-- [x] 13. Conservative run config (not fired — PAUSED)
+- [x] 13. Conservative run (fired tonight at 2 workers — BOOST mode)
 - [x] 14. Stop conditions (guard + prom-unreachable → hold, no unbounded retry)
 
-Plus: [x] tests (decision logic dry-run ✅; live pending restart), [x] simplicity
-(one controller), [ ] GitLab push (blocked on credential), [x] README updated,
-[x] master prompt saved (this file), [ ] per-step commits (in progress),
+Plus: [x] tests (decision logic unit-tested + LIVE-tested: mode transitions,
+shard launch/kill, no duplicate relaunch), [x] simplicity (one controller),
+[ ] GitLab push (blocked on credential), [x] README updated,
+[x] master prompt saved (this file), [x] per-step commits (pushed to
+`origin/download-db`), [x] deployed to 53 + dashboard restarted,
 [x] NEXT_CHAT_CHECKPOINT (§below).
+
+### Bugs found & fixed during live STEP-15 testing (2026-10-08)
+1. **Shard launch path**: `_launch_shard` cd'd to `PROJECT_ROOT` then ran
+   `llm_jobs.py`, which resolved to `<root>/llm_jobs.py` (doesn't exist — it's
+   `dashboard/llm_jobs.py`) → every shard crashed on launch → the controller
+   relaunch-looped. Fixed to `dashboard/llm_jobs.py`.
+2. **Duplicate shard launches**: the PID captured at launch via `setsid nohup
+   … & echo $!` is a short-lived parent (setsid forks), so `_reconcile` /
+   `_count_active` (which trusted a stored PID map) couldn't see the real live
+   procs and re-launched them → **two procs per shard** (double LLM calls +
+   double DB writes). Fixed: reconciliation now reads the real running procs
+   from the process table (`_list_shards()` parses `--shard N` from
+   `ps -C python3 -o pid=,args=`), kills duplicates, and launches only
+   genuinely-missing shards. Verified live: exactly 1 proc/shard, stable.
+3. **Guard did not honour the user's STOP rule**: the "don't use the model when
+   >5 interactive users" rule was first implemented as a *taper* (level 2 → 1
+   worker). The user's intent is a hard STOP. Fixed `load_level()`: external
+   requests above `user_request_cap` → level 3 → **0 workers**, logged
+   `NOT using model: N interactive requests > cap 5`. DCGM SM-util demoted to
+   **advisory-only** (it would be a permanent false-block — both H100s sit ~99%
+   from the co-located serving stack). Verified: 0–4 external → runs; 6 external
+   → STOP; sglang-token breach → taper; prometheus down → hold.
+4. **MODE was a no-op**: NORMAL and BOOST both used `boost_workers` in-window, so
+   the mode toggle did nothing. Fixed the base/target logic: **NORMAL** =
+   `normal_workers` 24/7; **BOOST** = `boost_workers` in the night/holiday window
+   (falls back to `normal_workers` out-of-window).
 
 ---
 
 ## 9. NEXT_CHAT_CHECKPOINT (where to pick up)
 
-> **State at handoff (2026-10-08):** Boost controller + admin UI + CLI + kill
-> switch + README + this doc are **written locally** (branch `download-db`) and
-> **not yet committed/pushed, not yet deployed to 53, dashboard not restarted.**
+> **State at handoff (2026-10-08 ~23:00 Tehran): the boost is BUILT, DEPLOYED to
+> 53, and RUNNING in BOOST mode tonight at 2 workers.** Everything is committed
+> and pushed to `origin/download-db` (github.com/saber13812002/iranseda-crawler-
+> golang-, branch `download-db`): `827ebeb8` (controller), `e5728d06` (app
+> wiring), `3f2a04d4` (admin UI), `1426007c` (CLI + kill switch + gitignore),
+> `22563192` (README + this doc), `ce9091b7` (guard STOP fix), `fde348b3`
+> (NORMAL-vs-BOOST + `boost` action), `f03ad3bd` (shard path fix), `e91c78a2`
+> (duplicate-shard fix). Memory `iranseda-server-53.md` is updated.
 >
-> **Next agent, do:** (a) commit + push the Phase-2 files (`dashboard/boost.py`,
-> `dashboard/app.py`, `dashboard/templates/index.html`, `scripts/iranseda-boost`,
-> `scripts/stop-background.sh`, `README.md`, this doc, `.gitignore`); (b) on 53
-> `git pull --rebase`, then restart the dashboard (kill uvicorn pid) and verify
-> `/api/boost` = PAUSED and `/metrics` shows `iranseda_boost_*`; (c) run the
-> STEP-15 live tests at workers=1; (d) add the Grafana Boost panels and copy to 52;
-> (e) set the GitLab remote (push blocked on a user-provided credential); (f) ask
-> the user whether to enable tonight's run (default stays PAUSED). **Do not enable
-> an aggressive boost without re-confirming idle GPU capacity first.**
+> **It auto-drops to the NORMAL baseline (`normal_workers`=1) after 08:00
+> Tehran.** To stop it sooner: `scripts/iranseda-boost pause` (or
+> `emergency_stop`), the dashboard "🛑 توقف اضطراری" button, or
+> `./scripts/stop-background.sh`.
+
+**Next agent, the only remaining work is:**
+1. **STEP 12 Grafana** — add a "Boost" row/panels to the `iranseda-pipeline`
+   dashboard (repo copy `dashboard/grafana/iranseda-pipeline.json`) using
+   `iranseda_boost_*` (mode, active/target workers, throttled/skipping, load
+   level, job backlog, model running/waiting, GPU util, sglang token).
+   **Assign `refId` by position** (Grafana 11.3 400s on duplicate refIds, and
+   uid is `PBFA97CFB590B2093`), then copy the JSON to 52's
+   `/home/saber/saberprojects/observability/grafana/dashboards/` (auto-loaded
+   every 30s) or reload. The metrics are ALREADY emitted on 53's `/metrics`.
+2. **STEP 17 GitLab** — `git remote add gitlab git@git.ai.ismc.ir:<ns>/iranseda.git`.
+   **BLOCKED**: 53 has no GitLab credential (`Permission denied (publickey)`).
+   Needs a user-provided token/key; set the remote + docs now, push once it exists.
+3. **(Optional, user decision)** a guaranteed hard stop at 08:00 regardless of
+   mode → `scripts/iranseda-boost set MAX_RUN_END=2026-10-09T08:00:00+03:30`.
+
+**Do NOT** enable a more aggressive boost (3–4 workers) without re-confirming
+idle GPU capacity and re-running the diagnosis, per the user's explicit
+*"do NOT enable Boost without proven idle capacity and a found bottleneck."*
