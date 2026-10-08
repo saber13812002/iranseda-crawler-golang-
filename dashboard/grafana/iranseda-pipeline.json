@@ -44,7 +44,7 @@
         {
           "expr": "iranseda_db_sessions_by_status{status=\"subtitled\"}",
           "legendFormat": "v",
-          "refId": "V"
+          "refId": "A"
         }
       ]
     },
@@ -83,7 +83,7 @@
         {
           "expr": "iranseda_queue_pending_download",
           "legendFormat": "v",
-          "refId": "V"
+          "refId": "A"
         }
       ]
     },
@@ -122,7 +122,7 @@
         {
           "expr": "iranseda_queue_pending_transcribe + iranseda_queue_transcribing",
           "legendFormat": "v",
-          "refId": "V"
+          "refId": "A"
         }
       ]
     },
@@ -161,7 +161,7 @@
         {
           "expr": "iranseda_sessions_created_last_24h",
           "legendFormat": "v",
-          "refId": "V"
+          "refId": "A"
         }
       ]
     },
@@ -210,12 +210,12 @@
         {
           "expr": "increase(iranseda_db_sessions_by_status{status=\"subtitled\"}[1h])",
           "legendFormat": "subtitled /h",
-          "refId": "S"
+          "refId": "A"
         },
         {
           "expr": "iranseda_db_sessions_by_status{status=\"subtitled\"}",
-          "legendFormat": "total (right)",
-          "refId": "T"
+          "legendFormat": "total",
+          "refId": "B"
         }
       ]
     },
@@ -263,19 +263,19 @@
       "targets": [
         {
           "expr": "increase(iranseda_db_total_sessions[1h])",
-          "legendFormat": "new sessions /h",
-          "refId": "N"
+          "legendFormat": "new /h",
+          "refId": "A"
         },
         {
           "expr": "iranseda_sessions_created_last_24h",
           "legendFormat": "new / 24h",
-          "refId": "N"
+          "refId": "B"
         }
       ]
     },
     {
       "type": "timeseries",
-      "title": "⬇️ Download activity  (صف دانلود)",
+      "title": "⬇️ Download activity  (فعالیت دانلود)",
       "gridPos": {
         "h": 8,
         "w": 12,
@@ -318,12 +318,12 @@
         {
           "expr": "iranseda_queue_pending_download",
           "legendFormat": "pending_download",
-          "refId": "P"
+          "refId": "A"
         },
         {
           "expr": "increase(iranseda_db_sessions_by_status{status=\"pending_download\"}[1h]) * -1",
           "legendFormat": "files consumed /h",
-          "refId": "F"
+          "refId": "B"
         }
       ]
     },
@@ -372,17 +372,17 @@
         {
           "expr": "iranseda_queue_transcribing",
           "legendFormat": "transcribing now",
-          "refId": "T"
+          "refId": "A"
         },
         {
           "expr": "iranseda_queue_pending_transcribe",
           "legendFormat": "pending",
-          "refId": "P"
+          "refId": "B"
         },
         {
           "expr": "iranseda_whisper_transcribed_last_5m",
           "legendFormat": "done / 5m",
-          "refId": "D"
+          "refId": "C"
         }
       ]
     },
@@ -430,23 +430,23 @@
       "targets": [
         {
           "expr": "iranseda_llm_full_text",
-          "legendFormat": "📖 full_text",
-          "refId": "📖"
+          "legendFormat": "full_text",
+          "refId": "A"
         },
         {
           "expr": "iranseda_llm_summary_fa",
-          "legendFormat": "🧾 summary FA",
-          "refId": "🧾"
+          "legendFormat": "summary FA",
+          "refId": "B"
         },
         {
           "expr": "iranseda_llm_summary_en",
-          "legendFormat": "🌐 summary EN",
-          "refId": "🌐"
+          "legendFormat": "summary EN",
+          "refId": "C"
         },
         {
           "expr": "iranseda_llm_correct_text",
-          "legendFormat": "✍️ correct_text",
-          "refId": "✍"
+          "legendFormat": "correct_text",
+          "refId": "D"
         }
       ]
     },
@@ -495,12 +495,12 @@
         {
           "expr": "100 * iranseda_llm_full_text / iranseda_llm_total_srt",
           "legendFormat": "full_text %",
-          "refId": "F"
+          "refId": "A"
         },
         {
           "expr": "100 * iranseda_llm_summary_fa / iranseda_llm_total_srt",
           "legendFormat": "summary FA %",
-          "refId": "S"
+          "refId": "B"
         },
         {
           "expr": "100 * iranseda_llm_correct_text / iranseda_llm_total_srt",
@@ -554,17 +554,17 @@
         {
           "expr": "iranseda_llm_db_rows{job=\"summary\"}",
           "legendFormat": "summary",
-          "refId": "S"
+          "refId": "A"
         },
         {
           "expr": "iranseda_llm_db_rows{job=\"correct_text\"}",
           "legendFormat": "correct_text",
-          "refId": "C"
+          "refId": "B"
         },
         {
           "expr": "iranseda_llm_db_rows{job=\"full_text\"}",
           "legendFormat": "full_text",
-          "refId": "F"
+          "refId": "C"
         }
       ]
     },
@@ -613,7 +613,7 @@
         {
           "expr": "iranseda_llm_workers",
           "legendFormat": "shards running",
-          "refId": "S"
+          "refId": "A"
         }
       ]
     },
@@ -662,27 +662,27 @@
         {
           "expr": "iranseda_db_ok",
           "legendFormat": "db",
-          "refId": "D"
+          "refId": "A"
         },
         {
           "expr": "iranseda_dashboard_up",
           "legendFormat": "dashboard",
-          "refId": "D"
+          "refId": "B"
         },
         {
           "expr": "iranseda_site_reachable",
           "legendFormat": "site",
-          "refId": "S"
+          "refId": "C"
         },
         {
           "expr": "sum(iranseda_container_up)",
           "legendFormat": "containers up",
-          "refId": "C"
+          "refId": "D"
         },
         {
           "expr": "iranseda_disk_used_ratio",
           "legendFormat": "disk %",
-          "refId": "D"
+          "refId": "E"
         }
       ]
     }
