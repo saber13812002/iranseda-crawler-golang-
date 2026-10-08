@@ -366,12 +366,36 @@ def job_backlog(job):
 # shard workers
 # ---------------------------------------------------------------------------
 
-def _shard_pid(i):
-    return (load_boost().get("shards") or {}).get(str(i))
+def _list_shards():
+    """Map shard_index -> [pid, ...] for OUR job's LIVE run-all procs, read
+    from the process command lines. This is the source of truth for what is
+    actually running: the PID stored at launch is unreliable, because
+    `setsid nohup ... &` may fork, so the captured `$!` is often a short-lived
+    parent, not the real python pid. Trusting that map caused duplicate
+    launches (two procs for the same shard)."""
+    boost = load_boost()
+    job = boost.get("job", "correct_subtitles")
+    out = {}
+    try:
+        ps = subprocess.run("ps -C python3 -o pid=,args= 2>/dev/null",
+                            shell=True, capture_output=True, text=True, timeout=10).stdout
+    except Exception:  # noqa: BLE001
+        return out
+    for line in ps.splitlines():
+        if "llm_jobs.py" not in line or ("run-all --job %s" % job) not in line:
+            continue
+        parts = line.split()
+        if not parts or not parts[0].isdigit():
+            continue
+        m = re.search(r"--shard\s+(\d+)\s", line)
+        idx = int(m.group(1)) if m else None
+        if idx is not None:
+            out.setdefault(idx, []).append(int(parts[0]))
+    return out
 
 
 def _list_boost_procs():
-    """PIDs of llm_jobs run-all procs for OUR job (safety: only our job)."""
+    """Flat list of PIDs of live run-all procs for OUR job (kill switch)."""
     boost = load_boost()
     job = boost.get("job", "correct_subtitles")
     try:
@@ -423,41 +447,37 @@ def _kill(pid):
         pass
 
 
-def _reconcile(active, shards, job, model, reason):
-    """Launch/kill so that shards {0..active-1} are running (of `shards`)."""
+def _reconcile(target, shards, job, model, reason):
+    """Reconcile so that exactly shards {0..target-1} are running, one proc each.
+    Reads live state from the process table (not a stored PID map), so it
+    self-corrects: it kills any extra/duplicate procs and launches any missing
+    shard. A kill sets hysteresis so a just-killed shard isn't immediately
+    relaunched on the same cycle."""
     global _LAST_LEVEL_CHANGE
-    boost = load_boost()
-    known = {str(i): p for i, p in (boost.get("shards") or {}).items()}
+    live = _list_shards()          # idx -> [pid,...]
     changed = []
-    # kill shards beyond `active`, and any stale tracked pids
-    for i in list(known.keys()):
-        ii = int(i)
-        if ii >= active:
-            _kill(known[i])
-            _LAST_LEVEL_CHANGE[ii] = time.time()   # hysteresis: don't re-launch for 45s
-            changed.append("kill shard %d (%s)" % (ii, reason))
-    # launch missing shards below `active`
-    for i in range(active):
-        pid = known.get(str(i))
-        # is it still alive?
-        alive = False
-        if pid:
-            try:
-                os.kill(int(pid), 0)
-                alive = True
-            except (ProcessLookupError, OSError):
-                alive = False
-        if not alive:
-            # hysteresis: don't flap re-launch within 45s of a kill on this index
-            last = _LAST_LEVEL_CHANGE.get(i, 0)
-            if time.time() - last > 45:
-                npid = _launch_shard(i, shards, job, model)
-                known[str(i)] = npid
-                changed.append("launch shard %d (pid %s)" % (i, npid))
-    boost["shards"] = {k: v for k, v in known.items() if int(k) < active or v}
-    _save_boost(boost)
-    for c in changed:
-        _log(c)
+    # 1) kill anything at index >= target, or duplicates (2nd+ proc of a shard)
+    for idx, pids in list(live.items()):
+        if idx >= target:
+            for pid in pids:
+                _kill(pid)
+            _LAST_LEVEL_CHANGE[idx] = time.time()
+            changed.append("kill shard %d x%d (idx>=target=%d) (%s)"
+                           % (idx, len(pids), target, reason))
+        else:
+            # keep the first, kill the rest (duplicates)
+            for pid in pids[1:]:
+                _kill(pid)
+                changed.append("kill dup shard %d (pid %d)" % (idx, pid))
+    # 2) launch any required shard (0..target-1) that has no live proc
+    for idx in range(target):
+        if idx in live:
+            continue
+        last = _LAST_LEVEL_CHANGE.get(idx, 0)
+        if time.time() - last > 45:
+            _launch_shard(idx, shards, job, model)
+            changed.append("launch shard %d" % idx)
+    _log_shards(live, changed, target, reason)
 
 
 # ---------------------------------------------------------------------------
@@ -471,6 +491,16 @@ def _log(msg):
             f.write("%s %s\n" % (time.strftime("%Y-%m-%d %H:%M:%S"), msg))
     except Exception:  # noqa: BLE001
         pass
+
+
+def _log_shards(live, changed, target, reason):
+    """Log the shard set we're driving toward (live procs after this cycle's
+    kills/launches), plus every action we took, so the reason for the current
+    worker count is always auditable."""
+    for c in changed:
+        _log(c)
+    running = sorted(i for i in live)
+    _log("shards: target=%d running=%d (reason: %s)" % (target, len(running), reason))
 
 
 # ---------------------------------------------------------------------------
@@ -528,26 +558,15 @@ def _cycle():
         skipping = target < base
         target = max(0, min(target, bw))
 
-    active = _count_active()
     _reconcile(target, int(boost.get("boost_workers", 4)),
                boost.get("job"), boost.get("model"), reason)
-    if target > active:
-        _log("target %d > running %d; launching (reason: %s)" % (target, active, reason))
-    elif target < active:
-        _log("target %d < running %d; scaling down (reason: %s)" % (target, active, reason))
     _finalize(target, level, reason, skipping, boost)
 
 
 def _count_active():
-    n = 0
-    for pid in (load_boost().get("shards") or {}).values():
-        if pid:
-            try:
-                os.kill(int(pid), 0)
-                n += 1
-            except (ProcessLookupError, OSError):
-                pass
-    return n
+    """Number of live run-all procs (read from the process table). A value
+    higher than the number of distinct shards would indicate a duplicate."""
+    return sum(len(pids) for pids in _list_shards().values())
 
 
 def _finalize(target, level, reason, skipping, boost):
