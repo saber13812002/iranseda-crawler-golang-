@@ -394,8 +394,10 @@ def _launch_shard(i, shards, job, model):
     env["DB_PORT"] = env.get("DB_PORT", "3308")
     env["IRANSEDA_ROOT"] = PROJECT_ROOT
     logf = os.path.join(os.path.dirname(LOG_PATH), "boost_s%d.log" % i)
+    # llm_jobs.py lives in the dashboard/ dir; it is invoked from PROJECT_ROOT
+    # as "python3 dashboard/llm_jobs.py" (matches the documented CLI).
     cmd = (
-        "setsid nohup %s -u llm_jobs.py run-all --job %s "
+        "setsid nohup %s -u dashboard/llm_jobs.py run-all --job %s "
         "--model %s --shard %d --shards %d "
         ">> %s 2>&1 </dev/null & echo $!"
         % (shlex.quote(PYTHON), job, shlex.quote(model), i, shards, shlex.quote(logf))
