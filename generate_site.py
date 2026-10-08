@@ -193,6 +193,11 @@ def get_time_based_stats():
     end_of_year = start_of_next_year - timedelta(days=1)
     start_of_last_year = today.replace(year=today.year - 1, month=1, day=1)
     end_of_last_year = start_of_year - timedelta(days=1)
+
+    def _yrange(n):
+        """(start, end) of the calendar year n years ago (n=1 = last year)."""
+        y = today.year - n
+        return today.replace(year=y, month=1, day=1), today.replace(year=y, month=12, day=31)
     
     def count_srt_files_in_period(start_date, end_date):
         """Count SRT files created in a specific date range (excluding failed files)"""
@@ -221,6 +226,10 @@ def get_time_based_stats():
         'last_month': count_srt_files_in_period(start_of_last_month, end_of_last_month),
         'this_year': count_srt_files_in_period(start_of_year, end_of_year),
         'last_year': count_srt_files_in_period(start_of_last_year, end_of_last_year),
+        'two_years_ago': count_srt_files_in_period(*_yrange(2)),
+        'three_years_ago': count_srt_files_in_period(*_yrange(3)),
+        'five_years_ago': count_srt_files_in_period(*_yrange(5)),
+        'ten_years_ago': count_srt_files_in_period(*_yrange(10)),
     }
     
     return stats
@@ -385,6 +394,22 @@ def render_index(programs, stats_by_program_id, whisper_stats=None, whisper_tota
         <div class="stat-item">
           <span class="stat-label">سال گذشته / Last Year:</span>
           <span class="stat-value">{time_stats['last_year']}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">دو سال گذشته / 2 Years Ago:</span>
+          <span class="stat-value">{time_stats['two_years_ago']}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">سه سال گذشته / 3 Years Ago:</span>
+          <span class="stat-value">{time_stats['three_years_ago']}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">پنج سال گذشته / 5 Years Ago:</span>
+          <span class="stat-value">{time_stats['five_years_ago']}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">ده سال گذشته / 10 Years Ago:</span>
+          <span class="stat-value">{time_stats['ten_years_ago']}</span>
         </div>
       </div>
     </div>
