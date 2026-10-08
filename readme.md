@@ -320,6 +320,59 @@ python run_generator.py --env local
 
 ---
 
+## 🌙 Boost — استفاده از ظرفیت خالی GPU (شب / تعطیلات)
+
+یک کنترلر کوچک و امن درون‌پروسسی (بدون سرویس جدید) که تصمیم می‌گیرد چند ویرکر موازی `run-all` برای سوختن بک‌لاگ LLM (به‌طور پیش‌فرض `correct_subtitles`) روی GPUهای خالی در **شب** یا **روزهای تعطیل** بچرخاند — بدون اینکه ترافیک تعاملی مدل‌ها (کاربرهای زنده) یا کارهای هم‌قرار روی همان H100ها (embeddings / finetune / whisper) را گرسنه کند.
+
+**سلسله‌مراتب ایمنی:** ترافیک تعاملی همیشه برنده است. کنترلر بار زنده را از Prometheus سرور 52 (متریک‌های vllm / sglang / DCGM) می‌خواند، سطح بار (LOW/MEDIUM/HIGH/CRITICAL) را حساب می‌کند و سقف ویرکرها را بسته به آن کم می‌کند:
+
+| سطح | سقف ویرکرها |
+|-----|-------------|
+| LOW | `boost_workers` |
+| MEDIUM | ۲ |
+| HIGH | ۱ |
+| CRITICAL | ۰ |
+
+هر‌گاه عقب‌نشینی یا پرش رخ می‌دهد، **دلیل** آن لاگ می‌شود (`scripts/logs/boost.log`) و در داشبورد نمایش داده می‌شود. اگر بالای سقفِ کاربر تعاملی باشد، از مدل استفاده نمی‌کند؛ اگر token/queue/استفاده GPU بالا باشد، عقب می‌نشیند.
+
+**حالت‌ها:**
+- `NORMAL` — `normal_workers` ویرکر، ۲۴/۷ (سوزاندن پایه‌ی بک‌لاگ)
+- `BOOST` — تا `boost_workers` ویرکر، فقط داخل پنجره‌ی شب/تعطیل و با تروگل خودکار
+- `PAUSED` — ۰ ویرکر (kill switch). همه‌چیزِ دیگر دست‌نخورده می‌ماند.
+
+> **پیش‌فرض `PAUSED` است** — تا زمانی که صریحاً شروع نشود، GPU کار بک‌لاگ نمی‌کند.
+
+**CLI (روی سرور 53):**
+```bash
+scripts/iranseda-boost status                 # حالت / ویرکر / بار / دلیل
+scripts/iranseda-boost start                  # -> NORMAL (شروع)
+scripts/iranseda-boost normal                 # -> NORMAL
+scripts/iranseda-boost pause                  # -> PAUSED (قابل بازگشت)
+scripts/iranseda-boost emergency_stop         # PAUSE + کشتن ویرکرها همین حالا
+scripts/iranseda-boost set JOB=correct_subtitles MODEL=qwen38-nothinking \
+    NORMAL_WORKERS=2 BOOST_WORKERS=4 START=22:00 END=08:00 \
+    WEEKEND_DAYS=THURSDAY,FRIDAY
+```
+
+**Kill switch فوری:**
+```bash
+./scripts/stop-background.sh              # pause boost + کشتن ویرکرهای run-all
+./scripts/stop-background.sh --procs      # فقط کشتن ویرکرها (بدون آپی)
+```
+این اسکریپت **فقط** ویرکرهای `llm_jobs.py run-all` را می‌کشد؛ سرورهای مدل (qwen38/sglang)، whisper، LiteLLM و خود داشبورد دست‌نخورده می‌مانند.
+
+**تنظیمات:** از داشبورد (بخش «🌙 Boost») یا CLI یا متغیرهای محیطی:
+`IRANSEDA_BOOST_ENABLED`, `IRANSEDA_BOOST_START`, `IRANSEDA_BOOST_END`, `IRANSEDA_NORMAL_WORKERS`, `IRANSEDA_BOOST_WORKERS`, `IRANSEDA_HOLIDAY_BOOST`, `IRANSEDA_WEEKEND_DAYS`.
+State در `dashboard_state.json["boost"]` است (منبع واحد حقیقت).
+
+**مدل انتخاب‌شده:** `qwen38-nothinking` — در مقایسه‌ی کیفیت، `qwen38` (thinking) در max_tokens پایین فقط reasoning برمی‌گرداند و `qwen38-sglang` کلوگسته است؛ `qwen38-nothinking` فارسیِ تمیز و سریع (~۶ ثانیه) می‌دهد. (جزئیات: `docs/prompts/005-holiday-night-boost.md`)
+
+**مراقبت (Grafana):** تابلوی `iranseda-pipeline` پنل‌های `iranseda_boost_*` را نشان می‌دهد (حالت، ویرکرهای فعال/هدف، سطح بار، تروگل/سکپ، بک‌لاگ، درخواست‌های مدل در حال اجرا/در انتظار، استفاده GPU، token sglang).
+
+**متغیرهای محافظ (guard):** `user_request_cap` (سقف درخواست تعاملی)، `sglang_token_cap`، `vllm_waiting_cap`، `queue_cap`، `dcgm_util_cap` — همه از داشبورد/CLI قابل تنظیم‌اند.
+
+---
+
 ## 📝 لایسنس
 
 این پروژه تحت مجوز MIT منتشر شده است.
