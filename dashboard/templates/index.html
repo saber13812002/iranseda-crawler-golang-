@@ -150,6 +150,30 @@ summary{cursor:pointer;color:var(--mut);font-size:13px}
   </div>
 </div>
 
+<h2>🌙 Boost — استفاده از ظرفیت خالی GPU (شب / تعطیلات)</h2>
+<div class="card" id="boost-summary" style="margin-bottom:12px">در حال بارگذاری…</div>
+<div class="grid cols-2">
+  <div class="card">
+    <h3>کنترل (kill switch)</h3>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn primary" onclick="boostAction('start')">▶️ شروع (NORMAL)</button>
+      <button class="btn" onclick="boostAction('normal')">عادی (NORMAL)</button>
+      <button class="btn" onclick="boostAction('pause')">⏸ موقت (PAUSED)</button>
+      <button class="btn danger" onclick="boostAction('emergency_stop')">🛑 توقف اضطراری</button>
+    </div>
+    <div class="small" id="boost-hint" style="margin-top:8px">
+      «توقف اضطراری» فقط workerهای بولست iranseda را همین حالا می‌کشد؛ سرورهای مدل (qwen38/sglang)، whisper و خود داشبورد دست‌نخورده می‌مانند.
+      خط‌کشی خودکار: اگر بالای سقفِ کاربرِ تعاملی، یا token/queue/استفاده‌ی GPU بالا باشد، بولست خودش عقب می‌نشیند و دلیلش را در همین بخش می‌نویسد.
+    </div>
+  </div>
+  <div class="card">
+    <h3>پارامترها</h3>
+    <div id="boost-form">در حال بارگذاری…</div>
+    <div style="margin-top:10px"><button class="btn primary" onclick="saveBoost()">ذخیره و اعمال</button></div>
+    <div class="small" id="boost-dayhint" style="margin-top:8px">روزهای هفته: 0=دوشنبه 1=سه‌شنبه 2=چهارشنبه 3=پنجشنبه 4=جمعه 5=شنبه 6=یکشنبه</div>
+  </div>
+</div>
+
 <h2>تنظیمات</h2>
 <div id="flash2" class="flash"></div>
 <div class="grid cols-2">
@@ -279,6 +303,7 @@ summary{cursor:pointer;color:var(--mut);font-size:13px}
 const $=s=>document.querySelector(s);
 let AUTH=localStorage.getItem("d53_auth")||"";
 let windowLocked=false; // set while the user is editing a سانس/shift; blocks auto-refresh re-render until save
+let boostLocked=false; // set while the user is editing the Boost form; blocks auto-refresh re-render until save
 function needAuth(){
   if(AUTH)return false;
   const t=prompt("توکن داشبورد (DASH_AUTH_TOKEN) را وارد کنید:");
@@ -552,7 +577,7 @@ $("#llm-job").addEventListener("change",()=>{const d=_llmPrompts.find(p=>p.job_t
 $("#llm-edit-job").addEventListener("change",()=>{const opts=_llmPromptOptions($("#llm-edit-job").value);_llmFillSelect($("#llm-edit-prompt-sel"),opts.length?opts:[{value:"",label:"(پیش‌فرض این phase)"}]);const d=_llmPrompts.find(p=>p.job_type===$("#llm-edit-job").value&&p.is_default)||_llmPrompts.find(p=>p.job_type===$("#llm-edit-job").value);if(d){$("#llm-edit-name").value=d.name;$("#llm-edit-prompt").value=d.prompt;$("#llm-edit-default").checked=!!d.is_default;}});
 
 async function refresh(){
-  try{await Promise.all([loadHealth(),loadJobs(),loadWindow(),loadLlmRuns(),loadLlmOutputs(),loadLlmReport()]);}catch(e){console.error(e);}
+  try{await Promise.all([loadHealth(),loadJobs(),loadWindow(),loadBoost(),loadLlmRuns(),loadLlmOutputs(),loadLlmReport()]);}catch(e){console.error(e);}
 }
 function blkRow(b){return `<div class="row" style="align-items:flex-end;gap:8px;margin-bottom:8px">
   <div style="flex:2"><label>نام سانس</label><input class="mono" data-bname value="${esc(b.name||'')}"></div>
@@ -624,6 +649,97 @@ async function saveWindow(){
 }
 async function workerStart(){const r=await api("/api/worker/start",{method:"POST"});flash2(r.ok?"worker شروع شد":"خطا: "+(r.detail||r.error||""),r.ok);if(r.ok){loadWindow();loadJobs();}}
 async function workerStop(){if(!confirm("worker ترنسکریپت خاموش شود؟ (فایل در حال کار اگر هست به‌خاطر می‌ماند تا کامل شود)"))return;const r=await api("/api/worker/stop",{method:"POST"});flash2(r.ok?"worker متوقف شد":"خطا: "+(r.detail||r.error||""),r.ok);if(r.ok){loadWindow();loadJobs();}}
+const BOOST_LEVEL=["کم","متوسط","زیاد","بحرانی"];
+async function loadBoost(){
+  try{
+    const r=await api("/api/boost");
+    if(!r.ok||!r.boost)return;
+    const b=r.boost;const bs=b.boost||{};const last=b.last||{};const load=last.load||{};
+    const mode=bs.mode||"PAUSED";
+    const modePill={NORMAL:"<span class='pill ok'>عادی</span>",BOOST:"<span class='pill run'>بولست</span>",PAUSED:"<span class='pill bad'>متوقف</span>"}[mode];
+    const winTxt=(b.window_active?"<span class='pill ok'>پنجره‌ی شب فعال</span>":"<span class='pill bad'>خارج از پنجره‌ی شب</span>")
+                +" "+(b.holiday?"<span class='pill run'>روز تعطیل</span>":"");
+    const lvl=(last.level>=0)?`<span class="small">بار: <b>${BOOST_LEVEL[last.level]||"؟"}</b></span>`:"";
+    const reason=last.reason?`<div class="small" style="margin-top:4px">دلیل کنونی: ${esc(last.reason)}</div>`:"";
+    const ld=[];
+    if(load.ok){
+      ld.push(`کاربر/درخواست در حال اجرا: <b class="mono">${Math.round(load.vllm_running+load.sglang_running)}</b>`);
+      ld.push(`صف/در انتظار: <b class="mono">${Math.round((load.vllm_waiting||0)+(load.sglang_queue||0))}</b>`);
+      ld.push(`token sglang: <b class="mono">${Math.round((load.sglang_token||0)*100)}%</b>`);
+      ld.push(`استفاده GPU: <b class="mono">${Math.round(Math.max(load.gpu0_util||0,load.gpu1_util||0)*100)}%</b>`);
+    } else if(load.error){ld.push(`<span class="small">Prometheus: ${esc(load.error)}</span>`);}
+    $("#boost-summary").innerHTML=`
+      <div class="row" style="gap:16px;flex-wrap:wrap;align-items:center">
+        <label style="font-weight:700">حالت: ${modePill}</label>
+        <span class="small">جاب: <span class="mono">${esc(bs.job||"")}</span> · مدل: <span class="mono">${esc(bs.model||"")}</span></span>
+        <span>ویرکر فعال: <b class="mono">${b.active}</b> / هدف: <b class="mono">${last.target??0}</b></span>
+        <span>بقایا (backlog): <b class="mono">${b.backlog}</b></span>
+        ${winTxt}${lvl}
+      </div>
+      <div class="row" style="gap:14px;flex-wrap:wrap;margin-top:6px">${ld.join(" &nbsp;·&nbsp; ")||""}</div>
+      ${reason}`;
+    const w=bs.window||{},h=bs.holiday||{},g=bs.guard||{};
+    if(!boostLocked){
+    $("#boost-form").innerHTML=`
+      <div class="row" style="align-items:flex-end;gap:8px;margin-bottom:8px">
+        <div style="flex:2"><label>جاب</label><input class="mono" id="boost-job" value="${esc(bs.job||"correct_subtitles")}"></div>
+        <div style="flex:2"><label>مدل</label><input class="mono" id="boost-model" value="${esc(bs.model||"qwen38-nothinking")}"></div>
+      </div>
+      <div class="row" style="align-items:flex-end;gap:8px;margin-bottom:8px">
+        <div><label>ویرکر عادی</label><input class="mono" id="boost-normal" type="number" min="0" value="${bs.normal_workers??1}"></div>
+        <div><label>ویرکر بولست</label><input class="mono" id="boost-boost" type="number" min="1" value="${bs.boost_workers??2}"></div>
+        <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="boost-enabled" ${bs.enabled!==false?"checked":""}> فعال</label>
+        <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="boost-throttle" ${bs.auto_throttle!==false?"checked":""}> تنظیم خودکار زیر بار</label>
+      </div>
+      <div class="row" style="align-items:flex-end;gap:8px;margin-bottom:8px">
+        <div><label>شروع شب</label><input class="mono" id="boost-start" value="${esc(w.start||"22:00")}" placeholder="22:00"></div>
+        <div><label>پایان شب</label><input class="mono" id="boost-end" value="${esc(w.end||"08:00")}" placeholder="08:00"></div>
+        <div><label>منطقه زمانی</label><input class="mono" id="boost-tz" value="${esc(w.tz||"Asia/Tehran")}"></div>
+        <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="boost-window" ${w.enabled!==false?"checked":""}> پنجره فعال</label>
+      </div>
+      <div class="row" style="align-items:flex-end;gap:8px;margin-bottom:8px">
+        <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="boost-holiday" ${h.enabled!==false?"checked":""}> روز تعطیل</label>
+        <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="boost-holiday-auto" ${h.auto?"checked":""}> خودکار (روزهای هفته)</label>
+        <div style="flex:2"><label>روزهای هفته (اعداد)</label><input class="mono" id="boost-days" value="${(h.days||[]).join(",")}"></div>
+      </div>
+      <div class="row" style="align-items:flex-end;gap:8px;margin-bottom:8px">
+        <div><label>سقف کاربر تعاملی</label><input class="mono" id="boost-urcap" type="number" min="0" value="${g.user_request_cap??5}"></div>
+        <div><label>سقف token (0-1)</label><input class="mono" id="boost-sgc" type="number" step="0.05" min="0" max="1" value="${g.sglang_token_cap??0.7}"></div>
+        <div><label>سقف استفاده GPU (0-1)</label><input class="mono" id="boost-gc" type="number" step="0.05" min="0" max="1" value="${g.dcgm_util_cap??0.9}"></div>
+      </div>
+      <div class="row" style="align-items:flex-end;gap:8px">
+        <div style="flex:2"><label>پایان اجباری (ISO، خالی=هیچ)</label><input class="mono" id="boost-maxend" value="${esc(bs.max_run_end||"")}" placeholder="2026-10-09T08:00:00+03:30"></div>
+      </div>`;
+    }
+  }catch(e){console.error(e);}
+}
+async function boostAction(a){
+  if(a==="emergency_stop"&&!confirm("توقف اضطراری: هم‌اکنون همه‌ی workerهای بولست iranseda کشته می‌شوند (مدل/whisper/داشبورد دست‌نخورده). ادامه؟"))return;
+  const r=await api("/api/boost/"+a,{method:"POST"});
+  flash2(r.ok?"عملیات «"+a+"» انجام شد":"خطا: "+(r.detail||r.error||""),r.ok);
+  if(r.ok)loadBoost();
+}
+async function saveBoost(){
+  boostLocked=true; // hold the auto-refresh so the in-flight PUT isn't clobbered
+  const days=($("#boost-days").value.match(/\d+/g)||[]).map(Number);
+  const p={
+    job:$("#boost-job").value.trim(),
+    model:$("#boost-model").value.trim(),
+    normal_workers:parseInt($("#boost-normal").value,10)||0,
+    boost_workers:parseInt($("#boost-boost").value,10)||1,
+    enabled:$("#boost-enabled").checked,
+    auto_throttle:$("#boost-throttle").checked,
+    max_run_end:$("#boost-maxend").value.trim(),
+    window:{start:$("#boost-start").value.trim(),end:$("#boost-end").value.trim(),tz:$("#boost-tz").value.trim()||"Asia/Tehran",enabled:$("#boost-window").checked},
+    holiday:{enabled:$("#boost-holiday").checked,auto:$("#boost-holiday-auto").checked,days},
+    guard:{user_request_cap:parseInt($("#boost-urcap").value,10)||0,
+           sglang_token_cap:parseFloat($("#boost-sgc").value)||0,
+           dcgm_util_cap:parseFloat($("#boost-gc").value)||0}
+  };
+  const r=await api("/api/boost",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(p)});
+  flash2(r.ok?"تنظیمات Boost ذخیره شد":"خطا: "+(r.detail||r.error||""),r.ok);
+  if(r.ok){boostLocked=false;await loadBoost();}
+}
 async function loadActivity(){
   const off=($("#act-offset")?$("#act-offset").value:"0");
   const a=await api("/api/window/activity?offset="+off);
@@ -649,6 +765,7 @@ async function init(){
   // so we only release on a successful save (see saveWindow) or a full reload.
   document.addEventListener("focusin",e=>{
     if(e.target.closest("#window-form, #window-summary")) windowLocked=true;
+    if(e.target.closest("#boost-form")) boostLocked=true;
   });
   if(!AUTH && needAuth()){
     const el=$("#flash");el.innerHTML="برای نمایش داده‌ها به <b>توکن داشبورد</b> نیاز است — دوباره «توکن داشبورد» را بزنید و وارد کنید.";el.className="flash err";
