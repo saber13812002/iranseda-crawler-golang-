@@ -21,15 +21,16 @@ Safety model (interactive traffic ALWAYS wins):
   load level (LOW/MEDIUM/HIGH/CRITICAL) and maps it to a max allowed worker
   count:
         LOW -> boost_workers,  MEDIUM -> 2,  HIGH -> 1,  CRITICAL -> 0
-  It specifically backs off when:
-    * external interactive requests on the model in use exceed a cap
-      (running_requests - our own workers > user_request_cap), or
-    * sglang token usage > cap, or
-    * either H100's SM utilisation (DCGM) stays high (co-located work is busy),
-    * waiting/queue depth grows.
-  Every back-off / skip is logged (to dashboard/logs/boost.log and to the
-  "last" state) with the REASON, so the dashboard can show *why* it withheld
-  a model.
+  It specifically refuses to use the model (allowed -> 0, logged) when:
+    * external interactive requests on the model in use exceed `user_request_cap`
+      (running_requests - our own workers > cap) -- the explicit "don't use it
+      when >5 users" rule, or
+    * Prometheus is unreachable (can't see the road -> hold off).
+  It tapers (1..2 workers) when sglang token usage / queue / vllm-waiting grow.
+  DCGM SM utilisation is advisory-only (the H100s stay ~99% from the serving
+  stack itself), so it is shown but does not force a stop.
+  Every back-off / skip is logged (to scripts/logs/boost.log and to the "last"
+  state) with the REASON, so the dashboard can show *why* it withheld a model.
 
 It NEVER starts/stops the model servers, whisper, or the dashboard. It only
 launches/kills iranseda `llm_jobs.py run-all` shard processes and reconciles
@@ -298,7 +299,15 @@ def read_load(boost):
 
 
 def load_level(load, boost, our_workers):
-    """Map live load -> (level 0..3, max_allowed_workers, reason)."""
+    """Map live load -> (level 0..3, max_allowed_workers, reason).
+
+    The user's explicit rule: when more than `user_request_cap` *interactive*
+    requests are on the model in use, DO NOT use it (allowed -> 0, log why).
+    sglang token / queue pressure taper it down (1..2 workers). We intentionally
+    do NOT gate on raw DCGM SM utilisation: the H100s sit ~99% from the serving
+    stack itself, so it would be a permanent false-block -- it's surfaced as an
+    advisory in the reason only.
+    """
     g = boost.get("guard") or {}
     bw = int(boost.get("boost_workers", 4))
     if not load.get("ok"):
@@ -307,23 +316,24 @@ def load_level(load, boost, our_workers):
     level = 0
     # external interactive pressure on the model in use (total running minus ours)
     ext = max(0.0, (load.get("vllm_running", 0) + load.get("sglang_running", 0)) - our_workers)
-    if ext > g.get("user_request_cap", 5):
-        level = max(level, 2)
-        reasons.append("%d external requests > cap %s (yielding to interactive traffic)"
-                       % (int(ext), g.get("user_request_cap")))
+    cap = int(g.get("user_request_cap", 5))
+    if ext > cap:
+        # the explicit "don't use it" condition: yield entirely to interactive
+        level = 3
+        reasons.append("NOT using model: %d interactive requests > cap %d" % (int(ext), cap))
     if load.get("sglang_token", 0) > g.get("sglang_token_cap", 0.7):
         level = max(level, 1)
         reasons.append("sglang token %.2f > cap %s" % (load["sglang_token"], g.get("sglang_token_cap")))
     if (load.get("vllm_waiting", 0) + load.get("sglang_queue", 0)) > g.get("queue_cap", 6):
         level = max(level, 1)
         reasons.append("queue %d > cap %s" % (int(load.get("vllm_waiting", 0) + load.get("sglang_queue", 0)), g.get("queue_cap")))
-    if max(load.get("gpu0_util", 0), load.get("gpu1_util", 0)) > g.get("dcgm_util_cap", 0.9):
-        level = max(level, 1)
-        reasons.append("GPU util %.0f%% > cap %s (co-located work busy)"
-                       % (max(load.get("gpu0_util", 0), load.get("gpu1_util", 0)) * 100, g.get("dcgm_util_cap")))
     if load.get("vllm_waiting", 0) > g.get("vllm_waiting_cap", 5):
         level = max(level, 2)
         reasons.append("vllm waiting %d > cap %s" % (int(load["vllm_waiting"]), g.get("vllm_waiting_cap")))
+    # advisory only -- co-located serving keeps the SMs near 100% always
+    gutil = max(load.get("gpu0_util", 0), load.get("gpu1_util", 0))
+    if gutil > g.get("dcgm_util_cap", 0.9):
+        reasons.append("(advisory) GPU util %.0f%% high (serving stack)" % (gutil * 100))
     allowed = {0: bw, 1: min(2, bw), 2: 1, 3: 0}[level]
     return level, allowed, "; ".join(reasons)
 
