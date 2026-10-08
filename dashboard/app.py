@@ -150,6 +150,18 @@ def metrics():
     # whisper throughput
     worker = jobs.get("iranseda-whisper-worker", {})
     g("iranseda_whisper_transcribed_last_5m", worker.get("transcribed_last_5m", 0), "Files transcribed in last 5 min")
+    # LLM post-production (files on disk + llm_output rows + live shard workers)
+    lfm = logic.llm_file_counts()
+    if lfm:
+        g("iranseda_llm_full_text", lfm.get("full_text", 0), "full_text outputs on disk (.full.txt)")
+        g("iranseda_llm_summary_fa", lfm.get("summary_fa", 0), "Persian summary outputs on disk (.summary.txt)")
+        g("iranseda_llm_summary_en", lfm.get("summary_en", 0), "English summary outputs on disk (.summary.en.txt)")
+        g("iranseda_llm_correct_text", lfm.get("correct_text", 0), "correct_text outputs on disk (.correct.txt)")
+        g("iranseda_llm_correct_subtitles", lfm.get("correct_subtitles", 0), "correct_subtitles outputs on disk (.correct.srt)")
+        g("iranseda_llm_total_srt", lfm.get("total_srt", 0), "Total .srt files on disk (denominator for LLM progress)")
+        for jt, c in (lfm.get("db_by_job") or {}).items():
+            g("iranseda_llm_db_rows", c, "llm_output rows by job_type", labels=f'{{job="{jt}"}}')
+        g("iranseda_llm_workers", lfm.get("workers", 0), "Running LLM run-all shard workers")
     # site
     g("iranseda_site_reachable", 1 if h.get("site", {}).get("reachable") else 0, "radio.iranseda.ir reachable (1) or not (0)")
     # disk

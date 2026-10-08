@@ -197,6 +197,57 @@ def db_metrics():
 
 
 # --------------------------------------------------------------------------
+# LLM post-processing metrics (files on disk + llm_output rows + live shards)
+# --------------------------------------------------------------------------
+
+_llm_metrics_cache = {"data": None, "ts": 0.0}
+LLM_METRICS_TTL = 30  # seconds — file counts change slowly; don't re-glob per scrape
+
+
+def _count_by_suffix(directory, suffix):
+    """Count files in `directory` ending in `suffix` (one listdir, no recursion)."""
+    try:
+        return sum(1 for n in os.listdir(directory) if n.endswith(suffix))
+    except OSError:
+        return 0
+
+
+def llm_file_counts():
+    """Count LLM outputs on disk + llm_output rows + running shard workers.
+
+    Cached for LLM_METRICS_TTL so the /metrics scrape doesn't re-glob thousands
+    of files (or re-query the DB / re-run ps) on every 15s Prometheus poll.
+    Returns a dict, or {} if the dir is missing (metrics endpoint skips then).
+    """
+    now = time.time()
+    if _llm_metrics_cache["data"] is not None and now - _llm_metrics_cache["ts"] < LLM_METRICS_TTL:
+        return _llm_metrics_cache["data"]
+    d = {}
+    cleaned = os.path.join(PROJECT_ROOT, "downloads", "cleaned")
+    d["full_text"] = _count_by_suffix(cleaned, ".full.txt")
+    d["summary_fa"] = _count_by_suffix(cleaned, ".summary.txt")
+    d["summary_en"] = _count_by_suffix(cleaned, ".summary.en.txt")
+    d["correct_text"] = _count_by_suffix(cleaned, ".correct.txt")
+    d["correct_subtitles"] = _count_by_suffix(cleaned, ".correct.srt")
+    d["total_srt"] = _count_by_suffix(os.path.join(PROJECT_ROOT, "downloads"), ".srt")
+    # llm_output rows by job (DB ground truth)
+    try:
+        d["db_by_job"] = {
+            r["job_type"]: int(r["c"])
+            for r in _mysql_query("SELECT job_type, COUNT(*) AS c FROM llm_output GROUP BY job_type")
+        }
+    except Exception:  # noqa: BLE001
+        d["db_by_job"] = {}
+    # live LLM shard workers (ps available on this box; pgrep is not)
+    try:
+        d["workers"] = int((_run("ps -C python3 -o args= 2>/dev/null | grep -c 'run-all --job'", timeout=10)[1]).strip() or 0)
+    except Exception:  # noqa: BLE001
+        d["workers"] = 0
+    _llm_metrics_cache.update(data=d, ts=now)
+    return d
+
+
+# --------------------------------------------------------------------------
 # Settings: .env / crontab / compose / env files
 # --------------------------------------------------------------------------
 

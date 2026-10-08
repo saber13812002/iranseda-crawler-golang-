@@ -1,0 +1,709 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "type": "stat",
+      "title": "✅ Subtitled (total)",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "scheme"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "expr": "iranseda_db_sessions_by_status{status=\"subtitled\"}",
+          "legendFormat": "v",
+          "refId": "V"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "⬇️ Download queue",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "scheme"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "expr": "iranseda_queue_pending_download",
+          "legendFormat": "v",
+          "refId": "V"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "🔊 Transcribe queue",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "scheme"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "expr": "iranseda_queue_pending_transcribe + iranseda_queue_transcribing",
+          "legendFormat": "v",
+          "refId": "V"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "🆕 New sessions (24h)",
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "scheme"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "expr": "iranseda_sessions_created_last_24h",
+          "legendFormat": "v",
+          "refId": "V"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "📝 Subtitled per hour  (زیرنویس زده‌شده در هر ساعت)",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 25,
+            "lineWidth": 2,
+            "spanNulls": true,
+            "showPoints": "never",
+            "drawStyle": "line",
+            "stacking": {
+              "mode": "none"
+            }
+          },
+          "thresholds": {
+            "mode": "scheme"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "expr": "increase(iranseda_db_sessions_by_status{status=\"subtitled\"}[1h])",
+          "legendFormat": "subtitled /h",
+          "refId": "S"
+        },
+        {
+          "expr": "iranseda_db_sessions_by_status{status=\"subtitled\"}",
+          "legendFormat": "total (right)",
+          "refId": "T"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "🆕 Discovered per hour  (دریافت سشن‌های جدید)",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 4
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 25,
+            "lineWidth": 2,
+            "spanNulls": true,
+            "showPoints": "never",
+            "drawStyle": "line",
+            "stacking": {
+              "mode": "none"
+            }
+          },
+          "thresholds": {
+            "mode": "scheme"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "expr": "increase(iranseda_db_total_sessions[1h])",
+          "legendFormat": "new sessions /h",
+          "refId": "N"
+        },
+        {
+          "expr": "iranseda_sessions_created_last_24h",
+          "legendFormat": "new / 24h",
+          "refId": "N"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "⬇️ Download activity  (صف دانلود)",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 12
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 25,
+            "lineWidth": 2,
+            "spanNulls": true,
+            "showPoints": "never",
+            "drawStyle": "line",
+            "stacking": {
+              "mode": "none"
+            }
+          },
+          "thresholds": {
+            "mode": "scheme"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "expr": "iranseda_queue_pending_download",
+          "legendFormat": "pending_download",
+          "refId": "P"
+        },
+        {
+          "expr": "increase(iranseda_db_sessions_by_status{status=\"pending_download\"}[1h]) * -1",
+          "legendFormat": "files consumed /h",
+          "refId": "F"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "🔊 Whisper  (تبدیل صدا به متن)",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 12
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 25,
+            "lineWidth": 2,
+            "spanNulls": true,
+            "showPoints": "never",
+            "drawStyle": "line",
+            "stacking": {
+              "mode": "none"
+            }
+          },
+          "thresholds": {
+            "mode": "scheme"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "expr": "iranseda_queue_transcribing",
+          "legendFormat": "transcribing now",
+          "refId": "T"
+        },
+        {
+          "expr": "iranseda_queue_pending_transcribe",
+          "legendFormat": "pending",
+          "refId": "P"
+        },
+        {
+          "expr": "iranseda_whisper_transcribed_last_5m",
+          "legendFormat": "done / 5m",
+          "refId": "D"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "🤖 LLM outputs on disk  (خروجی‌های LLM روی دیسک)",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 20
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 25,
+            "lineWidth": 2,
+            "spanNulls": true,
+            "showPoints": "never",
+            "drawStyle": "line",
+            "stacking": {
+              "mode": "none"
+            }
+          },
+          "thresholds": {
+            "mode": "scheme"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "expr": "iranseda_llm_full_text",
+          "legendFormat": "📖 full_text",
+          "refId": "📖"
+        },
+        {
+          "expr": "iranseda_llm_summary_fa",
+          "legendFormat": "🧾 summary FA",
+          "refId": "🧾"
+        },
+        {
+          "expr": "iranseda_llm_summary_en",
+          "legendFormat": "🌐 summary EN",
+          "refId": "🌐"
+        },
+        {
+          "expr": "iranseda_llm_correct_text",
+          "legendFormat": "✍️ correct_text",
+          "refId": "✍"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "📈 LLM progress % of total SRT  (بروزرسانی فهرست LLM)",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 20
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "custom": {
+            "fillOpacity": 25,
+            "lineWidth": 2,
+            "spanNulls": true,
+            "showPoints": "never",
+            "drawStyle": "line",
+            "stacking": {
+              "mode": "none"
+            }
+          },
+          "thresholds": {
+            "mode": "scheme"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "expr": "100 * iranseda_llm_full_text / iranseda_llm_total_srt",
+          "legendFormat": "full_text %",
+          "refId": "F"
+        },
+        {
+          "expr": "100 * iranseda_llm_summary_fa / iranseda_llm_total_srt",
+          "legendFormat": "summary FA %",
+          "refId": "S"
+        },
+        {
+          "expr": "100 * iranseda_llm_correct_text / iranseda_llm_total_srt",
+          "legendFormat": "correct_text %",
+          "refId": "C"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "💾 llm_output rows by job  (DB)",
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 28
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 25,
+            "lineWidth": 2,
+            "spanNulls": true,
+            "showPoints": "never",
+            "drawStyle": "line",
+            "stacking": {
+              "mode": "none"
+            }
+          },
+          "thresholds": {
+            "mode": "scheme"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "expr": "iranseda_llm_db_rows{job=\"summary\"}",
+          "legendFormat": "summary",
+          "refId": "S"
+        },
+        {
+          "expr": "iranseda_llm_db_rows{job=\"correct_text\"}",
+          "legendFormat": "correct_text",
+          "refId": "C"
+        },
+        {
+          "expr": "iranseda_llm_db_rows{job=\"full_text\"}",
+          "legendFormat": "full_text",
+          "refId": "F"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "🏃 LLM workers  (شارد‌های فعال)",
+      "gridPos": {
+        "h": 8,
+        "w": 4,
+        "x": 8,
+        "y": 28
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 0,
+            "lineWidth": 2,
+            "spanNulls": true,
+            "showPoints": "never",
+            "drawStyle": "line",
+            "stacking": {
+              "mode": "none"
+            }
+          },
+          "thresholds": {
+            "mode": "scheme"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "expr": "iranseda_llm_workers",
+          "legendFormat": "shards running",
+          "refId": "S"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "❤️ Health  (هلث سرویس‌ها)",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 28
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {
+            "fillOpacity": 25,
+            "lineWidth": 2,
+            "spanNulls": true,
+            "showPoints": "never",
+            "drawStyle": "line",
+            "stacking": {
+              "mode": "none"
+            }
+          },
+          "thresholds": {
+            "mode": "scheme"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "expr": "iranseda_db_ok",
+          "legendFormat": "db",
+          "refId": "D"
+        },
+        {
+          "expr": "iranseda_dashboard_up",
+          "legendFormat": "dashboard",
+          "refId": "D"
+        },
+        {
+          "expr": "iranseda_site_reachable",
+          "legendFormat": "site",
+          "refId": "S"
+        },
+        {
+          "expr": "sum(iranseda_container_up)",
+          "legendFormat": "containers up",
+          "refId": "C"
+        },
+        {
+          "expr": "iranseda_disk_used_ratio",
+          "legendFormat": "disk %",
+          "refId": "D"
+        }
+      ]
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": [
+    "iranseda",
+    "pipeline"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "🎛️ iranseda pipeline",
+  "uid": "iranseda-pipeline",
+  "version": 1,
+  "weekStart": ""
+}
