@@ -9,3 +9,7 @@ dashboard/__pycache__/
 dashboard/dashboard.env
 dashboard/dashboard_state.json
 dashboard/dashboard_state.json.tmp
+dashboard/logs/
+scripts/logs/
+__pycache__/
+*.pyc
