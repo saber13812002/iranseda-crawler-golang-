@@ -505,21 +505,26 @@ def _cycle():
                     return
             except Exception:  # noqa: BLE001
                 pass
-        base = (int(boost.get("boost_workers", 4))
-                if (boost.get("enabled") and boost_window)
-                else int(boost.get("normal_workers", 2)))
-        base = max(0, min(base, int(boost.get("boost_workers", 4))))
+        # NORMAL = 24/7 baseline burn at `normal_workers`. BOOST = `boost_workers`
+        # inside the night/holiday window, falling back to the normal baseline
+        # outside it. (set_boost already enforces boost_workers >= normal_workers.)
+        bw = int(boost.get("boost_workers", 4))
+        if boost.get("mode") == "BOOST" and boost.get("enabled") and boost_window:
+            base = bw
+        else:
+            base = int(boost.get("normal_workers", 2))
+        base = max(0, min(base, bw))
         level, allowed, lreason = load_level(load, boost, base)
         if boost.get("auto_throttle"):
-            # throttle can hold us below the requested count whenever we can't
-            # see clean headroom; outside a boost window we still run baseline
-            # unless CRITICAL (then we yield entirely to protect users).
-            target = min(base, allowed) if boost_window else (base if allowed > 0 else 0)
+            # The auto-throttle protects interactive users at ALL times: it can
+            # hold us below the requested count whenever the guard says so (the
+            # CRITICAL "don't use it" case forces 0).
+            target = min(base, allowed)
             reason = lreason or ("boost window, load LOW" if boost_window else "baseline, load LOW")
         else:
             target, reason = base, lreason or "auto-throttle off, %d workers" % base
         skipping = target < base
-        target = max(0, min(target, int(boost.get("boost_workers", 4))))
+        target = max(0, min(target, bw))
 
     active = _count_active()
     _reconcile(target, int(boost.get("boost_workers", 4)),
@@ -620,6 +625,11 @@ def normal():
 
 def start():
     return set_boost({"mode": "NORMAL", "enabled": True})
+
+
+def boost_mode():
+    """Elevated night/holiday burn: `boost_workers` inside the window."""
+    return set_boost({"mode": "BOOST", "enabled": True})
 
 
 def stop_all():

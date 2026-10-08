@@ -3,8 +3,9 @@
 iranseda-boost — control the night/holiday GPU-boost controller.
 
     iranseda-boost status              show mode / workers / load / reason
-    iranseda-boost start               -> NORMAL (baseline burn)
+    iranseda-boost start               -> NORMAL (baseline burn, 24/7)
     iranseda-boost normal              -> NORMAL
+    iranseda-boost boost               -> BOOST (elevated, night/holiday window)
     iranseda-boost pause               -> PAUSED (0 workers, reversible)
     iranseda-boost stop                -> PAUSED (same as pause)
     iranseda-boost emergency_stop      -> PAUSE + kill all boost shard procs NOW
@@ -113,7 +114,7 @@ def main():
     if cmd == "status":
         out = call("GET", "/api/boost")
         print(json.dumps(out, indent=2, ensure_ascii=False))
-    elif cmd in ("start", "normal", "pause", "stop", "emergency_stop"):
+    elif cmd in ("start", "normal", "boost", "pause", "stop", "emergency_stop"):
         action = "pause" if cmd == "stop" else cmd
         print(json.dumps(call("POST", "/api/boost/" + action),
                          indent=2, ensure_ascii=False))

@@ -373,12 +373,14 @@ async def api_boost_set(request: Request):
 
 @app.post("/api/boost/{action}")
 def api_boost_action(action: str):
-    """action: start | stop | normal | pause | emergency_stop"""
+    """action: start | normal | boost | pause | stop | emergency_stop"""
     try:
         if action == "start":
             return {"ok": True, "boost": boost.start()}
         if action == "normal":
             return {"ok": True, "boost": boost.normal()}
+        if action == "boost":
+            return {"ok": True, "boost": boost.boost_mode()}
         if action == "pause":
             return {"ok": True, "boost": boost.pause()}
         if action == "stop":
