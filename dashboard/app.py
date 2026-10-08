@@ -63,6 +63,11 @@ _cache = {"stats": None, "health": None, "ts": 0.0}
 CACHE_TTL = 15  # seconds
 
 
+def _label_escape(s: str) -> str:
+    """Escape a value for use in a Prometheus label (\\, ", newline)."""
+    return str(s).replace("\\", "\\\\").replace('"', '\\"').replace("\n", " ")
+
+
 @app.middleware("http")
 async def _auth(request: Request, call_next):
     if request.url.path not in OPEN_PATHS:
@@ -162,6 +167,34 @@ def metrics():
         for jt, c in (lfm.get("db_by_job") or {}).items():
             g("iranseda_llm_db_rows", c, "llm_output rows by job_type", labels=f'{{job="{jt}"}}')
         g("iranseda_llm_workers", lfm.get("workers", 0), "Running LLM run-all shard workers")
+    # Site-facing period counts (by DB created_at — the same source the GitHub
+    # site uses, so Grafana matches the site). Keys map to the site's stat cards.
+    sps = logic.site_period_stats()
+    if sps:
+        site_keys = [
+            ("iranseda_site_today", "today", "Subtitles added today"),
+            ("iranseda_site_yesterday", "yesterday", "Subtitles added yesterday"),
+            ("iranseda_site_this_week", "this_week", "Subtitles added this week"),
+            ("iranseda_site_last_week", "last_week", "Subtitles added last week"),
+            ("iranseda_site_this_month", "this_month", "Subtitles added this month"),
+            ("iranseda_site_last_month", "last_month", "Subtitles added last month"),
+            ("iranseda_site_this_year", "this_year", "Subtitles added this year"),
+            ("iranseda_site_last_year", "last_year", "Subtitles added last year"),
+            ("iranseda_site_2y", "y2", "Subtitles added 2 years ago"),
+            ("iranseda_site_3y", "y3", "Subtitles added 3 years ago"),
+            ("iranseda_site_5y", "y5", "Subtitles added 5 years ago"),
+            ("iranseda_site_10y", "y10", "Subtitles added 10 years ago"),
+        ]
+        for name, key, help_str in site_keys:
+            g(name, sps.get(key, 0), help_str)
+    # Per-program episode / subtitled / full-text counts (matches site program cards)
+    pms = logic.program_metrics()
+    if pms:
+        for name, c in pms.items():
+            label = f'{{program="{_label_escape(name)}"}}'
+            g("iranseda_program_episodes", c.get("episodes", 0), "Episodes per program", labels=label)
+            g("iranseda_program_subtitled", c.get("subtitled", 0), "Subtitled episodes per program", labels=label)
+            g("iranseda_program_fulltext", c.get("fulltext", 0), "Full-text outputs per program", labels=label)
     # site
     g("iranseda_site_reachable", 1 if h.get("site", {}).get("reachable") else 0, "radio.iranseda.ir reachable (1) or not (0)")
     # disk

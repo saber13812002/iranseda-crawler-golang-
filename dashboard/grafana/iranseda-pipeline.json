@@ -210,18 +210,20 @@
         {
           "expr": "increase(iranseda_db_sessions_by_status{status=\"subtitled\"}[1h])",
           "legendFormat": "subtitled /h",
-          "refId": "A"
+          "refId": "A",
+          "instantQuery": 0
         },
         {
           "expr": "iranseda_db_sessions_by_status{status=\"subtitled\"}",
           "legendFormat": "total",
-          "refId": "B"
+          "refId": "B",
+          "instantQuery": 0
         }
       ]
     },
     {
       "type": "timeseries",
-      "title": "🆕 Discovered per hour  (دریافت سشن‌های جدید)",
+      "title": "🆕 Discovered per hour  (دریافت سشن در ساعت)",
       "gridPos": {
         "h": 8,
         "w": 12,
@@ -264,12 +266,14 @@
         {
           "expr": "increase(iranseda_db_total_sessions[1h])",
           "legendFormat": "new /h",
-          "refId": "A"
+          "refId": "A",
+          "instantQuery": 0
         },
         {
           "expr": "iranseda_sessions_created_last_24h",
           "legendFormat": "new / 24h",
-          "refId": "B"
+          "refId": "B",
+          "instantQuery": 0
         }
       ]
     },
@@ -318,12 +322,14 @@
         {
           "expr": "iranseda_queue_pending_download",
           "legendFormat": "pending_download",
-          "refId": "A"
+          "refId": "A",
+          "instantQuery": 0
         },
         {
           "expr": "increase(iranseda_db_sessions_by_status{status=\"pending_download\"}[1h]) * -1",
-          "legendFormat": "files consumed /h",
-          "refId": "B"
+          "legendFormat": "consumed /h",
+          "refId": "B",
+          "instantQuery": 0
         }
       ]
     },
@@ -372,23 +378,26 @@
         {
           "expr": "iranseda_queue_transcribing",
           "legendFormat": "transcribing now",
-          "refId": "A"
+          "refId": "A",
+          "instantQuery": 0
         },
         {
           "expr": "iranseda_queue_pending_transcribe",
           "legendFormat": "pending",
-          "refId": "B"
+          "refId": "B",
+          "instantQuery": 0
         },
         {
           "expr": "iranseda_whisper_transcribed_last_5m",
           "legendFormat": "done / 5m",
-          "refId": "C"
+          "refId": "C",
+          "instantQuery": 0
         }
       ]
     },
     {
       "type": "timeseries",
-      "title": "🤖 LLM outputs on disk  (خروجی‌های LLM روی دیسک)",
+      "title": "🤖 LLM outputs on disk  (خروجی‌های LLM)",
       "gridPos": {
         "h": 8,
         "w": 12,
@@ -431,28 +440,32 @@
         {
           "expr": "iranseda_llm_full_text",
           "legendFormat": "full_text",
-          "refId": "A"
+          "refId": "A",
+          "instantQuery": 0
         },
         {
           "expr": "iranseda_llm_summary_fa",
           "legendFormat": "summary FA",
-          "refId": "B"
+          "refId": "B",
+          "instantQuery": 0
         },
         {
           "expr": "iranseda_llm_summary_en",
           "legendFormat": "summary EN",
-          "refId": "C"
+          "refId": "C",
+          "instantQuery": 0
         },
         {
           "expr": "iranseda_llm_correct_text",
           "legendFormat": "correct_text",
-          "refId": "D"
+          "refId": "D",
+          "instantQuery": 0
         }
       ]
     },
     {
       "type": "timeseries",
-      "title": "📈 LLM progress % of total SRT  (بروزرسانی فهرست LLM)",
+      "title": "📈 LLM progress % of total SRT",
       "gridPos": {
         "h": 8,
         "w": 12,
@@ -495,17 +508,20 @@
         {
           "expr": "100 * iranseda_llm_full_text / iranseda_llm_total_srt",
           "legendFormat": "full_text %",
-          "refId": "A"
+          "refId": "A",
+          "instantQuery": 0
         },
         {
           "expr": "100 * iranseda_llm_summary_fa / iranseda_llm_total_srt",
           "legendFormat": "summary FA %",
-          "refId": "B"
+          "refId": "B",
+          "instantQuery": 0
         },
         {
           "expr": "100 * iranseda_llm_correct_text / iranseda_llm_total_srt",
           "legendFormat": "correct_text %",
-          "refId": "C"
+          "refId": "C",
+          "instantQuery": 0
         }
       ]
     },
@@ -554,17 +570,20 @@
         {
           "expr": "iranseda_llm_db_rows{job=\"summary\"}",
           "legendFormat": "summary",
-          "refId": "A"
+          "refId": "A",
+          "instantQuery": 0
         },
         {
           "expr": "iranseda_llm_db_rows{job=\"correct_text\"}",
           "legendFormat": "correct_text",
-          "refId": "B"
+          "refId": "B",
+          "instantQuery": 0
         },
         {
           "expr": "iranseda_llm_db_rows{job=\"full_text\"}",
           "legendFormat": "full_text",
-          "refId": "C"
+          "refId": "C",
+          "instantQuery": 0
         }
       ]
     },
@@ -613,13 +632,14 @@
         {
           "expr": "iranseda_llm_workers",
           "legendFormat": "shards running",
-          "refId": "A"
+          "refId": "A",
+          "instantQuery": 0
         }
       ]
     },
     {
       "type": "timeseries",
-      "title": "❤️ Health  (هلث سرویس‌ها)",
+      "title": "❤️ Health  (هلث)",
       "gridPos": {
         "h": 8,
         "w": 12,
@@ -662,27 +682,260 @@
         {
           "expr": "iranseda_db_ok",
           "legendFormat": "db",
-          "refId": "A"
+          "refId": "A",
+          "instantQuery": 0
         },
         {
           "expr": "iranseda_dashboard_up",
           "legendFormat": "dashboard",
-          "refId": "B"
+          "refId": "B",
+          "instantQuery": 0
         },
         {
           "expr": "iranseda_site_reachable",
           "legendFormat": "site",
-          "refId": "C"
+          "refId": "C",
+          "instantQuery": 0
         },
         {
           "expr": "sum(iranseda_container_up)",
           "legendFormat": "containers up",
-          "refId": "D"
+          "refId": "D",
+          "instantQuery": 0
         },
         {
           "expr": "iranseda_disk_used_ratio",
           "legendFormat": "disk %",
-          "refId": "E"
+          "refId": "E",
+          "instantQuery": 0
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "📊 Subtitles added by period — same as the site  (آمار سایت بر اساس تاریخ آرشیو)",
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 36
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 70,
+            "lineWidth": 1,
+            "spanNulls": true,
+            "showPoints": "never",
+            "drawStyle": "bars",
+            "stacking": {
+              "mode": "none"
+            },
+            "barAlignment": 0
+          },
+          "thresholds": {
+            "mode": "scheme"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "expr": "iranseda_site_today",
+          "legendFormat": "امروز Today",
+          "refId": "A",
+          "instantQuery": 1
+        },
+        {
+          "expr": "iranseda_site_yesterday",
+          "legendFormat": "دیروز Yesterday",
+          "refId": "B",
+          "instantQuery": 1
+        },
+        {
+          "expr": "iranseda_site_this_week",
+          "legendFormat": "این هفته This Week",
+          "refId": "C",
+          "instantQuery": 1
+        },
+        {
+          "expr": "iranseda_site_last_week",
+          "legendFormat": "هفته گذشته Last Week",
+          "refId": "D",
+          "instantQuery": 1
+        },
+        {
+          "expr": "iranseda_site_this_month",
+          "legendFormat": "این ماه This Month",
+          "refId": "E",
+          "instantQuery": 1
+        },
+        {
+          "expr": "iranseda_site_last_month",
+          "legendFormat": "ماه گذشته Last Month",
+          "refId": "F",
+          "instantQuery": 1
+        },
+        {
+          "expr": "iranseda_site_this_year",
+          "legendFormat": "امسال This Year",
+          "refId": "G",
+          "instantQuery": 1
+        },
+        {
+          "expr": "iranseda_site_last_year",
+          "legendFormat": "سال گذشته Last Year",
+          "refId": "H",
+          "instantQuery": 1
+        },
+        {
+          "expr": "iranseda_site_2y",
+          "legendFormat": "۲ سال 2y",
+          "refId": "I",
+          "instantQuery": 1
+        },
+        {
+          "expr": "iranseda_site_3y",
+          "legendFormat": "۳ سال 3y",
+          "refId": "J",
+          "instantQuery": 1
+        },
+        {
+          "expr": "iranseda_site_5y",
+          "legendFormat": "۵ سال 5y",
+          "refId": "K",
+          "instantQuery": 1
+        },
+        {
+          "expr": "iranseda_site_10y",
+          "legendFormat": "۱۰ سال 10y",
+          "refId": "L",
+          "instantQuery": 1
+        }
+      ]
+    },
+    {
+      "type": "bargauge",
+      "title": "📺 Episodes per program  (تعداد قسمت هر برنامه)",
+      "gridPos": {
+        "h": 16,
+        "w": 24,
+        "x": 0,
+        "y": 45
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum by (program) (iranseda_program_episodes)",
+          "refId": "A",
+          "format": "table",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "type": "bargauge",
+      "title": "✍️ Subtitled per program  (زیرنویس‌شده هر برنامه)",
+      "gridPos": {
+        "h": 16,
+        "w": 24,
+        "x": 0,
+        "y": 61
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum by (program) (iranseda_program_subtitled)",
+          "refId": "A",
+          "format": "table",
+          "instant": true
+        }
+      ]
+    },
+    {
+      "type": "bargauge",
+      "title": "📖 Full-text per program  (متن کامل هر برنامه)",
+      "gridPos": {
+        "h": 16,
+        "w": 24,
+        "x": 0,
+        "y": 77
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum by (program) (iranseda_program_fulltext)",
+          "refId": "A",
+          "format": "table",
+          "instant": true
         }
       ]
     }

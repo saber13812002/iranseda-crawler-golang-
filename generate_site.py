@@ -1,5 +1,6 @@
 import os
 import sys
+import json
 import pathlib
 import urllib.parse
 import pymysql
@@ -216,23 +217,105 @@ def get_time_based_stats():
                 except:
                     continue
         return count
-    
+
+    # Prefer the DB created_at (when each session was added to the archive) over
+    # the .srt file mtime. Every file is *downloaded* recently, so mtime buckets
+    # almost everything into the current year and makes the historical
+    # "N years ago" cards read 0 even when old episodes exist. created_at is the
+    # meaningful archive date. Falls back to mtime if the DB is unreachable.
+    def count_db_in_period(start_date, end_date):
+        try:
+            conn = connect_db()
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT COUNT(*) AS c FROM radio_program_sessions "
+                    "WHERE is_subtitled=1 AND created_at >= %s AND created_at <= %s",
+                    (datetime.combine(start_date, datetime.min.time()),
+                     datetime.combine(end_date, datetime.time(23, 59, 59))),
+                )
+                row = cur.fetchone()
+            conn.close()
+            return int(row["c"]) if row else None
+        except Exception:
+            return None
+
+    def count(start_date, end_date):
+        v = count_db_in_period(start_date, end_date)
+        return v if v is not None else count_srt_files_in_period(start_date, end_date)
+
     stats = {
-        'today': count_srt_files_in_period(today, today),
-        'yesterday': count_srt_files_in_period(yesterday, yesterday),
-        'this_week': count_srt_files_in_period(start_of_week, end_of_week),
-        'last_week': count_srt_files_in_period(start_of_last_week, end_of_last_week),
-        'this_month': count_srt_files_in_period(start_of_month, end_of_month),
-        'last_month': count_srt_files_in_period(start_of_last_month, end_of_last_month),
-        'this_year': count_srt_files_in_period(start_of_year, end_of_year),
-        'last_year': count_srt_files_in_period(start_of_last_year, end_of_last_year),
-        'two_years_ago': count_srt_files_in_period(*_yrange(2)),
-        'three_years_ago': count_srt_files_in_period(*_yrange(3)),
-        'five_years_ago': count_srt_files_in_period(*_yrange(5)),
-        'ten_years_ago': count_srt_files_in_period(*_yrange(10)),
+        'today': count(today, today),
+        'yesterday': count(yesterday, yesterday),
+        'this_week': count(start_of_week, end_of_week),
+        'last_week': count(start_of_last_week, end_of_last_week),
+        'this_month': count(start_of_month, end_of_month),
+        'last_month': count(start_of_last_month, end_of_last_month),
+        'this_year': count(start_of_year, end_of_year),
+        'last_year': count(start_of_last_year, end_of_last_year),
+        'two_years_ago': count(*_yrange(2)),
+        'three_years_ago': count(*_yrange(3)),
+        'five_years_ago': count(*_yrange(5)),
+        'ten_years_ago': count(*_yrange(10)),
     }
-    
+
     return stats
+
+def get_period_stats_metrics():
+    """JSON blob of the site's time-based subtitle counts (counts by DB
+    created_at) — surfaced to Prometheus so the SAME numbers shown on the site
+    are the ones in Grafana (no mtime/created_at divergence)."""
+    return json.dumps({k: v for k, v in get_time_based_stats().items()},
+                      ensure_ascii=False)
+
+def get_program_metrics_json():
+    """Per-active-program episode / subtitled / full-text counts as JSON, using
+    the same url->program_ids union the site uses to count episodes (so the
+    numbers match the site's program cards). One query over the id union."""
+    from collections import defaultdict
+    import os
+    try:
+        conn = connect_db()
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, url, IFNULL(is_legacy,0) lg FROM radio_programs")
+            url_ids = defaultdict(list)
+            for r in cur.fetchall():
+                url_ids[r["url"]].append(r["id"])
+            cur.execute("SELECT id, name, url FROM radio_programs WHERE is_legacy=0 ORDER BY id")
+            actives = cur.fetchall()
+            # full-text outputs on disk, keyed by session filename stem
+            fullset = set()
+            cleaned = DOWNLOADS_DIR / "cleaned"
+            if cleaned.exists():
+                for n in os.listdir(cleaned):
+                    if n.endswith(".full.txt"):
+                        fullset.add(n[:-len(".full.txt")])
+            all_ids = sorted({i for ids in url_ids.values() for i in ids})
+            ph = ",".join(str(i) for i in all_ids)
+            agg = {}
+            cur.execute(
+                f"SELECT program_id, COUNT(*) e, SUM(is_subtitled) s FROM radio_program_sessions "
+                f"WHERE program_id IN ({ph}) GROUP BY program_id"
+            )
+            for r in cur.fetchall():
+                agg[r["program_id"]] = (int(r["e"] or 0), int(r["s"] or 0))
+            cur.execute(f"SELECT program_id, filename FROM radio_program_sessions WHERE program_id IN ({ph}) AND filename IS NOT NULL AND filename<>''")
+            full_by_prog = defaultdict(int)
+            for r in cur.fetchall():
+                stem = os.path.splitext(r["filename"])[0]
+                if stem in fullset:
+                    full_by_prog[r["program_id"]] += 1
+            out = []
+            for a in actives:
+                e = s = f = 0
+                for pid in url_ids.get(a["url"], [a["id"]]):
+                    e += agg.get(pid, (0, 0))[0]
+                    s += agg.get(pid, (0, 0))[1]
+                    f += full_by_prog.get(pid, 0)
+                out.append({"name": a["name"], "episodes": e, "subtitled": s, "fulltext": f})
+        conn.close()
+    except Exception as e:  # noqa: BLE001
+        return json.dumps({"error": str(e)[:200]})
+    return json.dumps(out, ensure_ascii=False)
 
 def get_latest_cleaned_files(limit=10):
     """Get latest cleaned subtitle files with program information"""

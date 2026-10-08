@@ -202,6 +202,8 @@ def db_metrics():
 
 _llm_metrics_cache = {"data": None, "ts": 0.0}
 LLM_METRICS_TTL = 30  # seconds — file counts change slowly; don't re-glob per scrape
+_site_metrics_cache = {"data": None, "ts": 0.0}
+_program_metrics_cache = {"data": None, "ts": 0.0}
 
 
 def _count_by_suffix(directory, suffix):
@@ -245,6 +247,102 @@ def llm_file_counts():
         d["workers"] = 0
     _llm_metrics_cache.update(data=d, ts=now)
     return d
+
+
+# --------------------------------------------------------------------------
+# Site-facing counts (by DB created_at) — the SAME source the GitHub site uses
+# --------------------------------------------------------------------------
+
+def site_period_stats():
+    """Period subtitle counts by DB created_at (archive date), not file mtime.
+
+    This is the authoritative "N periods ago" source the site now uses (see
+    generate_site.get_time_based_stats), returned here so the /metrics numbers
+    match the site exactly. One grouped query, cached _site_metrics_cache.
+    """
+    now = time.time()
+    if _site_metrics_cache["data"] is not None and now - _site_metrics_cache["ts"] < LLM_METRICS_TTL:
+        return _site_metrics_cache["data"]
+    out = {}
+    try:
+        rows = _mysql_query(
+            "SELECT "
+            "SUM(DATE(created_at)=CURDATE()) AS today, "
+            "SUM(DATE(created_at)=CURDATE() - INTERVAL 1 DAY) AS yesterday, "
+            "SUM(DATE(created_at) >= DATE_SUB(CURDATE(), INTERVAL (WEEKDAY(CURDATE())) DAY) "
+            "AND DATE(created_at) < DATE_SUB(CURDATE(), INTERVAL (WEEKDAY(CURDATE())) - 7 DAY)) AS this_week, "
+            "SUM(DATE(created_at) >= DATE_SUB(CURDATE(), INTERVAL (WEEKDAY(CURDATE())) + 7 DAY) "
+            "AND DATE(created_at) < DATE_SUB(CURDATE(), INTERVAL (WEEKDAY(CURDATE())) DAY)) AS last_week, "
+            "SUM(DATE(created_at) >= DATE_FORMAT(CURDATE(), '%Y-%m-01')) AS this_month, "
+            "SUM(DATE(created_at) >= DATE_SUB(DATE_FORMAT(CURDATE(), '%Y-%m-01'), INTERVAL 1 MONTH) "
+            "AND DATE(created_at) < DATE_FORMAT(CURDATE(), '%Y-%m-01')) AS last_month, "
+            "SUM(YEAR(created_at)=YEAR(CURDATE())) AS this_year, "
+            "SUM(YEAR(created_at)=YEAR(CURDATE())-1) AS last_year, "
+            "SUM(YEAR(created_at)=YEAR(CURDATE())-2) AS y2, "
+            "SUM(YEAR(created_at)=YEAR(CURDATE())-3) AS y3, "
+            "SUM(YEAR(created_at)=YEAR(CURDATE())-5) AS y5, "
+            "SUM(YEAR(created_at)=YEAR(CURDATE())-10) AS y10 "
+            "FROM radio_program_sessions WHERE is_subtitled=1"
+        )
+        r = rows[0] if rows else {}
+        out = {k: int(r.get(k) or 0) for k in
+               ["today", "yesterday", "this_week", "last_week", "this_month",
+                "last_month", "this_year", "last_year", "y2", "y3", "y5", "y10"]}
+    except Exception:  # noqa: BLE001
+        out = {}
+    _site_metrics_cache.update(data=out, ts=now)
+    return out
+
+
+def program_metrics():
+    """Per-active-program episode / subtitled / full-text counts as a dict
+    {name: {"episodes","subtitled","fulltext"}}. Uses the same url->program_ids
+    union the site uses, so the numbers match the site's program cards.
+    """
+    now = time.time()
+    if _program_metrics_cache["data"] is not None and now - _program_metrics_cache["ts"] < LLM_METRICS_TTL:
+        return _program_metrics_cache["data"]
+    out = {}
+    try:
+        from collections import defaultdict
+        # url -> [program_ids]
+        url_ids = defaultdict(list)
+        for r in _mysql_query("SELECT id, url FROM radio_programs"):
+            url_ids[r["url"]].append(int(r["id"]))
+        actives = _mysql_query("SELECT id, name, url FROM radio_programs WHERE is_legacy=0")
+        all_ids = sorted({i for ids in url_ids.values() for i in ids})
+        ph = ",".join(str(i) for i in all_ids)
+        agg = {}
+        for r in _mysql_query(
+            f"SELECT program_id, COUNT(*) e, SUM(is_subtitled) s "
+            f"FROM radio_program_sessions WHERE program_id IN ({ph}) GROUP BY program_id"
+        ):
+            agg[int(r["program_id"])] = (int(r["e"] or 0), int(r["s"] or 0))
+        fullset = set()
+        cleaned = os.path.join(PROJECT_ROOT, "downloads", "cleaned")
+        if os.path.isdir(cleaned):
+            for n in os.listdir(cleaned):
+                if n.endswith(".full.txt"):
+                    fullset.add(n[:-len(".full.txt")])
+        full_by_prog = defaultdict(int)
+        for r in _mysql_query(
+            f"SELECT program_id, filename FROM radio_program_sessions "
+            f"WHERE program_id IN ({ph}) AND filename IS NOT NULL AND filename<>''"
+        ):
+            stem = os.path.splitext(r["filename"])[0]
+            if stem in fullset:
+                full_by_prog[int(r["program_id"])] += 1
+        for a in actives:
+            e = s = f = 0
+            for pid in url_ids.get(a["url"], [int(a["id"])]):
+                e += agg.get(pid, (0, 0))[0]
+                s += agg.get(pid, (0, 0))[1]
+                f += full_by_prog.get(pid, 0)
+            out[a["name"]] = {"episodes": e, "subtiled": s, "fulltext": f}
+    except Exception:  # noqa: BLE001
+        out = {}
+    _program_metrics_cache.update(data=out, ts=time.time())
+    return out
 
 
 # --------------------------------------------------------------------------
