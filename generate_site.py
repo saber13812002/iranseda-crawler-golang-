@@ -161,6 +161,7 @@ def format_time(time_obj):
 def get_time_based_stats():
     """Calculate time-based statistics for SRT generation"""
     from datetime import datetime, timedelta
+    from datetime import time as _time
     import os
     import glob
     
@@ -231,12 +232,17 @@ def get_time_based_stats():
                     "SELECT COUNT(*) AS c FROM radio_program_sessions "
                     "WHERE is_subtitled=1 AND created_at >= %s AND created_at <= %s",
                     (datetime.combine(start_date, datetime.min.time()),
-                     datetime.combine(end_date, datetime.time(23, 59, 59))),
+                     datetime.combine(end_date, _time(23, 59, 59))),
                 )
                 row = cur.fetchone()
             conn.close()
             return int(row["c"]) if row else None
-        except Exception:
+        except Exception as e:
+            # A DB error means we fall back to (less meaningful) mtime counts —
+            # log it so the fallback is never silent again.
+            import sys
+            print(f"[time_stats] DB count failed ({start_date}..{end_date}): {e!r}; "
+                  f"falling back to .srt mtime", file=sys.stderr)
             return None
 
     def count(start_date, end_date):
