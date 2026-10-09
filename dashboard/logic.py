@@ -1365,10 +1365,14 @@ def llm_dataset(limit=30, program_id=None):
             if program_id:
                 where = "s.program_id=%s"
                 where_args.append(program_id)
-            # 1) latest `limit` session ids (top-level pagination, newest first)
+            # 1) latest `limit` session ids that already HAVE a step output
+            #    (a freshly-subtitled session with no llm_output row would
+            #    otherwise surface as an empty row and get dropped, so exclude
+            #    it up front — the dataset is about what has been processed).
             cur.execute(
                 f"SELECT s.id FROM radio_program_sessions s "
                 f"WHERE s.is_subtitled=1 AND {where} "
+                f"AND EXISTS (SELECT 1 FROM llm_output o WHERE o.session_id=s.id) "
                 f"ORDER BY s.id DESC LIMIT %s", where_args + [limit])
             latest_ids = [r["id"] for r in cur.fetchall()]
             if not latest_ids:
