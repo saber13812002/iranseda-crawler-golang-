@@ -539,12 +539,14 @@ def _steps_by_slug(conn):
 
 
 def srt_mid_seconds(ts):
-    """Mid-point (seconds) of an SRT timestamp 'HH:MM:SS,mmm --> HH:MM:SS,mmm'."""
+    """Mid-point (seconds) of an SRT timestamp 'HH:MM:SS,mmm --> HH:MM:SS,mmm'.
+    SRT uses a COMMA for the millisecond separator, so normalize it to a dot
+    before float() (a bare float('08,759') raises ValueError -> None)."""
     try:
         a, b = ts.split("-->")
         def _sec(t):
             h, m, s = t.strip().split(":")
-            return int(h) * 3600 + int(m) * 60 + float(s)
+            return int(h) * 3600 + int(m) * 60 + float(s.replace(",", "."))
         return (_sec(a) + _sec(b)) / 2.0
     except Exception:  # noqa: BLE001
         return None
