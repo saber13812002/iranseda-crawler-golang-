@@ -239,13 +239,8 @@ summary{cursor:pointer;color:var(--mut);font-size:13px}
 <div class="card" style="margin-bottom:12px">
   <h3>تعریف و اجرای جاب (هر یک فاز مجزا + خروجی مجزا)</h3>
   <div class="row">
-    <div><label>نوع جاب (phase)</label>
-      <select id="llm-job">
-        <option value="full_text">📝 متن کامل (حذف تایم‌کد — بدون LLM)</option>
-        <option value="summary">🧾 خلاصه‌نویسی</option>
-        <option value="correct_text">✍️ تصحیح متن کامل</option>
-        <option value="correct_subtitles">🎬 تصحیح زیرنویس (SRT)</option>
-      </select>
+    <div><label>مرحله (phase / step)</label>
+      <select id="llm-job"><option value="">… (از /api/steps بارگذاری می‌شود)</option></select>
     </div>
     <div><label>مدل (از LiteLLM)</label>
       <select id="llm-model-sel"></select>
@@ -256,6 +251,7 @@ summary{cursor:pointer;color:var(--mut);font-size:13px}
     </div>
     <div style="max-width:120px"><label>تعداد (limit)</label><input id="llm-limit" class="mono" type="number" value="10"></div>
     <div><label>session idها (اختیاری)</label><input id="llm-ids" class="mono" placeholder="مثال 5741,5742"></div>
+    <div><label>فقط یک برنامه (program id، اختیاری)</label><input id="llm-program-id" class="mono" type="number" placeholder="مثال 12"></div>
   </div>
   <div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
     <label style="display:flex;align-items:center;gap:5px"><input type="checkbox" id="llm-all-files"> 📂 روی همه فایل‌های دیسک (downloads/*.srt)</label>
@@ -266,11 +262,7 @@ summary{cursor:pointer;color:var(--mut);font-size:13px}
   <details style="margin-top:10px"><summary>ویرایش / تعریف پرامپت (مستر‌پرامپت پیش‌فرض هر phase)</summary>
     <div class="row" style="margin-top:8px">
       <div><label>phase</label>
-        <select id="llm-edit-job">
-          <option value="summary">🧾 خلاصه‌نویسی</option>
-          <option value="correct_text">✍️ تصحیح متن کامل</option>
-          <option value="correct_subtitles">🎬 تصحیح زیرنویس (SRT)</option>
-        </select>
+        <select id="llm-edit-job"><option value="summary">🧾 خلاصه‌نویسی</option></select>
       </div>
       <div><label>پرامپت پایه (از لیست)</label><select id="llm-edit-prompt-sel"></select></div>
     </div>
@@ -297,6 +289,75 @@ summary{cursor:pointer;color:var(--mut);font-size:13px}
   </div>
 </div>
 
+<h2>📋 مرحله‌های خط لوله (Steps) — تعریف مرحله جدید با مدل و پرامپت</h2>
+<div class="card" style="margin-bottom:12px">
+  <h3>لیست مرحله‌ها — هر مرحله = ورودی + مدل + پرامپت ← یک فیلد جدا برای هر فایل (دیتابیس به‌صورت dataset رشد می‌کند)</h3>
+  <div style="max-height:240px;overflow:auto">
+    <table id="steps-table"><thead><tr><th>اسلاگ</th><th>نام</th><th>ورودی</th><th>مدل</th><th>پسوند</th><th>نوع</th><th>فعال</th><th></th></tr></thead><tbody></tbody></table>
+  </div>
+  <p class="small" style="margin-top:6px">برای ویرایش روی «ویرایش» بزنید؛ اسلاگ در ویرایش تغییر نمی‌کند (کلید llm_output است).</p>
+</div>
+<div class="card" style="margin-bottom:12px">
+  <h3>تعریف / ویرایش مرحله</h3>
+  <div id="steps-form"></div>
+  <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+    <button class="btn primary" onclick="saveStep()">💾 ذخیره مرحله</button>
+    <button class="btn" type="button" onclick="resetStepForm()">➕ مرحله جدید</button>
+    <button class="btn danger" type="button" onclick="deleteStep()">🗑 حذف</button>
+  </div>
+</div>
+
+<h2>📊 Dataset — خروجی‌ها به تفکیک مرحله و مدل (لینک به برنامه و مدل)</h2>
+<div class="card" style="margin-bottom:12px">
+  <div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:8px">
+    <div style="max-width:140px"><label>تعداد (limit)</label><input id="dataset-limit" class="mono" type="number" value="30"></div>
+    <div><label>فقط برنامه (program id، اختیاری)</label><input id="dataset-program-id" class="mono" type="number" placeholder="—"></div>
+    <button class="btn" type="button" onclick="loadDataset()">🔄 تازه‌سازی</button>
+  </div>
+  <div style="max-height:360px;overflow:auto">
+    <table id="dataset-table"><thead></thead><tbody></tbody></table>
+  </div>
+</div>
+
+<h2>🚀 برنامه‌ها — اضافه / وریفای / برش زمانی / تثبیت</h2>
+<div class="card" style="margin-bottom:12px">
+  <h3>فهرست برنامه‌ها + تنظیم برش بلاک زمانی (crop) + تست ۱۰ تایی</h3>
+  <p class="small" style="margin-top:2px">اگر پخش یک برنامه در نیم‌ساعت، مثلاً از دقیقهٔ ۱۰ تا ۳۰ باشد: «آغاز در بلاک» = 00:10:00 و «مدت» = 00:20:00. خلاصه و تصحیح فقط از همان بلاک ساخته می‌شوند؛ زیرنویس اصلی دست‌نخورده می‌ماند.</p>
+  <div style="max-height:320px;overflow:auto">
+    <table id="programs-table"><thead><tr><th>id</th><th>برنامه</th><th>آغاز در بلاک</th><th>مدت</th><th>برش فعال</th><th>زیرنویس‌شده</th><th></th></tr></thead><tbody></tbody></table>
+  </div>
+</div>
+<div class="grid cols-2">
+  <div class="card">
+    <h3>برش زمانی برنامه (ویرایش crop)</h3>
+    <div id="programs-form"></div>
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn primary" onclick="saveProgramCrop()">💾 ذخیره برش</button>
+      <button class="btn primary" onclick="runProgramTest()">🧪 تست ۱۰ تایی + تثبیت</button>
+    </div>
+  </div>
+  <div class="card">
+    <h3>نتیجهٔ تست برنامه</h3>
+    <div id="progtest-result" class="small" style="white-space:pre-wrap;line-height:1.8">—</div>
+  </div>
+</div>
+
+<h2>📥 Backfill — پیشنهاد ماهانه (وقتی صف خالی شد اجرا می‌شود)</h2>
+<div class="card" style="margin-bottom:12px">
+  <h3>صف پیشنهاد + وضعیت صف زنده</h3>
+  <div id="backfill-summary" class="small" style="margin-bottom:8px">در حال بارگذاری…</div>
+  <div class="row" style="margin-bottom:8px">
+    <div><label>برنامه (program id)</label><input id="backfill-program" class="mono" type="number" placeholder="مثال 12"></div>
+    <div style="max-width:140px"><label>ماه (YYYY-MM)</label><input id="backfill-month" class="mono" placeholder="2026-10"></div>
+    <div style="flex:2"><label>برچسب / توضیح (اختیاری)</label><input id="backfill-label" placeholder="مثال بایگیندهٔ مهر"></div>
+    <button class="btn primary" type="button" onclick="backfillAdd()">➕ افزودن پیشنهاد</button>
+    <button class="btn" type="button" onclick="backfillToggle()">⏸ توقف / ▶️ ادامه</button>
+  </div>
+  <div style="max-height:240px;overflow:auto">
+    <table id="backfill-table"><thead><tr><th>id</th><th>برنامه</th><th>ماه</th><th>برچسب</th><th>وضعیت</th><th></th></tr></thead><tbody></tbody></table>
+  </div>
+</div>
+
 <p class="small" style="margin:26px 0 40px">بروز خودکار هر ۳۰ ثانیه — <a href="/health">/health</a> · <a href="/metrics">/metrics</a> (Prometheus)</p>
 </main>
 
@@ -305,6 +366,11 @@ const $=s=>document.querySelector(s);
 let AUTH=localStorage.getItem("d53_auth")||"";
 let windowLocked=false; // set while the user is editing a سانس/shift; blocks auto-refresh re-render until save
 let boostLocked=false; // set while the user is editing the Boost form; blocks auto-refresh re-render until save
+let stepsLocked=false; // set while the user is editing the Step form
+let programsLocked=false; // set while the user is editing the Program crop form
+let _stepsCache=[]; let _stepEditId=null;
+let _programsCache=[]; let _progEditId=null;
+let _backfillRunning=null;
 function needAuth(){
   if(AUTH)return false;
   const t=prompt("توکن داشبورد (DASH_AUTH_TOKEN) را وارد کنید:");
@@ -508,6 +574,12 @@ async function loadLlmPrompts(){
   const r=await api("/api/llm/prompts");
   if(!r.ok)return;
   _llmPrompts=r.prompts||[];
+  const labels=r.labels||{};
+  const stepOpts=Object.keys(labels).map(k=>({value:k,label:labels[k]||k}));
+  if(stepOpts.length){
+    _llmFillSelect($("#llm-job"),stepOpts,"summary");
+    _llmFillSelect($("#llm-edit-job"),stepOpts,"summary");
+  }
   _llmFillSelect($("#llm-prompt-sel"),_llmPromptOptions($("#llm-job").value));
   _llmFillSelect($("#llm-edit-prompt-sel"),_llmPromptOptions($("#llm-edit-job").value));
   // default the edit form to the selected job's default prompt
@@ -519,12 +591,15 @@ function _llmPromptId(){return $("#llm-prompt-sel")?parseInt($("#llm-prompt-sel"
 async function llmStartRun(){
   const job=$("#llm-job").value;
   const model=$("#llm-model-sel").value;
-  if(job!=="full_text"&&!model){flash("مدل را انتخاب کنید (یا «کشف خودکار» را بزنید)",false);return;}
+  const mech=_stepsCache.find(s=>s.slug===job);
+  const needsModel=!(mech&&mech.is_mechanical)&&(job!=="full_text");
+  if(needsModel&&!model){flash("مدل را انتخاب کنید (یا «کشف خودکار» را بزنید)",false);return;}
   const allFiles=$("#llm-all-files").checked;
   const ids=($("#llm-ids").value||"").split(",").map(x=>x.trim()).filter(Boolean);
-  const body={job_type:job,model:job==="full_text"?"(بدون‌مدل)":model,limit:parseInt($("#llm-limit").value||"10",10),all:$("#llm-all").checked,all_files:allFiles};
+  const body={job_type:job,model:(needsModel?model:"(بدون‌مدل)"),limit:parseInt($("#llm-limit").value||"10",10),all:$("#llm-all").checked,all_files:allFiles};
   const pid=_llmPromptId(); if(pid)body.prompt_id=pid;
   if(!allFiles&&ids.length)body.ids=ids;
+  const prog=parseInt($("#llm-program-id").value||"0",10); if(prog)body.program_id=prog;
   $("#llm-run-status").textContent="در حال آغاز…";
   const r=await api("/api/llm/run",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
   if(r.ok){$("#llm-run-status").textContent="جاب آغاز شد ✓ — پیگیری در «اجراهای اخیر»";flash("جاب LLM آغاز شد",true);setTimeout(loadLlmRuns,1500);}
@@ -578,7 +653,7 @@ $("#llm-job").addEventListener("change",()=>{const d=_llmPrompts.find(p=>p.job_t
 $("#llm-edit-job").addEventListener("change",()=>{const opts=_llmPromptOptions($("#llm-edit-job").value);_llmFillSelect($("#llm-edit-prompt-sel"),opts.length?opts:[{value:"",label:"(پیش‌فرض این phase)"}]);const d=_llmPrompts.find(p=>p.job_type===$("#llm-edit-job").value&&p.is_default)||_llmPrompts.find(p=>p.job_type===$("#llm-edit-job").value);if(d){$("#llm-edit-name").value=d.name;$("#llm-edit-prompt").value=d.prompt;$("#llm-edit-default").checked=!!d.is_default;}});
 
 async function refresh(){
-  try{await Promise.all([loadHealth(),loadJobs(),loadWindow(),loadBoost(),loadLlmRuns(),loadLlmOutputs(),loadLlmReport()]);}catch(e){console.error(e);}
+  try{await Promise.all([loadHealth(),loadJobs(),loadWindow(),loadBoost(),loadLlmRuns(),loadLlmOutputs(),loadLlmReport(),loadSteps(),loadPrograms(),loadBackfill()]);}catch(e){console.error(e);}
 }
 function blkRow(b){return `<div class="row" style="align-items:flex-end;gap:8px;margin-bottom:8px">
   <div style="flex:2"><label>نام سانس</label><input class="mono" data-bname value="${esc(b.name||'')}"></div>
@@ -759,6 +834,198 @@ async function loadActivity(){
   svg.innerHTML=out;
   $("#act-summary").innerHTML=`روز: <span class="mono">${esc(a.day)}</span> (${esc(a.tz)}) — ترنسکریپت: <b>${a.total_transcribed}</b> · محتوای جدید: <b>${a.total_discovered}</b>`;
 }
+
+/* ===== 📋 Steps (pipeline_steps registry) ===== */
+async function loadSteps(){
+  try{
+    const r=await api("/api/steps"); if(!r.ok)return;
+    _stepsCache=r.steps||[];
+    $("#steps-table tbody").innerHTML=_stepsCache.map(s=>`<tr>
+      <td class="mono">${esc(s.slug)}</td>
+      <td>${esc(s.name)}</td>
+      <td class="mono" style="font-size:11px">${esc(s.input_ref)}</td>
+      <td class="mono" style="font-size:11px">${esc(s.model||"—")}</td>
+      <td class="mono" style="font-size:11px">${esc(s.output_suffix)}</td>
+      <td class="small">${esc(s.output_kind)}${s.is_mechanical?" · مکانیکی":""}</td>
+      <td>${s.enabled?'<span class="pill ok">فعال</span>':'<span class="pill">خاموش</span>'}</td>
+      <td style="white-space:nowrap"><button class="btn small" onclick="editStep(${s.id})">ویرایش</button></td>
+    </tr>`).join("")||"<tr><td colspan='8' class='small'>—</td></tr>";
+    if(!stepsLocked)renderStepForm();
+  }catch(e){console.error(e);}
+}
+function _stepFormHtml(s){
+  s=s||{};
+  const inputRefs=["srt","full_text","program_srt","program_text","step:"].map(v=>`<option value="${v}" ${s.input_ref===v?"selected":""}>${v}</option>`).join("");
+  const kinds=["text","srt","bilingual","program"].map(v=>`<option value="${v}" ${s.output_kind===v?"selected":""}>${v}</option>`).join("");
+  return `<input type="hidden" id="step-id" value="${s.id||""}">
+  <div class="row">
+    <div><label>اسلاگ (job_type — در ویرایش ثابت است)</label><input id="step-slug" class="mono" value="${esc(s.slug||"")}" ${s.id?"readonly":""} placeholder="مثال qa"></div>
+    <div><label>نام نمایشی</label><input id="step-name" value="${esc(s.name||"")}" placeholder="مثال سوال و جواب"></div>
+  </div>
+  <div class="row">
+    <div><label>ورودی (input_ref)</label><select id="step-input">${inputRefs}</select></div>
+    <div><label>مدل</label><input id="step-model" class="mono" value="${esc(s.model||"")}" placeholder="qwen38-nothinking"></div>
+    <div><label>پسوند خروجی (output_suffix)</label><input id="step-suffix" class="mono" value="${esc(s.output_suffix||"")}" placeholder=".qa.txt"></div>
+    <div><label>نوع خروجی</label><select id="step-kind">${kinds}</select></div>
+  </div>
+  <label>مستر‌پرامپت (خالی = پرامپت پیش‌فرض این phase)</label>
+  <textarea id="step-prompt" rows="4" style="width:100%;background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:7px;padding:8px;font-family:inherit;font-size:13px;direction:rtl">${esc(s.prompt||"")}</textarea>
+  <div class="row" style="margin-top:8px">
+    <div style="max-width:110px"><label>ترتیب (sort)</label><input id="step-order" class="mono" type="number" value="${s.sort_order!=null?s.sort_order:50}"></div>
+    <div style="max-width:130px"><label>مکانیکی؟</label><select id="step-mech"><option value="0" ${!s.is_mechanical?"selected":""}>نه (LLM)</option><option value="1" ${s.is_mechanical?"selected":""}>بله</option></select></div>
+    <div style="max-width:120px"><label>فعال؟</label><select id="step-enabled"><option value="1" ${s.enabled!==false?"selected":""}>فعال</option><option value="0" ${s.enabled===false?"selected":""}>خاموش</option></select></div>
+  </div>`;
+}
+function renderStepForm(){
+  const s=_stepEditId?_stepsCache.find(x=>x.id==_stepEditId):null;
+  $("#steps-form").innerHTML=_stepFormHtml(s||{});
+}
+function editStep(id){_stepEditId=id;stepsLocked=true;renderStepForm();}
+function resetStepForm(){_stepEditId=null;stepsLocked=false;renderStepForm();}
+async function saveStep(){
+  const body={
+    slug:$("#step-slug").value.trim(), name:$("#step-name").value.trim(),
+    input_ref:$("#step-input").value, model:$("#step-model").value.trim(),
+    output_suffix:$("#step-suffix").value.trim(), output_kind:$("#step-kind").value,
+    prompt:$("#step-prompt").value.trim(), is_mechanical:$("#step-mech").value==="1",
+    enabled:$("#step-enabled").value==="1", sort_order:parseInt($("#step-order").value||"0",10)
+  };
+  const id=parseInt($("#step-id").value||"0",10); if(id)body.id=id;
+  const r=await api("/api/steps",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  if(r.ok){flash("مرحله ذخیره شد ✓",true);stepsLocked=false;_stepEditId=null;await loadSteps();await loadLlmPrompts();}
+  else{flash("خطا: "+(r.detail||r.error||""),false);}
+}
+async function deleteStep(){
+  const id=parseInt($("#step-id").value||"0",10); if(!id){flash("ابتدا روی «ویرایش» یک مرحله بزنید",false);return;}
+  if(!confirm("این مرحله حذف شود؟ (خروجی‌های قبلی پاک نمی‌شوند)"))return;
+  const r=await api("/api/steps/"+id,{method:"DELETE"});
+  if(r.ok){flash("مرحله حذف شد",true);_stepEditId=null;stepsLocked=false;await loadSteps();await loadLlmPrompts();}
+  else{flash("خطا: "+(r.detail||r.error||""),false);}
+}
+
+/* ===== 📊 Dataset ===== */
+async function loadDataset(){
+  try{
+    const pid=parseInt($("#dataset-program-id").value||"0",10);
+    const limit=parseInt($("#dataset-limit").value||"30",10);
+    const r=await api(`/api/dataset?limit=${limit}${pid?`&program_id=${pid}`:""}`);
+    if(!r.ok)return;
+    const steps=r.steps||[],labels=r.labels||{},rows=r.rows||[];
+    $("#dataset-table thead").innerHTML="<tr><th>جلسه</th><th>برنامه</th>"+steps.map(k=>`<th>${esc(labels[k]||k)}</th>`).join("")+"</tr>";
+    $("#dataset-table tbody").innerHTML=rows.map(d=>{
+      const cells=steps.map(k=>{
+        const st=(d.steps||{})[k];
+        return st?`<td class="mono" style="font-size:11px;cursor:help" title="${esc(st.file_relpath||"")} · ${st.status}">${esc(st.model)}${st.status!=="done"?" ⚠":""}</td>`:"<td class='small'>—</td>";
+      }).join("");
+      return `<tr><td class="mono">${d.session_id}<div class="small" style="font-size:10px">${esc((d.filename||"").slice(0,26))}</div></td>
+        <td class="small">${esc(d.program_name||"—")}</td>${cells}</tr>`;
+    }).join("")||"<tr><td colspan='"+(steps.length+2)+"' class='small'>—</td></tr>";
+  }catch(e){console.error(e);}
+}
+
+/* ===== 🚀 Programs (onboarding / crop) ===== */
+async function loadPrograms(){
+  try{
+    const r=await api("/api/programs"); if(!r.ok)return;
+    _programsCache=r.programs||[];
+    $("#programs-table tbody").innerHTML=_programsCache.map(p=>`<tr>
+      <td class="mono">${p.id}</td>
+      <td>${esc(p.name)}</td>
+      <td class="mono" style="font-size:11px">${esc(p.crop_offset||"—")}</td>
+      <td class="mono" style="font-size:11px">${esc(fmtDur(p["time"]))}</td>
+      <td>${p.crop_enabled?'<span class="pill ok">فعال</span>':'<span class="pill">خاموش</span>'}</td>
+      <td class="small">${p.subtitled}/${p.sessions}</td>
+      <td style="white-space:nowrap"><button class="btn small" onclick="editProgram(${p.id})">ویرایش</button></td>
+    </tr>`).join("")||"<tr><td colspan='7' class='small'>—</td></tr>";
+    if(!programsLocked)renderProgramForm();
+  }catch(e){console.error(e);}
+}
+function fmtDur(t){if(!t)return "";const s=String(t);return s.length>5?s.slice(0,8):s;}
+function _progFormHtml(p){
+  p=p||{};
+  return `<input type="hidden" id="prog-id" value="${p.id||""}">
+  <div class="small" style="margin-bottom:6px">برنامه: <b>${esc(p.name||"(برنامه‌ای انتخاب نشده)")}</b></div>
+  <div class="row">
+    <div style="max-width:150px"><label>آغاز در بلاک (TIME)</label><input id="prog-offset" class="mono" value="${esc(p.crop_offset||"")}" placeholder="00:00:00"></div>
+    <div style="max-width:150px"><label>مدت (TIME)</label><input id="prog-dur" class="mono" value="${esc(fmtDur(p["time"]))}" placeholder="00:30:00"></div>
+    <div style="max-width:130px"><label>برش فعال؟</label><select id="prog-enabled"><option value="0" ${!p.crop_enabled?"selected":""}>خاموش</option><option value="1" ${p.crop_enabled?"selected":""}>فعال</option></select></div>
+  </div>`;
+}
+function renderProgramForm(){
+  const p=_progEditId?_programsCache.find(x=>x.id==_progEditId):null;
+  $("#programs-form").innerHTML=_progFormHtml(p||{});
+}
+function editProgram(id){_progEditId=id;programsLocked=true;renderProgramForm();}
+async function saveProgramCrop(){
+  const id=parseInt($("#prog-id").value||"0",10); if(!id){flash("ابتدا روی «ویرایش» یک برنامه بزنید",false);return;}
+  const body={id,crop_offset:$("#prog-offset").value.trim(),time:$("#prog-dur").value.trim(),crop_enabled:$("#prog-enabled").value==="1"};
+  const r=await api("/api/programs/crop",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  if(r.ok){flash("برش برنامه ذخیره شد ✓",true);programsLocked=false;await loadPrograms();}
+  else{flash("خطا: "+(r.detail||r.error||""),false);}
+}
+async function runProgramTest(){
+  const id=parseInt($("#prog-id").value||"0",10);
+  if(!id){flash("ابتدا روی «ویرایش» یک برنامه بزنید و برش را ذخیره کنید",false);return;}
+  $("#progtest-result").textContent="در حال شروع تست ۱۰ تایی…";
+  const r=await api("/api/programs/"+id+"/test",{method:"POST"});
+  if(!r.ok){$("#progtest-result").textContent="خطا: "+(r.detail||r.error||"");return;}
+  const e=r.estimate||{};
+  $("#progtest-result").textContent=`برنامه: ${esc(e.program||"")}\nزیرنویس‌شده کل: ${e.total_subtitled}\nتست روی: ${e.will_test} جلسه\nمراحل: ${e.steps.join(" ← ")}\n\nدر حال اجرا… (پیگیری در «جاب‌های LLM ») — ${new Date().toLocaleTimeString()}`;
+  pollProgTest(r.handle);
+}
+function pollProgTest(handle,ticks=0){
+  if(ticks>40)return;
+  api("/api/llm/runs").then(r=>{
+    const found=(r.runs||[]).find(([h])=>h===handle);
+    if(!found){pollProgTest(handle,ticks+1);return;}
+    const v=found[1];
+    let txt=`وضعیت: ${v.status}\n${esc(v.detail||"")}\n`;
+    if(v.status==="done"&&v.result){txt+="\n"+Object.entries(v.result).map(([k,res])=>`  ${k}: ${res.done} ok / ${res.failed} failed (از ${res.total})`).join("\n");}
+    $("#progtest-result").textContent=txt;
+    if(v.status!=="running")return;
+    setTimeout(()=>pollProgTest(handle,ticks+1),3000);
+  }).catch(()=>{});
+}
+
+/* ===== 📥 Backfill ===== */
+async function loadBackfill(){
+  try{
+    const r=await api("/api/backfill"); if(!r.ok)return;
+    _backfillRunning=r.running;
+    const q=r.queue||{};
+    $("#backfill-summary").innerHTML=`
+      <span class="pill ${_backfillRunning?"run":"ok"}">${_backfillRunning?"در حال اجرا":"متوقف"}</span>
+      &nbsp; صف دانلود(باقی): <b>${q.pending_download??0}</b> · صف ترنسکریپت(باقی): <b>${q.pending_transcribe??0}</b> ·
+      پیشنهاد در صف: <b>${(r.list||[]).filter(x=>x.status==="queued").length}</b> ·
+      آخرین ترفیع: <span class="mono">${esc(r.last_promote||"—")}</span>`;
+    $("#backfill-table tbody").innerHTML=(r.list||[]).map(b=>`<tr>
+      <td class="mono">${b.id}</td>
+      <td class="mono">${b.program_id}</td>
+      <td class="mono">${esc(b.month||"—")}</td>
+      <td class="small">${esc(b.label||"")}</td>
+      <td><span class="pill ${b.status==="done"?"ok":b.status==="skipped"?"bad":"run"}">${esc(b.status)}</span></td>
+      <td style="white-space:nowrap"><button class="btn small" onclick="backfillPromote(${b.id})">حالا</button></td>
+    </tr>`).join("")||"<tr><td colspan='6' class='small'>—</td></tr>";
+  }catch(e){console.error(e);}
+}
+async function backfillAdd(){
+  const body={program_id:parseInt($("#backfill-program").value||"0",10)||null,
+    month:$("#backfill-month").value.trim(),label:$("#backfill-label").value.trim()};
+  const r=await api("/api/backfill",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  if(r.ok){flash("پیشنهاد اضافه شد ✓",true);$("#backfill-program").value="";$("#backfill-label").value="";await loadBackfill();}
+  else{flash("خطا: "+(r.detail||r.error||""),false);}
+}
+async function backfillPromote(id){
+  const r=await api(`/api/backfill/${id}/promote`,{method:"POST"});
+  flash(r.ok?"ترفیع انجام شد ✓":"خطا: "+(r.detail||r.error||""),r.ok);
+  await loadBackfill();
+}
+async function backfillToggle(){
+  const r=await api("/api/backfill/toggle",{method:"POST"});
+  if(r.ok){flash(r.running?"ادامه داده شد ▶":"توقف شد ⏸",true);await loadBackfill();}
+  else{flash("خطا: "+(r.detail||r.error||""),false);}
+}
+
 async function init(){
   // Lock the window/سانس section while the user is editing it so the 30s
   // auto-refresh doesn't clobber unsaved edits (shift fields, tz, the enable
@@ -767,12 +1034,14 @@ async function init(){
   document.addEventListener("focusin",e=>{
     if(e.target.closest("#window-form, #window-summary")) windowLocked=true;
     if(e.target.closest("#boost-form")) boostLocked=true;
+    if(e.target.closest("#steps-form")) stepsLocked=true;
+    if(e.target.closest("#programs-form")) programsLocked=true;
   });
   if(!AUTH && needAuth()){
     const el=$("#flash");el.innerHTML="برای نمایش داده‌ها به <b>توکن داشبورد</b> نیاز است — دوباره «توکن داشبورد» را بزنید و وارد کنید.";el.className="flash err";
     return;
   }
-  await Promise.all([refresh(),loadSettings(),loadLlm(),loadLlmPrompts()]);
+  await Promise.all([refresh(),loadSettings(),loadLlm(),loadLlmPrompts(),loadDataset()]);
   loadLlmJobDefaults();
   setInterval(refresh,30000);
 }

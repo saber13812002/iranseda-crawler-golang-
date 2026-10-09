@@ -152,11 +152,52 @@ SCHEMA = [
         KEY k_job (job_id), KEY k_session (session_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     """,
+    # The pipeline-steps registry. Makes the set of phases data-driven: a new
+    # step (input file + model + master prompt -> new per-file field) is a row,
+    # and every consumer (engine dispatch, guards, site, labels) reads this
+    # table instead of a hard-coded job list. job_type in llm_output == slug.
+    """
+    CREATE TABLE IF NOT EXISTS pipeline_steps (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        slug VARCHAR(48) NOT NULL UNIQUE,
+        name VARCHAR(120) NOT NULL,
+        input_ref VARCHAR(64) NOT NULL DEFAULT 'srt',
+        model VARCHAR(120),
+        prompt MEDIUMTEXT,
+        output_suffix VARCHAR(64) NOT NULL,
+        output_kind VARCHAR(16) NOT NULL DEFAULT 'text',
+        is_mechanical TINYINT NOT NULL DEFAULT 0,
+        enabled TINYINT NOT NULL DEFAULT 1,
+        sort_order INT NOT NULL DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    """,
+    # Monthly backfill queue: program suggestions promoted into the pipeline
+    # only when the download+subtitle queue is idle (dashboard/backfill.py).
+    """
+    CREATE TABLE IF NOT EXISTS backfill_list (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        program_id INT,
+        label VARCHAR(120),
+        month VARCHAR(7),
+        status VARCHAR(16) NOT NULL DEFAULT 'queued',
+        added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        promoted_at DATETIME NULL,
+        note VARCHAR(255)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    """,
 ]
 
 # One-time column upgrades for tables created before the field was added.
+# crop_offset/crop_enabled live on radio_programs (owned by the Go crawler);
+# we add them here idempotently so the time-block crop has its config home.
+# crop_offset = in-slot start of the program audio (00:00:00 = slot start,
+# 00:10:00 = middle of a 30-min slot...); `time` (already present) = duration.
 MIGRATIONS = [
     ("llm_output", "content_en", "ALTER TABLE llm_output ADD COLUMN content_en MEDIUMTEXT AFTER content"),
+    ("radio_programs", "crop_offset", "ALTER TABLE radio_programs ADD COLUMN crop_offset TIME NULL"),
+    ("radio_programs", "crop_enabled",
+     "ALTER TABLE radio_programs ADD COLUMN crop_enabled TINYINT NOT NULL DEFAULT 0"),
 ]
 
 # One-time index drops. The original llm_job schema had UNIQUE KEY uq
@@ -195,6 +236,14 @@ def _ensure_schema_once(cur):
     cur.execute(
         "UPDATE prompts SET name=%s, prompt=%s WHERE job_type='summary' AND is_default=1",
         (DEFAULT_PROMPTS["summary"][1], DEFAULT_PROMPTS["summary"][2]))
+    # seed the pipeline-steps registry (create-only by slug; the admin may edit
+    # a step's model/prompt/enabled afterwards and it won't be clobbered here).
+    for (slug, name, input_ref, model, prompt, suffix, kind, mech, order) in DEFAULT_STEPS:
+        cur.execute(
+            "INSERT IGNORE INTO pipeline_steps "
+            "(slug,name,input_ref,model,prompt,output_suffix,output_kind,is_mechanical,sort_order) "
+            "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+            (slug, name, input_ref, model, prompt, suffix, kind, mech, order))
 
 
 def ensure_schema(conn=None, retries=5):
@@ -262,6 +311,26 @@ _JOB_SUFFIX = {
     "correct_text": ".correct.txt",
     "correct_subtitles": ".correct.srt",
 }
+
+# The seed rows for the pipeline_steps registry. Every existing job is a row so
+# the engine stays backward-compatible; `program_block` is the NEW mechanical
+# crop step (produces the program-only SRT/text, the "new field"). Adding a new
+# phase from the admin = a new row here (or via the API) — no code change.
+#   input_ref: srt | full_text | program_srt | program_text | step:<slug>
+#   output_kind: text | bilingual | srt | program (crop)
+DEFAULT_STEPS = [
+    # slug, name, input_ref, model, prompt, output_suffix, output_kind, mechanical, order
+    ("full_text", "متن کامل (حذف تایم‌کد)", "full_text", None, None,
+     ".full.txt", "text", 1, 10),
+    ("summary", "خلاصه‌نویسی دوزبانه (فارسی + انگلیسی)", "program_text",
+     "qwen38-nothinking", None, ".summary.txt", "bilingual", 0, 20),
+    ("correct_text", "تصحیح متن کامل", "program_text", "qwen38-nothinking", None,
+     ".correct.txt", "text", 0, 30),
+    ("correct_subtitles", "تصحیح زیرنویس (SRT)", "program_srt",
+     "qwen38-nothinking", None, ".correct.srt", "srt", 0, 40),
+    ("program_block", "برش بلاک زمانی برنامه", "srt", None, None,
+     ".program.srt", "program", 1, 5),
+]
 
 
 def discover_models(base_url=None, key=None, timeout=20):
@@ -441,6 +510,204 @@ def build_srt(blocks, corrected_lines):
 
 
 # ---------------------------------------------------------------------------
+# pipeline-step registry (data-driven phases) + time-block crop
+# ---------------------------------------------------------------------------
+
+def _step_row_by_slug(conn, slug):
+    """Return the pipeline_steps row for a slug, or None (short-lived conn)."""
+    if conn is None:
+        return None
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM pipeline_steps WHERE slug=%s", (slug,))
+            return cur.fetchone()
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _steps_by_slug(conn):
+    """{slug: row} for all pipeline_steps (for resolving chained inputs)."""
+    out = {}
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM pipeline_steps")
+            for r in cur.fetchall():
+                out[r["slug"]] = r
+    except Exception:  # noqa: BLE001
+        pass
+    return out
+
+
+def srt_mid_seconds(ts):
+    """Mid-point (seconds) of an SRT timestamp 'HH:MM:SS,mmm --> HH:MM:SS,mmm'."""
+    try:
+        a, b = ts.split("-->")
+        def _sec(t):
+            h, m, s = t.strip().split(":")
+            return int(h) * 3600 + int(m) * 60 + float(s)
+        return (_sec(a) + _sec(b)) / 2.0
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _time_value_to_seconds(v):
+    """A MySQL TIME / 'HH:MM:SS' / timedelta-ish -> seconds (int), or None."""
+    if v is None:
+        return None
+    if isinstance(v, int):
+        return v
+    s = str(v)
+    parts = s.split(":")
+    try:
+        if len(parts) == 3:
+            return int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
+        if len(parts) == 2:
+            return int(parts[0]) * 60 + int(parts[1])
+        return int(parts[0])
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def crop_program(srt_text, offset_sec, dur_sec):
+    """Keep only the SRT blocks whose mid-point falls in [offset, offset+dur]
+    (the program's block within its ~30-min slot). Renumber 1-based, keep the
+    ORIGINAL timestamps. Returns (program_srt_text, program_full_text).
+
+    If the window is empty/None or no blocks match, returns ("", "") so callers
+    can fall back to the full transcript."""
+    _full, blocks = srt_parse(srt_text or "")
+    if not blocks or not dur_sec or dur_sec <= 0:
+        return "", ""
+    off = max(0, int(offset_sec or 0))
+    hi = off + int(dur_sec)
+    kept = []
+    for _idx, ts, lines in blocks:
+        mid = srt_mid_seconds(ts)
+        if mid is None:
+            continue
+        if off <= mid < hi:
+            kept.append((ts, lines))
+    if not kept:
+        return "", ""
+    srt_out = []
+    full_parts = []
+    for i, (ts, lines) in enumerate(kept, 1):
+        txt = " ".join(l.strip() for l in lines if l.strip())
+        srt_out.append(f"{i}\n{ts}\n{txt}")
+        full_parts.append(txt)
+    return "\n\n".join(srt_out) + "\n", " ".join(full_parts).strip()
+
+
+def _program_window_for(conn, stem, session):
+    """Resolve a session's crop window from its program row.
+
+    Returns (offset_sec, dur_sec, enabled). Uses session['program_id'] when
+    present (DB path), else looks the stem up. `time`=duration, `crop_offset`=
+    in-slot start, `crop_enabled`=switch."""
+    try:
+        pid = session.get("program_id")
+        if not pid:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT program_id FROM radio_program_sessions WHERE id=%s",
+                    (session.get("id"),))
+                r = cur.fetchone()
+                pid = r["program_id"] if r else None
+        if not pid:
+            return 0, 0, False
+        with conn.cursor() as cur:
+            cur.execute("SELECT `time`, crop_offset, crop_enabled FROM radio_programs "
+                        "WHERE id=%s", (pid,))
+            p = cur.fetchone()
+        if not p:
+            return 0, 0, False
+        off = _time_value_to_seconds(p.get("crop_offset")) or 0
+        dur = _time_value_to_seconds(p.get("time")) or 0
+        enabled = bool(p.get("crop_enabled"))
+        return off, dur, enabled
+    except Exception:  # noqa: BLE001
+        return 0, 0, False
+
+
+def _ensure_program_block(conn, session, stem):
+    """Guarantee <stem>.program.srt / .program.txt exist for this session's crop
+    window (writing them if missing). Returns (program_srt, program_full,
+    crop_active). Falls back to the full SRT text when the crop is disabled,
+    unconfigured, or empty — so downstream always has a valid transcript."""
+    p_srt_path = os.path.join(CLEANED, stem + ".program.srt")
+    p_txt_path = os.path.join(CLEANED, stem + ".program.txt")
+    off, dur, enabled = _program_window_for(conn, stem, session) if conn else (0, 0, False)
+    crop_active = bool(enabled and dur > 0)
+    srt_text = ""
+    if os.path.exists(os.path.join(DOWNLOADS, stem + ".srt")):
+        srt_text = open(os.path.join(DOWNLOADS, stem + ".srt"),
+                        encoding="utf-8", errors="replace").read()
+    if crop_active and not os.path.exists(p_srt_path):
+        p_srt, p_full = crop_program(srt_text, off, dur)
+        if p_srt:
+            os.makedirs(CLEANED, exist_ok=True)
+            _write(p_srt_path, p_srt)
+            _write(p_txt_path, p_full)
+    # resolve what to actually use
+    if os.path.exists(p_txt_path):
+        program_full = read_txt(p_txt_path)
+    else:
+        program_full = ""
+    if os.path.exists(p_srt_path):
+        program_srt = open(p_srt_path, encoding="utf-8", errors="replace").read()
+    else:
+        program_srt = ""
+    # fall back to full transcript when crop produced nothing / not enabled
+    if not program_srt and not program_full:
+        full, srt_text, _blocks, _ = load_session_input(session)
+        program_srt, program_full = srt_text, full
+    return program_srt, program_full, crop_active
+
+
+def _resolve_step_input(conn, session, stem, input_ref, steps_by_slug):
+    """Resolve a step's input (input_ref) -> (text, srt).
+    srt | full_text | program_srt | program_text | step:<slug>."""
+    if input_ref == "srt":
+        full, srt_text, _b, _ = load_session_input(session)
+        return full, srt_text
+    if input_ref == "full_text":
+        full, _srt, _b, _ = load_session_input(session)
+        return full, ""
+    if input_ref in ("program_srt", "program_text"):
+        p_srt, p_full, _a = _ensure_program_block(conn, session, stem)
+        if input_ref == "program_srt":
+            return p_full, p_srt
+        return p_full, ""
+    if input_ref.startswith("step:"):
+        other = steps_by_slug.get(input_ref[5:])
+        if other and other.get("output_suffix"):
+            p = os.path.join(CLEANED, stem + other["output_suffix"])
+            if os.path.exists(p):
+                return read_txt(p), ""
+        # fall back to the program/full transcript if the chained output is absent
+        p_srt, p_full, _a = _ensure_program_block(conn, session, stem)
+        return p_full, ""
+    # unknown -> full transcript
+    full, srt_text, _b, _ = load_session_input(session)
+    return full, srt_text
+
+
+def known_step_slugs(conn=None):
+    """Valid step slugs from the registry, with a static fallback so a missing
+    table/row can never crash a running shard."""
+    fallback = set(JOB_TYPES) | {s[0] for s in DEFAULT_STEPS}
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT slug FROM pipeline_steps")
+            slugs = {r["slug"] for r in cur.fetchall()}
+        if slugs:
+            return slugs | fallback
+    except Exception:  # noqa: BLE001
+        pass
+    return fallback
+
+
+# ---------------------------------------------------------------------------
 # per-session processing
 # ---------------------------------------------------------------------------
 
@@ -459,53 +726,68 @@ def _process_core(session, job_type, prompt_text, model, conn, base_url=None, ke
     content_en = None
     pt = ot = None
 
-    if job_type == "full_text":
-        full, _srt, _blocks, _ = load_session_input(session)
-        content = full
-        file_rel = f"downloads/cleaned/{stem}.full.txt"
-        _write(os.path.join(CLEANED, f"{stem}.full.txt"), content)
-        srt_content = None
-    elif job_type == "correct_subtitles":
-        full, srt_text, blocks, _ = load_session_input(session)
-        if not blocks:
-            return {"ok": False, "error": "no srt blocks"}
-        out, pt, ot = call_llm(model, prompt_text, srt_text[:24000], base_url, key,
-                               max_tokens=4096)
-        lines = extract_corrected_texts(out, len(blocks))
-        srt_content = build_srt(blocks, lines)
-        content = None
-        file_rel = f"downloads/cleaned/{stem}.correct.srt"
-        _write(os.path.join(CLEANED, f"{stem}.correct.srt"), srt_content)
-    elif job_type == "summary":
-        full, srt_text, blocks, _ = load_session_input(session)
-        user = full or srt_text
+    # Data-driven dispatch: the step row (pipeline_steps) decides the input
+    # (input_ref), the operation (output_kind) and the output file (suffix).
+    step = _step_row_by_slug(conn, job_type)
+    input_ref = (step or {}).get("input_ref", "srt") or "srt"
+    output_kind = (step or {}).get("output_kind", "text") or "text"
+    suffix = (step or {}).get("output_suffix") or _JOB_SUFFIX.get(job_type, ".out.txt")
+    step_model = (step or {}).get("model") or model
+    steps_by_slug = _steps_by_slug(conn) if input_ref.startswith("step:") else {}
+    in_text, in_srt = _resolve_step_input(conn, session, stem, input_ref, steps_by_slug)
+
+    file_rel = f"downloads/cleaned/{stem}{suffix}"
+    if output_kind == "program":
+        # mechanical time-block crop -> <stem>.program.srt / .program.txt (a
+        # "new field"); the original <stem>.srt is left untouched.
+        p_srt, p_full, _active = _ensure_program_block(conn, session, stem)
+        if p_srt:
+            _write(os.path.join(CLEANED, stem + ".program.srt"), p_srt)
+            _write(os.path.join(CLEANED, stem + ".program.txt"), p_full)
+            srt_content, content = p_srt, p_full
+        else:
+            srt_content, content = None, None
+    elif output_kind == "bilingual":
+        user = in_text
         if not user:
             return {"ok": False, "error": "no transcript text"}
-        out, pt, ot = call_llm(model, prompt_text, user[:24000], base_url, key,
+        out, pt, ot = call_llm(step_model, prompt_text, user[:24000], base_url, key,
                                max_tokens=1600)
         fa, en = split_summary_bilingual(out)
         if not fa and not en:
             fa = _clean_llm_text(out)
-        content = fa
-        content_en = en or None
-        file_rel = f"downloads/cleaned/{stem}.summary.txt"
-        _write(os.path.join(CLEANED, f"{stem}.summary.txt"), fa)
+        content, content_en = fa, (en or None)
+        _write(os.path.join(CLEANED, stem + suffix), fa)
         if en:
-            _write(os.path.join(CLEANED, f"{stem}.summary.en.txt"), en)
+            _root, _ext = os.path.splitext(stem + suffix)
+            _write(os.path.join(CLEANED, _root + ".en" + _ext), en)
         srt_content = None
-    else:  # correct_text
-        full, srt_text, blocks, _ = load_session_input(session)
-        user = full or srt_text
-        if not user:
-            return {"ok": False, "error": "no transcript text"}
-        out, pt, ot = call_llm(model, prompt_text, user[:24000], base_url, key,
+    elif output_kind == "srt":
+        if not in_srt:
+            return {"ok": False, "error": "no srt blocks"}
+        _f, blocks = srt_parse(in_srt)
+        if not blocks:
+            return {"ok": False, "error": "no srt blocks"}
+        out, pt, ot = call_llm(step_model, prompt_text, in_srt[:24000], base_url, key,
                                max_tokens=4096)
-        content = _clean_llm_text(out)
-        file_rel = f"downloads/cleaned/{stem}.correct.txt"
-        _write(os.path.join(CLEANED, f"{stem}.correct.txt"), content)
+        lines = extract_corrected_texts(out, len(blocks))
+        srt_content = build_srt(blocks, lines)
+        content = None
+        _write(os.path.join(CLEANED, stem + suffix), srt_content)
+    else:  # 'text' — mechanical full_text, or LLM-cleaned text
+        if job_type == "full_text":
+            content = in_text
+        else:
+            user = in_text
+            if not user:
+                return {"ok": False, "error": "no transcript text"}
+            out, pt, ot = call_llm(step_model, prompt_text, user[:24000], base_url, key,
+                                   max_tokens=4096)
+            content = _clean_llm_text(out)
+        _write(os.path.join(CLEANED, stem + suffix), content)
         srt_content = None
 
-    if persist and sid is not None and conn is not None:
+    if output_kind != "program" and persist and sid is not None and conn is not None:
         with conn.cursor() as cur:
             cur.execute(
                 """
@@ -553,7 +835,8 @@ def _write(path, text):
 # batch runner (DB-driven, by session id)
 # ---------------------------------------------------------------------------
 
-def _pick_sessions(conn, limit=None, session_ids=None, only_new=True):
+def _pick_sessions(conn, limit=None, session_ids=None, only_new=True,
+                   program_id=None):
     with conn.cursor() as cur:
         if session_ids:
             ph = ",".join(["%s"] * len(session_ids))
@@ -562,19 +845,24 @@ def _pick_sessions(conn, limit=None, session_ids=None, only_new=True):
                 f"WHERE id IN ({ph}) AND is_subtitled=1 ORDER BY id", session_ids)
         else:
             where = "is_subtitled=1 AND srt_filename IS NOT NULL AND srt_filename <> ''"
+            args = []
+            if program_id:
+                where += " AND program_id=%s"
+                args.append(program_id)
             cur.execute(
                 f"SELECT id, filename, program_id FROM radio_program_sessions "
-                f"WHERE {where} ORDER BY id DESC LIMIT %s", (limit or 100,))
+                f"WHERE {where} ORDER BY id DESC LIMIT %s", args + [limit or 100])
         return cur.fetchall()
 
 
 def run_batch(job_type, model=None, prompt_text=None, limit=None,
-              session_ids=None, only_new=True, conn=None, log=print):
+              session_ids=None, only_new=True, conn=None, log=print,
+              program_id=None, force=False):
     own = conn is None
     conn = conn or _db_conn()
     cfg = _llm_cfg()
     model = model or os.environ.get("LLM_MODEL") or "qwen38-nothinking"
-    if job_type not in JOB_TYPES:
+    if job_type not in known_step_slugs(conn):
         raise ValueError(f"bad job_type {job_type}")
     if prompt_text is None:
         with conn.cursor() as cur:
@@ -583,8 +871,8 @@ def run_batch(job_type, model=None, prompt_text=None, limit=None,
             r = cur.fetchone()
             prompt_text = r["prompt"] if r else ""
 
-    sessions = _pick_sessions(conn, limit, session_ids, only_new)
-    if only_new and job_type != "full_text":
+    sessions = _pick_sessions(conn, limit, session_ids, only_new, program_id)
+    if only_new and not force and job_type != "full_text" and sessions:
         done_ids = set()
         with conn.cursor() as cur:
             ph = ",".join(["%s"] * len(sessions))
@@ -657,9 +945,29 @@ def _stem_to_session_map(conn):
     return m
 
 
+def _stem_to_session_rows(conn):
+    """Map stem -> {'id':…, 'filename':…, 'program_id':…} for the file-driven
+    path, so the crop (and program-aware inputs) can resolve the schedule."""
+    m = {}
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, filename, srt_filename, program_id "
+                        "FROM radio_program_sessions WHERE is_subtitled=1")
+            for r in cur.fetchall():
+                for k in (os.path.splitext(r["filename"] or "")[0],
+                          os.path.splitext(r["srt_filename"] or "")[0]):
+                    if k and k not in m:
+                        m[k] = {"id": r["id"],
+                                "filename": r["filename"] or (k + ".mp4"),
+                                "program_id": r.get("program_id")}
+    except Exception:  # noqa: BLE001
+        pass
+    return m
+
+
 def run_over_all_files(job_type, model=None, prompt_text=None, limit=None,
                        only_new=True, conn=None, log=print,
-                       shard=None, shards=1):
+                       shard=None, shards=1, program_id=None, force=False):
     """Process EVERY downloads/*.srt on disk for one job (the "run on all files"
     path). Idempotent when only_new: skips a stem whose primary output file
     already exists. Files are written for all stems; the DB row is upserted
@@ -672,7 +980,7 @@ def run_over_all_files(job_type, model=None, prompt_text=None, limit=None,
     conn = conn or _db_conn()
     cfg = _llm_cfg()
     model = model or os.environ.get("LLM_MODEL") or "qwen38-nothinking"
-    if job_type not in JOB_TYPES:
+    if job_type not in known_step_slugs(conn):
         raise ValueError(f"bad job_type {job_type}")
     if prompt_text is None:
         with conn.cursor() as cur:
@@ -686,11 +994,15 @@ def run_over_all_files(job_type, model=None, prompt_text=None, limit=None,
     if shard is not None and shards > 1:
         names = [n for i, n in enumerate(names) if i % shards == shard]
     stems = [os.path.splitext(n)[0] for n in names]
-    total = len(stems)
+    stem2id = _stem_to_session_map(conn)
+    stem2sess = _stem_to_session_rows(conn)
+    if program_id:
+        stems = [st for st in stems
+                 if (stem2sess.get(st) or {}).get("program_id") == program_id]
     if limit:
         stems = stems[:limit]
-    stem2id = _stem_to_session_map(conn)
-    suffix = _JOB_SUFFIX[job_type]
+    step = _step_row_by_slug(conn, job_type)
+    suffix = (step or {}).get("output_suffix") or _JOB_SUFFIX.get(job_type, ".out.txt")
 
     job_id = None
     now = datetime.now()
@@ -705,14 +1017,15 @@ def run_over_all_files(job_type, model=None, prompt_text=None, limit=None,
     done = failed = skipped = unmatched = 0
     for i, stem in enumerate(stems, 1):
         primary = os.path.join(CLEANED, stem + suffix)
-        if only_new and os.path.exists(primary):
+        if only_new and not force and os.path.exists(primary):
             skipped += 1
             continue
         sid = stem2id.get(stem)
         if sid is None:
             unmatched += 1
+        sess = stem2sess.get(stem) or {"id": sid, "filename": stem + ".mp4",
+                                       "program_id": None}
         log(f"[{job_type}] {i}/{len(stems)} {stem} (sid={sid})")
-        sess = {"id": sid, "filename": stem + ".mp4"}
         try:
             res = _process_core(sess, job_type, prompt_text, model, conn,
                                 base_url=cfg["base_url"], key=cfg["key"],
@@ -851,13 +1164,18 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("cmd", choices=["ensure-schema", "discover", "run", "run-all",
                                     "report", "fulltext-all"])
-    ap.add_argument("--job", default="summary", choices=JOB_TYPES)
+    ap.add_argument("--job", default="summary",
+                    help="a pipeline_steps slug (full_text, summary, correct_text, "
+                         "correct_subtitles, program_block, or a custom step)")
     ap.add_argument("--model", default=os.environ.get("LLM_MODEL", "qwen38-nothinking"))
     ap.add_argument("--prompt", default=None, help="override prompt text (or read from file with @path)")
     ap.add_argument("--limit", type=int, default=-1,
                     help="max items; -1 (default) = 10 for `run`, ALL for `run-all`")
     ap.add_argument("--ids", default=None, help="comma-separated session ids")
-    ap.add_argument("--all", action="store_true", help="do not skip already-done")
+    ap.add_argument("--program-id", type=int, default=None,
+                    help="restrict to one program (radio_programs.id)")
+    ap.add_argument("--all", action="store_true",
+                    help="do not skip already-done (force re-run)")
     ap.add_argument("--shard", type=int, default=None,
                     help="run-all: this worker's index (0-based) for parallel sharding")
     ap.add_argument("--shards", type=int, default=1,
@@ -878,7 +1196,8 @@ def main():
         ids = [int(x) for x in args.ids.split(",")] if args.ids else None
         run_batch(args.job, model=args.model, prompt_text=prompt,
                   limit=None if ids else (args.limit if args.limit > 0 else 10),
-                  session_ids=ids, only_new=not args.all)
+                  session_ids=ids, only_new=not args.all,
+                  program_id=args.program_id, force=args.all)
     elif args.cmd == "run-all":
         prompt = args.prompt
         if prompt and prompt.startswith("@"):
@@ -887,7 +1206,8 @@ def main():
         run_over_all_files(args.job, model=args.model, prompt_text=prompt,
                            limit=(args.limit if args.limit > 0 else None),
                            only_new=not args.all, shard=args.shard,
-                           shards=args.shards)
+                           shards=args.shards, program_id=args.program_id,
+                           force=args.all)
     elif args.cmd == "report":
         items = report(args.n)
         if not items:

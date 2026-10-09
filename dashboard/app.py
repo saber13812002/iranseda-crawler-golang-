@@ -52,6 +52,7 @@ from fastapi.templating import Jinja2Templates
 
 import logic
 import boost
+import backfill
 
 app = FastAPI(title="iranseda dashboard")
 templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "templates"))
@@ -495,11 +496,126 @@ def api_llm_report(n: int = 1):
     return logic.llm_report(n)
 
 
+# ---------------------------------------------------------------------------
+# Pipeline steps registry (data-driven step definition)
+# ---------------------------------------------------------------------------
+
+@app.get("/api/steps")
+def api_steps_list():
+    try:
+        return logic.steps_list()
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(500, detail=str(e)[:300])
+
+
+@app.post("/api/steps")
+async def api_steps_save(request: Request):
+    body = await request.json()
+    try:
+        return logic.steps_save(body)
+    except ValueError as e:
+        raise HTTPException(400, detail=str(e))
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(500, detail=str(e)[:300])
+
+
+@app.delete("/api/steps/{step_id}")
+def api_steps_delete(step_id: int):
+    try:
+        return logic.steps_delete(step_id)
+    except ValueError as e:
+        raise HTTPException(400, detail=str(e))
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(500, detail=str(e)[:300])
+
+
+@app.get("/api/dataset")
+def api_dataset(limit: int = 30, program_id: int = None):
+    try:
+        return logic.llm_dataset(limit=limit, program_id=program_id)
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(500, detail=str(e)[:300])
+
+
+# ---------------------------------------------------------------------------
+# Program onboarding / verify (per-program crop config + 10-item test-run)
+# ---------------------------------------------------------------------------
+
+@app.get("/api/programs")
+def api_programs_list():
+    try:
+        return logic.programs_list()
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(500, detail=str(e)[:300])
+
+
+@app.post("/api/programs/crop")
+async def api_programs_save_crop(request: Request):
+    body = await request.json()
+    try:
+        return logic.programs_save_crop(body)
+    except ValueError as e:
+        raise HTTPException(400, detail=str(e))
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(500, detail=str(e)[:300])
+
+
+@app.post("/api/programs/{program_id}/test")
+async def api_program_test(request: Request, program_id: int):
+    try:
+        limit = 10
+        try:
+            body = await request.json()
+            if body and isinstance(body.get("limit"), int):
+                limit = body["limit"]
+        except Exception:  # noqa: BLE001
+            pass
+        return logic.program_test(program_id, limit=limit)
+    except ValueError as e:
+        raise HTTPException(400, detail=str(e))
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(500, detail=str(e)[:300])
+
+
+# ---------------------------------------------------------------------------
+# Monthly backfill (suggestions → pipeline, only when the queue is idle)
+# ---------------------------------------------------------------------------
+
+@app.get("/api/backfill")
+def api_backfill_status():
+    return logic.backfill_status()
+
+
+@app.post("/api/backfill")
+async def api_backfill_add(request: Request):
+    body = await request.json()
+    try:
+        return logic.backfill_add(body)
+    except ValueError as e:
+        raise HTTPException(400, detail=str(e))
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(500, detail=str(e)[:300])
+
+
+@app.post("/api/backfill/{batch_id}/promote")
+def api_backfill_promote(batch_id: int):
+    return logic.backfill_promote(batch_id)
+
+
+@app.post("/api/backfill/toggle")
+def api_backfill_toggle():
+    try:
+        return logic.backfill_toggle()
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(500, detail=str(e)[:300])
+
+
 @app.on_event("startup")
 def _startup():
     logic.run_in_thread(_warm)
     logic.start_gate_loop()
     boost.ensure_started()
+    backfill.ensure_started()
 
 
 def _warm():

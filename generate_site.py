@@ -44,6 +44,30 @@ def connect_db():
         database=DB_NAME, charset="utf8mb4", cursorclass=pymysql.cursors.DictCursor
     )
 
+_STEP_ROWS_CACHE = None
+
+def _step_rows():
+    """Enabled pipeline_steps (suffix, name, is_mechanical), read once per run so
+    new steps defined in the admin appear on the site without a code change."""
+    global _STEP_ROWS_CACHE
+    if _STEP_ROWS_CACHE is None:
+        _STEP_ROWS_CACHE = []
+        try:
+            conn = connect_db()
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT output_suffix, name, is_mechanical "
+                                 "FROM pipeline_steps WHERE enabled=1 "
+                                 "ORDER BY sort_order, id")
+                    _STEP_ROWS_CACHE = [(r["output_suffix"], r["name"],
+                                         bool(r["is_mechanical"]))
+                                        for r in cur.fetchall()]
+            finally:
+                conn.close()
+        except Exception:  # noqa: BLE001
+            _STEP_ROWS_CACHE = []
+    return _STEP_ROWS_CACHE
+
 def fetch_programs(conn):
     with conn.cursor() as cur:
         cur.execute("""
@@ -118,6 +142,20 @@ def find_subtitles_for_session(filename: str):
             rel = ("downloads/" + name) if d == D else ("downloads/cleaned/" + name)
             results.append({"emoji": emoji, "name": name, "cat": cat,
                             "repo_rel": rel, "raw_url": gh_raw_url(rel), "label": label})
+    # Dynamic steps: any pipeline_step whose output exists for this stem. New
+    # steps created in the admin surface here automatically (cat="step" is not
+    # counted in the index stats, which only special-case "srt"/"full").
+    base_names = {name for _d, name, _e, _l, _c in specs}
+    for suffix, sname, mech in _step_rows():
+        name = f"{stem}{suffix}"
+        if name in base_names:
+            continue
+        p = C / name
+        if p.exists() and not name.endswith(".ffmpeg.failed"):
+            results.append({"emoji": ("🔧" if mech else "🧩"), "name": name,
+                            "cat": "step", "repo_rel": "downloads/cleaned/" + name,
+                            "raw_url": gh_raw_url("downloads/cleaned/" + name),
+                            "label": sname})
     return results
 
 def build_url_program_map(conn):
@@ -339,7 +377,13 @@ def get_latest_cleaned_files(limit=10):
         ".correct.txt": "✍️ متن تصحیح‌شده",
         ".correct.srt": "✨ زیرنویس تصحیح‌شده",
         ".full.txt": "📖 متن کامل",
+        ".program.srt": "🎞️ بلاک زمانی برنامه",
     }
+    # Dynamic steps: add any registry suffix not already listed above, so new
+    # steps show in the "latest cleaned files" feed without a code change.
+    for suffix, sname, mech in _step_rows():
+        if suffix not in suffix_type:
+            suffix_type[suffix] = ("🔧" if mech else "🧩") + " " + sname
     for suffix, label in suffix_type.items():
         for f in cleaned_dir.glob("*" + suffix):
             try:
