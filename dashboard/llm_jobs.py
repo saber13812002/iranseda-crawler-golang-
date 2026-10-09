@@ -733,6 +733,11 @@ def _process_core(session, job_type, prompt_text, model, conn, base_url=None, ke
     output_kind = (step or {}).get("output_kind", "text") or "text"
     suffix = (step or {}).get("output_suffix") or _JOB_SUFFIX.get(job_type, ".out.txt")
     step_model = (step or {}).get("model") or model
+    # A brand-new step has no row in `prompts` yet, so run_batch/run_over_all_files
+    # pass prompt_text=None. Fall back to the step's own `prompt` (the "master
+    # prompt" set in the step editor) so a new step's LLM call has a system prompt.
+    if not prompt_text and (step or {}).get("prompt"):
+        prompt_text = step["prompt"]
     steps_by_slug = _steps_by_slug(conn) if input_ref.startswith("step:") else {}
     in_text, in_srt = _resolve_step_input(conn, session, stem, input_ref, steps_by_slug)
 
