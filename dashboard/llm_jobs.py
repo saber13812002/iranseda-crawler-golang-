@@ -630,38 +630,36 @@ def _program_window_for(conn, stem, session):
 
 
 def _ensure_program_block(conn, session, stem):
-    """Guarantee <stem>.program.srt / .program.txt exist for this session's crop
-    window (writing them if missing). Returns (program_srt, program_full,
-    crop_active). Falls back to the full SRT text when the crop is disabled,
-    unconfigured, or empty — so downstream always has a valid transcript."""
+    """Resolve (and, when cropping, refresh) <stem>.program.srt / .program.txt
+    for this session's crop window and return them. Re-runnable: re-crops every
+    time crop is active, so changing offset/duration takes effect on the next
+    run (no stale file is ever served).
+
+    crop_active (enabled + duration set): returns the program-only crop and
+      writes the files; if the window matched no blocks, falls back to the
+      full transcript.
+    not crop_active: returns the full (original) transcript; nothing written.
+
+    Returns (program_srt, program_full, crop_active)."""
     p_srt_path = os.path.join(CLEANED, stem + ".program.srt")
     p_txt_path = os.path.join(CLEANED, stem + ".program.txt")
     off, dur, enabled = _program_window_for(conn, stem, session) if conn else (0, 0, False)
     crop_active = bool(enabled and dur > 0)
-    srt_text = ""
-    if os.path.exists(os.path.join(DOWNLOADS, stem + ".srt")):
-        srt_text = open(os.path.join(DOWNLOADS, stem + ".srt"),
-                        encoding="utf-8", errors="replace").read()
-    if crop_active and not os.path.exists(p_srt_path):
+    if crop_active:
+        srt_text = ""
+        if os.path.exists(os.path.join(DOWNLOADS, stem + ".srt")):
+            srt_text = open(os.path.join(DOWNLOADS, stem + ".srt"),
+                            encoding="utf-8", errors="replace").read()
         p_srt, p_full = crop_program(srt_text, off, dur)
         if p_srt:
             os.makedirs(CLEANED, exist_ok=True)
             _write(p_srt_path, p_srt)
             _write(p_txt_path, p_full)
-    # resolve what to actually use
-    if os.path.exists(p_txt_path):
-        program_full = read_txt(p_txt_path)
-    else:
-        program_full = ""
-    if os.path.exists(p_srt_path):
-        program_srt = open(p_srt_path, encoding="utf-8", errors="replace").read()
-    else:
-        program_srt = ""
-    # fall back to full transcript when crop produced nothing / not enabled
-    if not program_srt and not program_full:
-        full, srt_text, _blocks, _ = load_session_input(session)
-        program_srt, program_full = srt_text, full
-    return program_srt, program_full, crop_active
+            return p_srt, p_full, True
+        # crop window matched no blocks -> fall back to the full transcript
+    # not crop_active (or an empty crop) -> the original, uncropped transcript
+    full, srt_text, _blocks, _ = load_session_input(session)
+    return srt_text, full, crop_active
 
 
 def _resolve_step_input(conn, session, stem, input_ref, steps_by_slug):
