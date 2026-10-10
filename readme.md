@@ -512,6 +512,103 @@ dry-run, §11 unblock).
 
 ---
 
+## 🚦 Per-Episode Crop Auto-Detection (STEP 8) — 2026-10-10
+
+STEP 7 proved a fixed `crop_offset` is structurally unreliable (the in-slot start
+drifts per episode). The user rejected a one-off human offset and chose
+**option (b): detect the boundary independently for each file, rule-based, no
+LLM, with per-episode confidence.** That is what was built.
+
+### Current Status
+**STOP at STEP 8.6.** Per-episode auto-crop is built, deterministic, and live for
+the **pilot (program 28) only**: **2 HIGH-confidence episodes cropped**, the
+other 20 program-28 episodes are **NEEDS_REVIEW** (full-transcript fallback,
+reason + markers stored). Only **2 HIGH < the 10** needed for the 10-item QA, so
+**no QA was run and no LLM model was called** (the STOP fires *before* any LLM
+spend). **No production rollout beyond the pilot; backfill kept OFF.** Original
+SRTs were never modified (MD5 verified).
+
+### Detection Rules (rule-based, no LLM, deterministic)
+| side | marker (regex on normalized text) |
+|---|---|
+| start | `شروع برامه\|شروع برنامه\|شروع برامه‌\|شروع برنامه‌` |
+| end   | `پایان برامه\|پایان برنامه\|به پایان\|خاتمه برامه\|خاتمه برنامه` |
+
+Confidence (`detect_boundary` in `dashboard/llm_jobs.py`):
+- **HIGH** = start **and** end each marker-anchored in *this* file, and window
+  length within `[0.7×dur, min(1.2×dur, slot)]` → **cropped**.
+- **MEDIUM** = one side anchored, the other derived (e.g. `start = end − dur`),
+  and the derived position in-slot → **no crop** (needs_review).
+- **LOW / NEEDS_REVIEW** = no usable markers or implausible/out-of-slot window →
+  **no crop**, reason + markers stored. **When in doubt → NEEDS_REVIEW.**
+
+Storage: a `crop_detection` table (session_id UNIQUE, confidence, status,
+evidence JSON) + a `crop_auto` flag on `radio_programs`. Re-detected every run
+(no stale cache); the fixed-offset path is untouched.
+
+### 20-Episode Dry-Run (read-only, no crops)
+`llm_jobs.py detect --program 28 --limit 20 --extra 14,12 --dry-run`:
+**HIGH=1 / MEDIUM=5 / NEEDS_REVIEW=14.** Real anchor-anchored window **21:32**
+(1.08× the 20-min duration) — window length is *stable* while the start *floats*
+(detected starts 05:34 → 27:46, spread 22:11). **MD5: all 20 originals unchanged.**
+
+### Crop (pilot program 28)
+`crop_auto=1` (pilot only). **2 HIGH cropped:**
+| session | file | window |
+|---|---|---|
+| 5267 | radio-maaref-04-09-03-22-00 | 05:35–27:07 (21:32) |
+| 4561 | radio-maaref-04-07-22-22-00 | 04:47–23:53 (19:06) |
+
+**20 NEEDS_REVIEW** (10 LOW — no start anchor; 10 MEDIUM — one side anchored,
+derived start out-of-slot). Both crop files open on the intro line and close on
+the outro — no neighbor content, no cut real ending. **MD5: all 12 pilot
+originals unchanged.**
+
+### 10-Item QA
+**STOP (2 HIGH < 10).** QA not run, **no LLM model called**. Valid STEP 8
+outcome per spec. To reach 10 HIGH: add garbled start-marker variants to
+`_START_PAT` (from a manual read of the NEEDS_REVIEW intros), or confirm the
+~10 MEDIUM end-anchored episodes; then run the QA (≥9/10).
+
+### Dataset / Site
+**Dataset OK, Site OK.** The 2 crops show as 🎯 Program Block links on the
+program-28 page (`docs/programs/55.html`); NEEDS_REVIEW episodes fall back to
+the full transcript. Committed + pushed via the `refresh_site.sh` cron.
+
+### Backfill Status
+**OFF.** Re-checked at run time: 2 `correct_subtitles` boost workers actively
+burning the backlog (~5586 subtitled in the pipeline). Queue not idle →
+*KEEP BACKFILL OFF.*
+
+### Known Issues
+- **GitLab `git.ai.ismc.ir` remote — BLOCKED (auth).** No credential on 53/local;
+  `git push` returns `Permission denied (publickey,password)`. All STEP-8 changes
+  are committed + pushed to GitHub `origin/download-db`.
+- HIGH rate on the pilot is low (~2/22) because Persian whisper ASR garbles the
+  intro on most episodes. Expansion needs **per-program** marker vocabularies
+  (program 28's intro format does not transfer to other programs).
+- `generate_site.py` in `server` mode defaults to a **different** path
+  (`…/iranseda/`, no trailing dash) than the live repo (`…/iranseda-crawler-golang-`);
+  use `refresh_site.sh` (or set `DOWNLOADS_PATH`/`DOCS_PATH`/`PROGRAMS_PATH`).
+
+### Rollback
+```sql
+UPDATE radio_programs SET crop_auto = 0 WHERE id = 28;   -- back to full transcript
+-- optionally: DELETE FROM crop_detection WHERE program_id = 28;
+```
+(or 🚀 Programs → program 28 → uncheck "crop auto"). Kill switch (unchanged):
+`./scripts/stop-background.sh` stops ONLY iranseda background LLM work.
+
+### NEXT_CHAT_CHECKPOINT
+State 2026-10-10: STEP 8 **STOPPED at 8.6** — 2 HIGH < 10, so no QA, no LLM
+spend. Auto-crop live for the pilot only (2 cropped, 20 NEEDS_REVIEW). Backfill
+OFF. GitLab BLOCKED. **Unblock:** raise pilot HIGH to ≥10 (add garbled
+start-marker variants, or confirm the MEDIUM end-anchored episodes) → run the
+10-item QA (≥9/10) → then consider expanding + re-check backfill. Full detail +
+evidence: `docs/prompts/008-per-episode-boundary-detection.md`.
+
+---
+
 ## 📝 لایسنس
 
 این پروژه تحت مجوز MIT منتشر شده است.
@@ -524,5 +621,5 @@ dry-run, §11 unblock).
 
 ---
 
-**آخرین به‌روزرسانی**: 2026-10-10 (STEP 7 — crop pilot gate)  
+**آخرین به‌روزرسانی**: 2026-10-10 (STEP 8 — per-episode crop auto-detection; STOP at 8.6)  
 **وضعیت**: ✅ در حال اجرا و پایدار (6+ ماه)
