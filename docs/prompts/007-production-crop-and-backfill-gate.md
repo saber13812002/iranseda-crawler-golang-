@@ -102,6 +102,11 @@ terminal outcomes are: (a) one program enabled + ≥9/10 PASS, **or** (b) **STOP
 no program has a derivable offset**, each candidate reported with why and the
 human value it needs. **This STEP reached (b).**
 
+**➡️ Follow-up (STEP 8):** the user accepted this finding and chose option (b) —
+per-episode boundary auto-detection (no human offset). That work, its rules, the
+20-episode dry-run, the 2 HIGH crops, and the STEP-8.6 STOP are documented in
+`docs/prompts/008-per-episode-boundary-detection.md`.
+
 ---
 
 ## 2. The decision (STOP) — why no program qualified
@@ -359,7 +364,9 @@ A link to it was added to the previous handoff `006-…`.
      starts at MM:SS into the file", **or**
    - (b) accept a **per-episode** offset and build an auto-detect feature that
      finds the "شروع برنامه / بسم‌الله" intro phrase per SRT (out of scope for
-     this STEP).
+     this STEP). **→ taken as STEP 8:** see
+     `docs/prompts/008-per-episode-boundary-detection.md` (built, deterministic,
+     pilot-only; STOPPED at 8.6 with 2 HIGH < 10).
 2. Once an offset is known for **one** program, set it in 🚀 Programs (or the
    SQL in §8), flip `crop_enabled=1`, and run the 10-item test
    (`POST /api/programs/{id}/test` or `llm_jobs.py run --job summary --program-id
