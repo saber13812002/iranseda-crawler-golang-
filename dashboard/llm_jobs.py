@@ -205,6 +205,38 @@ SCHEMA = [
         note VARCHAR(255)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     """,
+    # Project Reporter / Publication Bot (STEP 9C). One row per report event
+    # IranSeda wants fanned out to Telegram/Bale/Eitaa/Soroush via the user's
+    # external publication service. The UNIQUE idempotency_key is the
+    # no-double-publish guarantee (same event -> same row, no re-submit). The
+    # worker (dashboard/reporter.py) drives queued->submitted->checking->
+    # published|failed with bounded retries.
+    """
+    CREATE TABLE IF NOT EXISTS publication_task (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        event_type VARCHAR(64) NOT NULL,
+        title VARCHAR(200),
+        body TEXT,
+        artifact_url VARCHAR(512) NULL,
+        git_commit VARCHAR(64) NULL,
+        external_task_id VARCHAR(128) NULL,
+        status VARCHAR(24) NOT NULL DEFAULT 'queued',
+        channels VARCHAR(255) NULL,
+        submitted_at DATETIME NULL,
+        check_after DATETIME NULL,
+        published_at DATETIME NULL,
+        post_urls TEXT NULL,
+        views TEXT NULL,
+        last_checked_at DATETIME NULL,
+        error VARCHAR(500) NULL,
+        idempotency_key VARCHAR(191) NOT NULL UNIQUE,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+        attempts TINYINT NOT NULL DEFAULT 0,
+        KEY k_pub_status (status, check_after)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    """,
 ]
 
 # One-time column upgrades for tables created before the field was added.

@@ -175,6 +175,22 @@ summary{cursor:pointer;color:var(--mut);font-size:13px}
   </div>
 </div>
 
+<h2>📣 Reporter — راپور‌دهی پروژه / انتشار (اسکلت — بدون ترنسپورت واقعی)</h2>
+<div class="card" id="reporter-summary" style="margin-bottom:12px">در حال بارگذاری…</div>
+<div class="card" style="margin-bottom:12px">
+  <h3>آخرین راپورها (آخرین ۲۰) + تست خودکار</h3>
+  <div class="row" style="margin-bottom:8px">
+    <button class="btn" type="button" onclick="reporterSelftest()">🧪 تست خودکار (یک رویداد selftest)</button>
+    <span class="small">با اسکلت فعلی (Stub) هر selftest یک خط با وضعیت <b>skipped (publisher not configured)</b> می‌سازد — کل مسیر بدون هیچ ترنسپورت واقعی. یک بار در هر دقیقه (idempotent).</span>
+  </div>
+  <div style="max-height:280px;overflow:auto">
+    <table id="reporter-table"><thead><tr>
+      <th>id</th><th>نوع</th><th>عنوان</th><th>وضعیت</th><th>channels</th>
+      <th>attempts</th><th>submit</th><th>published</th><th>خطا</th>
+    </tr></thead><tbody></tbody></table>
+  </div>
+</div>
+
 <h2>تنظیمات</h2>
 <div id="flash2" class="flash"></div>
 <div class="grid cols-2">
@@ -653,7 +669,7 @@ $("#llm-job").addEventListener("change",()=>{const d=_llmPrompts.find(p=>p.job_t
 $("#llm-edit-job").addEventListener("change",()=>{const opts=_llmPromptOptions($("#llm-edit-job").value);_llmFillSelect($("#llm-edit-prompt-sel"),opts.length?opts:[{value:"",label:"(پیش‌فرض این phase)"}]);const d=_llmPrompts.find(p=>p.job_type===$("#llm-edit-job").value&&p.is_default)||_llmPrompts.find(p=>p.job_type===$("#llm-edit-job").value);if(d){$("#llm-edit-name").value=d.name;$("#llm-edit-prompt").value=d.prompt;$("#llm-edit-default").checked=!!d.is_default;}});
 
 async function refresh(){
-  try{await Promise.all([loadHealth(),loadJobs(),loadWindow(),loadBoost(),loadLlmRuns(),loadLlmOutputs(),loadLlmReport(),loadSteps(),loadPrograms(),loadBackfill()]);}catch(e){console.error(e);}
+  try{await Promise.all([loadHealth(),loadJobs(),loadWindow(),loadBoost(),loadLlmRuns(),loadLlmOutputs(),loadLlmReport(),loadSteps(),loadPrograms(),loadBackfill(),loadReporter()]);}catch(e){console.error(e);}
 }
 function blkRow(b){return `<div class="row" style="align-items:flex-end;gap:8px;margin-bottom:8px">
   <div style="flex:2"><label>نام سانس</label><input class="mono" data-bname value="${esc(b.name||'')}"></div>
@@ -1023,6 +1039,45 @@ async function backfillPromote(id){
 async function backfillToggle(){
   const r=await api("/api/backfill/toggle",{method:"POST"});
   if(r.ok){flash(r.running?"ادامه داده شد ▶":"توقف شد ⏸",true);await loadBackfill();}
+  else{flash("خطا: "+(r.detail||r.error||""),false);}
+}
+
+async function loadReporter(){
+  try{
+    const r=await api("/api/reporter"); if(!r.ok)return;
+    const c=r.counts||{};
+    const cnt=(k)=>`<b class="mono">${c[k]||0}</b>`;
+    const pill={queued:"run",submitting:"run",submitted:"run",checking:"run",
+                published:"ok",failed:"bad",skipped:"bad"};
+    const pillFor=s=>`<span class="pill ${pill[s]||"run"}">${esc(s)}</span>`;
+    $("#reporter-summary").innerHTML=`
+      <div class="row" style="gap:16px;flex-wrap:wrap;align-items:center">
+        <span>فعال (IRANSEDA_REPORTER_ENABLED): <span class="pill ${r.enabled?"run":"bad"}">${r.enabled?"ON":"OFF"}</span></span>
+        <span>ترنسپورت واقعی (client): <span class="pill ${r.client_configured?"ok":"bad"}">${r.client_configured?"wired":"stub"}</span></span>
+        <span class="small">سقف تلاش: ${r.max_attempts}</span>
+      </div>
+      <div class="row" style="gap:14px;flex-wrap:wrap;margin-top:8px">
+        queued ${cnt("queued")} · submitting ${cnt("submitting")} · submitted ${cnt("submitted")} ·
+        checking ${cnt("checking")} · published ${cnt("published")} · failed ${cnt("failed")} ·
+        skipped ${cnt("skipped")} · مجموع ${r.total}
+      </div>
+      <div class="small" style="margin-top:6px">این اسکلت ترنسپورت واقعی ندارد (Stub). ترنسپورت واقعی (سرور انتشار آلمانی) بعداً به‌عنوان یک adapter جدا اضافه می‌شود.</div>`;
+    $("#reporter-table tbody").innerHTML=(r.tasks||[]).map(t=>`<tr>
+      <td class="mono">${t.id}</td>
+      <td class="mono">${esc(t.event_type||"—")}</td>
+      <td class="small" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(t.title||"")}">${esc(t.title||"")}</td>
+      <td>${pillFor(t.status)}</td>
+      <td class="small mono">${esc(t.channels||"—")}</td>
+      <td class="mono">${t.attempts??0}</td>
+      <td class="small mono">${esc(t.submitted_at||"—")}</td>
+      <td class="small mono">${esc(t.published_at||"—")}</td>
+      <td class="small" style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(t.error||"")}">${esc(t.error||"")||"-"}</td>
+    </tr>`).join("")||"<tr><td colspan='9' class='small'>—</td></tr>";
+  }catch(e){console.error(e);}
+}
+async function reporterSelftest(){
+  const r=await api("/api/reporter/selftest",{method:"POST"});
+  if(r.ok){flash("راپور selftest ثبت شد ✓ (با Stub به skipped می‌رسد)",true);await loadReporter();}
   else{flash("خطا: "+(r.detail||r.error||""),false);}
 }
 

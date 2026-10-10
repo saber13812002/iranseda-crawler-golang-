@@ -38,6 +38,8 @@ Endpoints:
   - `GET  /api/llm/runs`         recent job runs (in-process)
   - `GET  /api/llm/outputs`      recent llm_output rows (1:many)
   - `GET  /api/llm/report`       before/after quality report for a session
+  - `GET  /api/reporter`         project reporter status (skeleton, STEP 9C)
+  - `POST /api/reporter/selftest` fire one idempotent selftest event
 
 Auth: every route EXCEPT /, /health and /metrics requires `Authorization:
 Bearer <DASH_AUTH_TOKEN>` (header or ?token=*** When DASH_AUTH_TOKEN is
@@ -53,6 +55,7 @@ from fastapi.templating import Jinja2Templates
 import logic
 import boost
 import backfill
+import reporter
 
 app = FastAPI(title="iranseda dashboard")
 templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "templates"))
@@ -610,12 +613,33 @@ def api_backfill_toggle():
         raise HTTPException(500, detail=str(e)[:300])
 
 
+# ---------------------------------------------------------------------------
+# Project Reporter / Publication Bot (skeleton, STEP 9C)
+# ---------------------------------------------------------------------------
+
+@app.get("/api/reporter")
+def api_reporter():
+    try:
+        return reporter.status()
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(500, detail=str(e)[:300])
+
+
+@app.post("/api/reporter/selftest")
+def api_reporter_selftest():
+    try:
+        return {"ok": True, "result": reporter.selftest()}
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(500, detail=str(e)[:300])
+
+
 @app.on_event("startup")
 def _startup():
     logic.run_in_thread(_warm)
     logic.start_gate_loop()
     boost.ensure_started()
     backfill.ensure_started()
+    reporter.ensure_started()
 
 
 def _warm():
