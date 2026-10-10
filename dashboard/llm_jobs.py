@@ -326,6 +326,24 @@ DEFAULT_PROMPTS = {
         "در یک خط بنویس و بین متنِ بلوک‌ها فقط علامت جداکننده ' ||| ' بگذار. "
         "هیچ توضیح یا اضافاتی اضافه نکن."
     ),
+    "correct_text_v2": (
+        "correct_text_v2", "تصحیح پرتاب‌ای (پنجره + همپوشانی)",
+        "تو یک ویراستارِ فارسیِ تخصصی هستی که فقط خطاهای شنیداریِ یک پیاده‌سازی "
+        "صوتی (whisper) را اصلاح می‌کند. ورودی در هر فراخوانی یک پنجرهٔ کوچک است "
+        "که سه بخش دارد: [پیش‌زمینه]، [بلوک‌های هدف]، [پس‌زمینه]. دو بخشِ "
+        "پیش/پس‌زمینه نسخهٔ اصلیِ ASR را برای درکِ معنایِ بلوک‌های هدف می‌دهند و "
+        "باید بی‌دست‌برخورد بمانند؛ فقط متنِ بلوک‌های هدف را اصلاح می‌کنی. "
+        "قوانینِ سخت (به هیچ وجه شکسته نشوند):\n"
+        "۱) خلاصه‌نویسی ممنوع — محتوا را فشرده، کم یا زیاد نکن؛ هر بلوک هدف دقیقاً "
+        "یک بلوک خروجیِ هم‌معادل دارد.\n"
+        "۲) اگر از درستِ بودنِ یک کلمه مطمئن نیستی، حدسِ قطعیت‌نازده نزن: یا همانِ "
+        "ASR را نگه‌دار، یا معنادارترین و امن‌ترین خوانش را انتخاب کن. (اصلِ "
+        "نگهداشتِ متنِ اصلیِ مطمئن بر یک اصلاحِ ریسکی اولویت دارد.)\n"
+        "۳) شماره و زمان‌کد و ترتیب را دست نزن.\n"
+        "خروجی: فقط متنِ اصلاح‌شدهٔ بلوک‌های هدف، به همان ترتیب، هر بلوک در یک "
+        "خط و بین آن‌ها فقط جداکنندهٔ ' ||| '. هیچ توضیح، شماره یا زمان‌کد اضافه "
+        "نکن."
+    ),
 }
 
 JOB_TYPES = ["full_text", "summary", "correct_text", "correct_subtitles"]
@@ -336,6 +354,7 @@ _JOB_SUFFIX = {
     "summary": ".summary.txt",
     "correct_text": ".correct.txt",
     "correct_subtitles": ".correct.srt",
+    "correct_text_v2": ".correct.v2.srt",
 }
 
 # The seed rows for the pipeline_steps registry. Every existing job is a row so
@@ -354,6 +373,8 @@ DEFAULT_STEPS = [
      ".correct.txt", "text", 0, 30),
     ("correct_subtitles", "تصحیح زیرنویس (SRT)", "program_srt",
      "qwen38-nothinking", None, ".correct.srt", "srt", 0, 40),
+    ("correct_text_v2", "تصحیح پرتاب‌ای (پنجره + همپوشانی)", "srt",
+     "qwen38-nothinking", None, ".correct.v2.srt", "windowed-correct", 0, 45),
     ("program_block", "برش بلاک زمانی برنامه", "srt", None, None,
      ".program.srt", "program", 1, 5),
 ]
@@ -533,6 +554,119 @@ def build_srt(blocks, corrected_lines):
         text = corrected_lines[i].strip() if i < n else " ".join(blocks[i][2]).strip()
         out.append(f"{idx}\n{ts}\n{text}")
     return "\n\n".join(out) + "\n"
+
+
+# ---------------------------------------------------------------------------
+# STEP 9B — windowed ASR correction (correct_text_v2)
+# ---------------------------------------------------------------------------
+
+# Sliding-window params. Each window sends a small target region (TARGET blocks)
+# plus CTX context blocks on each side so the model has local meaning but only
+# corrects the target blocks. Original timestamps are preserved verbatim (only
+# text changes), so search still jumps to the exact second. TARGET/CTX are
+# midpoints of the user's "6-10 blocks" / "2-3 overlap" ranges.
+CTV2_TARGET = 8   # blocks corrected per window (spec: 6-10)
+CTV2_CTX = 3      # context blocks before & after (spec: 2-3)
+
+
+def _ctv2_windows(n):
+    """Yield (t0, t1, cb, ca) covering every block 0..n-1. t1 exclusive. No target
+    block is in two windows (each block is corrected exactly once); context blocks
+    overlap between adjacent windows to give the model local meaning."""
+    i = 0
+    while i < n:
+        t0 = i
+        t1 = min(i + CTV2_TARGET, n)
+        cb = max(0, t0 - CTV2_CTX)
+        ca = min(n, t1 + CTV2_CTX)
+        yield t0, t1, cb, ca
+        i = t1  # advance by target (no target overlap -> no double-apply)
+
+
+def _ctv2_block(k, blocks):
+    idx, ts, lines = blocks[k]
+    return f"{idx}\n{ts}\n" + " ".join(x.strip() for x in lines)
+
+
+def _ctv2_window_prompt(cb, ca, t0, t1, blocks):
+    """Build the user message for one window: [context before] / [target] /
+    [context after]. Context is labeled read-only; the model only returns the
+    corrected target blocks (joined by ' ||| ')."""
+    before = "\n\n".join(_ctv2_block(k, blocks[k]) for k in range(cb, t0))
+    target = "\n\n".join(_ctv2_block(k, blocks[k]) for k in range(t0, t1))
+    after = "\n\n".join(_ctv2_block(k, blocks[k]) for k in range(t1, ca))
+    m = t1 - t0
+    return (
+        f"=== [پیش‌زمینه — فقط برای درکِ معنا، دست نزن] ===\n{before or '(—)'}\n\n"
+        f"=== [بلوک‌های هدف — {m} بلوک؛ فقط این‌ها را اصلاح کن] ===\n{target}\n\n"
+        f"=== [پس‌زمینه — فقط برای درکِ معنا، دست نزن] ===\n{after or '(—)'}\n\n"
+        f"حالا فقط متنِ {m} بلوکِ هدف (به همین ترتیب) را بنویس؛ هر بلوک در یک خط "
+        "و بین آن‌ها جداکنندهٔ ' ||| ' بگذار. شماره/زمان‌کد یا توضیح اضافه نکن."
+    )
+
+
+def windowed_correct(srt_text, model, prompt_text, base_url=None, key=None,
+                     log=print):
+    """STEP 9B: correct an SRT in small windows with context. Returns
+    (new_srt_text, stats). The original SRT is only READ; timestamps are preserved
+    verbatim. Each block's text comes from the single window that targets it.
+    stats carries per-file QA data: windows, llm_calls, changed-block count,
+    change_rate, and a list of {idx, orig, fixed} snippets for human review."""
+    _full, blocks = srt_parse(srt_text)
+    n = len(blocks)
+    if not n:
+        return srt_text, {"ok": False, "error": "no srt blocks", "blocks": 0}
+    corrected = [" ".join(b[2]).strip() for b in blocks]  # original-text baseline
+    windows = llm_calls = changed = 0
+    snippets = []
+    for (t0, t1, cb, ca) in _ctv2_windows(n):
+        windows += 1
+        m = t1 - t0
+        user = _ctv2_window_prompt(cb, ca, t0, t1, blocks)
+        try:
+            out, _pt, _ot = call_llm(model, prompt_text, user, base_url, key,
+                                     max_tokens=1500)
+        except Exception as e:  # noqa: BLE001
+            log(f"    [v2] window {blocks[t0][0]}..{blocks[t1-1][0]} LLM error: "
+                f"{str(e)[:120]} (keeping original for this window)")
+            continue
+        llm_calls += 1
+        texts = extract_corrected_texts(out, m)
+        if not texts:
+            continue
+        for j in range(m):
+            gi = t0 + j
+            cand = (texts[j].strip() if j < len(texts) else corrected[gi])
+            if cand and cand != corrected[gi]:
+                changed += 1
+                if len(snippets) < 80:
+                    snippets.append({"idx": blocks[gi][0],
+                                     "orig": corrected[gi], "fixed": cand})
+            if cand:
+                corrected[gi] = cand
+    new_srt = build_srt(blocks, corrected)
+    return new_srt, {"ok": True, "blocks": n, "windows": windows,
+                     "llm_calls": llm_calls, "changed": changed,
+                     "change_rate": (changed / n) if n else 0.0,
+                     "snippets": snippets}
+
+
+def model_stop_check(our_workers=0, cap=5):
+    """STEP 9B pre-batch guard: the user's rule — do NOT call the model when more
+    than `cap` interactive requests are on it. Reuses boost's live Prometheus
+    load. Returns (allowed: bool, reason: str); on any uncertainty we do NOT call."""
+    try:
+        import boost
+        load = boost.read_load({"guard": {}})
+        if not load.get("ok"):
+            return False, f"prometheus unreachable ({load.get('error')}) — not calling model"
+        ext = max(0, int(load.get("vllm_running", 0) + load.get("sglang_running", 0)
+                          - our_workers))
+        if ext > cap:
+            return False, f"NOT using model: {ext} interactive requests > cap {cap}"
+        return True, f"ok ({ext} interactive requests <= cap {cap})"
+    except Exception as e:  # noqa: BLE001
+        return False, f"stop-check error ({str(e)[:100]}) — not calling model"
 
 
 # ---------------------------------------------------------------------------
@@ -1175,6 +1309,26 @@ def _process_core(session, job_type, prompt_text, model, conn, base_url=None, ke
         srt_content = build_srt(blocks, lines)
         content = None
         _write(os.path.join(CLEANED, stem + suffix), srt_content)
+    elif output_kind == "windowed-correct":
+        # STEP 9B: correct_text_v2 — windowed ASR correction with context.
+        # input_ref is `srt` so in_srt = the ORIGINAL full .srt. We re-read the
+        # original file directly (never a derived field) so the ORIGINAL stays
+        # the immutable source of truth. Writes <stem>.correct.v2.srt (+ .txt).
+        orig_path = os.path.join(DOWNLOADS, stem + ".srt")
+        if not os.path.exists(orig_path):
+            orig_path = None
+            in_srt = in_srt or ""
+        src = (open(orig_path, encoding="utf-8", errors="replace").read()
+               if orig_path else in_srt)
+        if not src:
+            return {"ok": False, "error": "no srt input for windowed-correct"}
+        new_srt, stats = windowed_correct(src, step_model, prompt_text,
+                                          base_url, key)
+        if not stats.get("ok"):
+            return {"ok": False, "error": stats.get("error", "windowed-correct")}
+        _write(os.path.join(CLEANED, stem + suffix), new_srt)
+        srt_content = new_srt
+        content = None
     else:  # 'text' — mechanical full_text, or LLM-cleaned text
         if job_type == "full_text":
             content = in_text
@@ -1326,6 +1480,78 @@ def _mark_error(conn, sid, job_type, model, job_id, error):
             "ON DUPLICATE KEY UPDATE status='failed', error=VALUES(error)",
             (sid, job_type, model, job_id, datetime.now(), datetime.now(), error))
     conn.commit()
+
+
+# ---------------------------------------------------------------------------
+# STEP 9B — correct_text_v2 QA runner (20-file test, NOT a bulk/boost job)
+# ---------------------------------------------------------------------------
+
+def run_v2_qa(model, ids=None, program_id=None, limit=20, conn=None, log=print):
+    """Run correct_text_v2 on a small set of sessions (a QA test, never a bulk
+    job). Before any LLM spend it checks the model stop rule; if the model is
+    busy (>cap interactive users) it ABORTS without calling. For each file it
+    writes <stem>.correct.v2.srt, then computes QA: blocks in==out, timestamps
+    unchanged, original SRT MD5 unchanged, change rate, and before/after
+    snippets. Returns a summary dict."""
+    import hashlib
+    conn = conn or _db_conn()
+    allow, reason = model_stop_check(our_workers=0)
+    log(f"[v2-qa] model stop check: allowed={allow} ({reason})")
+    if not allow:
+        return {"aborted": True, "reason": reason, "files": []}
+    prompt_text = DEFAULT_PROMPTS["correct_text_v2"][2]
+    sel = _pick_sessions(conn, limit=limit, session_ids=ids,
+                         only_new=False, program_id=program_id)
+    files = []
+    for s in sel:
+        stem = os.path.splitext(s.get("filename") or "")[0]
+        if not stem:
+            continue
+        orig_path = os.path.join(DOWNLOADS, stem + ".srt")
+        if not os.path.exists(orig_path):
+            continue
+        orig_bytes = open(orig_path, "rb").read()
+        md5_before = hashlib.md5(orig_bytes).hexdigest()
+        orig = orig_bytes.decode("utf-8", "replace")
+        _of, oblocks = srt_parse(orig)
+        try:
+            new_srt, stats = windowed_correct(orig, model, prompt_text, log=log)
+        except Exception as e:  # noqa: BLE001
+            log(f"  {stem}: ERROR {str(e)[:150]}")
+            continue
+        if not stats.get("ok"):
+            continue
+        _wf, wblocks = srt_parse(new_srt)
+        # timestamps identical? (index-ordered compare of each block's ts)
+        ts_match = (len(oblocks) == len(wblocks) and
+                    all(oblocks[i][1] == wblocks[i][1]
+                        for i in range(len(oblocks))))
+        # block count in==out
+        count_match = (len(oblocks) == len(wblocks))
+        # original SRT still byte-identical?
+        md5_after = hashlib.md5(open(orig_path, "rb").read()).hexdigest()
+        md5_same = (md5_before == md5_after)
+        out_srt = os.path.join(CLEANED, stem + ".correct.v2.srt")
+        os.makedirs(CLEANED, exist_ok=True)
+        _write(out_srt, new_srt)
+        _write(os.path.join(CLEANED, stem + ".correct.v2.txt"),
+               " ".join(" ".join(b[2]).strip() for b in wblocks if b[2]))
+        rec = {"stem": stem, "sid": s["id"], "blocks": len(oblocks),
+               "count_match": count_match, "ts_match": ts_match,
+               "md5_same": md5_same, "windows": stats["windows"],
+               "changed": stats["changed"], "change_rate": stats["change_rate"],
+               "snippets": stats["snippets"]}
+        files.append(rec)
+        log(f"  {stem} blocks={len(oblocks)} ts_same={ts_match} "
+            f"md5_same={md5_same} changed={stats['changed']} "
+            f"(rate {stats['change_rate']:.1%})")
+    return {"aborted": False, "stop_reason": reason,
+            "files": files,
+            "n": len(files),
+            "count_match": sum(f["count_match"] for f in files),
+            "ts_match": sum(f["ts_match"] for f in files),
+            "md5_same": sum(f["md5_same"] for f in files),
+            "rates": [f["change_rate"] for f in files]}
 
 
 # ---------------------------------------------------------------------------
@@ -1577,6 +1803,10 @@ def main():
                     help="restrict to one program (radio_programs.id)")
     ap.add_argument("--all", action="store_true",
                     help="do not skip already-done (force re-run)")
+    ap.add_argument("--qa", action="store_true",
+                    help="run: for correct_text_v2, do the bounded 20-file QA "
+                         "test (model-stop check + per-file QA table + snippets); "
+                         "never a bulk/boost job")
     ap.add_argument("--shard", type=int, default=None,
                     help="run-all: this worker's index (0-based) for parallel sharding")
     ap.add_argument("--shards", type=int, default=1,
@@ -1601,6 +1831,13 @@ def main():
             prompt = open(prompt[1:], encoding="utf-8").read()
         ensure_schema()
         ids = [int(x) for x in args.ids.split(",")] if args.ids else None
+        if args.qa and args.job == "correct_text_v2":
+            import json as _json
+            res = run_v2_qa(model=args.model, ids=ids,
+                            program_id=args.program_id,
+                            limit=(args.limit if args.limit and args.limit > 0 else 20))
+            print(_json.dumps(res, ensure_ascii=False, indent=2))
+            return
         run_batch(args.job, model=args.model, prompt_text=prompt,
                   limit=None if ids else (args.limit if args.limit > 0 else 10),
                   session_ids=ids, only_new=not args.all,
