@@ -609,6 +609,89 @@ evidence: `docs/prompts/008-per-episode-boundary-detection.md`.
 
 ---
 
+## 📅/📝 Stats Broadcast-Date + Windowed ASR Correction (STEP 9A + 9B) — 2026-10-10
+
+Two sub-steps, done sequentially (both touch 53's git/DB — not parallelized).
+Full master prompt + evidence: `docs/prompts/009-stats-broadcast-date-and-correct-text-v2.md`.
+
+### 9A — Broadcast vs Ingest date: **STOP** (calendar undecidable)
+
+The site's period cards (امروز / ماه گذشته / **سال گذشته** / …) count by
+`radio_program_sessions.created_at` — the **archive-ingest** date — not the
+episode's **air** date, so "سال گذشته" is misleading. The filename does embed a
+date: `radio-maaref-<MM>-<DD>-…`.
+
+**Evidence (5,450 maaref rows):** pos1 = month (values **3, 4, 5** only),
+pos2 = day (**1..12**) → the date is **MM-DD**, and the (month,day) pairs form a
+**23-day contiguous span (03/07 → 05/07)**. But there is **no year** and the
+**calendar is unanchored**: those episodes were *ingested* over **23 months**
+(2024-11-08 → 2026-10-10) while their filename air-dates cover only a **2-month
+band** — a 2-month band cannot hold 23 months of a continuously-fed archive, under
+either Jalali or Gregorian. The `link` `e=` param is an opaque, non-ordered EPG id,
+not a timestamp. Assigning a calendar/year would be a **guess**.
+
+**Decision: STOP (per spec) — no `broadcast_date` column, no backfill, site
+unchanged.** Current (ingest-based) site cards: **سال گذشته (2025) = 5,039**, ماه
+گذشته (Sep 2026) = 0, ۲ سال گذشته (2024) = 49, over 5,587 subtitled sessions.
+**Unblock:** the user supplies the calendar + year the filename lacks; then the
+backfill is mechanical (parse MM-DD, stamp the year, NULL on any parse fail) and
+the cards recompute from `broadcast_date` with `created_at` as a labeled "ingested"
+stat.
+
+### 9B — `correct_text_v2` (windowed ASR correction): built + 20-file QA
+
+A new registry step (`slug=correct_text_v2`, `input_ref=srt`,
+`output_kind=windowed-correct`, model `qwen38-nothinking`). Instead of sending a
+whole SRT in one call, it sends a small **sliding window** (8 target blocks + 3
+context blocks each side) as `[before]/[target]/[after]`; the model returns only
+the corrected **target** blocks; **original timestamps are preserved verbatim**;
+the result is stitched to `<stem>.correct.v2.srt` / `.correct.v2.txt` (a v2
+artifact for A/B against the existing `.correct.*`). Three hard prompt rules:
+**no summarization; if unsure, keep the original (or safest reading) — never a
+confident guess; never touch numbers/timestamps/order.** Before the batch it
+checks the **model-stop rule** (>5 *interactive* users → abort), correctly
+excluding our own `run-all` burn workers from the interactive count.
+
+**20-file QA (12 pilot-28 + 8 other, run under the stop guard):**
+
+| check | result |
+|---|---|
+| Files | 20 / 20 |
+| Blocks in == out | **20 / 20** |
+| Timestamps unchanged | **20 / 20** |
+| Original SRT MD5 unchanged | **20 / 20** |
+| Change rate (median / min / max) | **33.2 % / 15.3 % / 54.5 %** |
+
+Sample fixes: `انوان`→`عنوان`; `صلام‌الله علی`→`صلّی‌الله علیه`;
+`می‌فرمد`→`می‌فرماید`; phone-number `…پنجاه و سم`→`…پنجاه و سه`. An
+uncertain block was deliberately **kept verbatim**, and an ASR repetition loop
+("شما همه‌ی" ×42) was left alone (a structural failure outside a text-corrector's
+scope).
+
+> **⚠ Flag:** the **median change rate is 33.2 %** — the model edits ~a third of
+> blocks, acting as an aggressive rewriter rather than a conservative proofreader.
+> Every sample edit is plausibly correct, but a good v2 should fix the *minority*.
+> This is a **prompt-tightening follow-up** (§9 of 009), **not** a defect in
+> counts/timestamps/immutability (all 20/20). **Not enabled as a bulk/boost job.**
+
+**Known issues:** (1) 9A blocked on the calendar/year (user input); (2) 9B change
+rate is high — tighten the prompt before any pipeline use; (3) the model-stop
+guard now subtracts our own `run-all` workers so a busy boost doesn't false-block
+the QA. **Rollback (9B):** `rm downloads/cleaned/*.correct.v2.{srt,txt}` and/or
+`UPDATE pipeline_steps SET enabled=0 WHERE slug='correct_text_v2';` (originals
+untouched). Crop/backfill state untouched (pilot 28: 2 HIGH / 20 NEEDS_REVIEW;
+backfill OFF).
+
+### NEXT_CHAT_CHECKPOINT
+State 2026-10-10: **9A STOPPED** (calendar/year undecidable — evidence in 009 §3;
+no schema change, site unchanged). **9B `correct_text_v2` BUILT + registered
+(row id 141) + 20-file QA run** (20/20 clean on the hard constraints; median change
+rate 33.2% flagged); **not a bulk job**. **Unblock 9A:** user supplies calendar+
+year → mechanical backfill + site recompute. **Optional 9B:** tighten the prompt
+to cut the change rate. Carry-over: GitLab BLOCKED on auth.
+
+---
+
 ## 📝 لایسنس
 
 این پروژه تحت مجوز MIT منتشر شده است.
@@ -621,5 +704,5 @@ evidence: `docs/prompts/008-per-episode-boundary-detection.md`.
 
 ---
 
-**آخرین به‌روزرسانی**: 2026-10-10 (STEP 8 — per-episode crop auto-detection; STOP at 8.6)  
+**آخرین به‌روزرسانی**: 2026-10-10 (STEP 9A broadcast-date STOP + STEP 9B `correct_text_v2` windowed ASR correction, 20-file QA)  
 **وضعیت**: ✅ در حال اجرا و پایدار (6+ ماه)
