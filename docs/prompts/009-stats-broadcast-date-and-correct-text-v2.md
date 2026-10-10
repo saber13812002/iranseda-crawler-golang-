@@ -390,8 +390,12 @@ pipeline it should be a `.correct.v2` artifact the user can diff, not an overwri
   5. README STEP 9A+9B section.
 - **GitHub:** pushed to `origin/download-db`. On 53: fetch+rebase / `git am`,
   no scp-edits.
-- **GitLab `git.ai.ismc.ir`:** attempted → **BLOCKED (no credential)** if
-  unauthed.
+- **GitLab `git.ai.ismc.ir`:** attempted on 53 → **BLOCKED (no credential).**
+  `git push` returns `Permission denied (publickey,password)` — no GitLab
+  credential is provisioned on 53 (only the `origin`/GitHub remote is configured)
+  or the local checkout. The mandatory primary GitLab repo stays BLOCKED on auth
+  until the user provisions a credential; all STEP-9 changes are committed +
+  pushed to GitHub `origin/download-db`.
 - **Secrets:** none committed (`.env` / `DASH_AUTH_TOKEN` gitignored; token lives
   only in `dashboard/dashboard.env`, mode 600).
 
