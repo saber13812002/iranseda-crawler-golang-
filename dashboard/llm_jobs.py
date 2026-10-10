@@ -651,6 +651,27 @@ def windowed_correct(srt_text, model, prompt_text, base_url=None, key=None,
                      "snippets": snippets}
 
 
+def _count_runall_workers():
+    """Count OUR OWN live background `llm_jobs.py run-all` procs (the 24h/boost
+    backlog burn), read from /proc. These are not interactive users — the stop
+    rule must exclude them so the cap measures *external interactive* load only
+    (mirrors boost.py's `our_workers`). Returns int >= 0."""
+    try:
+        import glob
+        n = 0
+        for p in glob.glob("/proc/[0-9]*/cmdline"):
+            try:
+                with open(p, "rb") as fh:
+                    cl = fh.read().decode("utf-8", "replace")
+            except Exception:  # noqa: BLE001
+                continue
+            if "llm_jobs.py" in cl and "run-all" in cl:
+                n += 1
+        return n
+    except Exception:  # noqa: BLE001
+        return 0
+
+
 def model_stop_check(our_workers=0, cap=5):
     """STEP 9B pre-batch guard: the user's rule — do NOT call the model when more
     than `cap` interactive requests are on it. Reuses boost's live Prometheus
@@ -1495,8 +1516,11 @@ def run_v2_qa(model, ids=None, program_id=None, limit=20, conn=None, log=print):
     snippets. Returns a summary dict."""
     import hashlib
     conn = conn or _db_conn()
-    allow, reason = model_stop_check(our_workers=0)
-    log(f"[v2-qa] model stop check: allowed={allow} ({reason})")
+    # Exclude OUR OWN background burn (boost `run-all`) from the interactive
+    # count — the guard is about *interactive* users, not our 24h backlog burn.
+    our = _count_runall_workers()
+    allow, reason = model_stop_check(our_workers=our)
+    log(f"[v2-qa] model stop check: allowed={allow} (our run-all workers={our}) ({reason})")
     if not allow:
         return {"aborted": True, "reason": reason, "files": []}
     prompt_text = DEFAULT_PROMPTS["correct_text_v2"][2]
