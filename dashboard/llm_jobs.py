@@ -726,6 +726,7 @@ def detect_boundary(srt_text, program_name=None, program_dur_sec=None,
             end_sec = max(e_all)
 
     window = (end_sec - start_sec) if (start_sec is not None and end_sec is not None) else None
+    window = int(window) if window is not None else None
 
     if start_sec is not None and end_sec is not None:
         if dur_ok and lo <= window <= hi:
@@ -740,15 +741,27 @@ def detect_boundary(srt_text, program_name=None, program_dur_sec=None,
             conf = "low"
             reason = "start+end anchored but no DB duration to validate the window"
     elif start_sec is not None or end_sec is not None:
+        # Exactly one side is marker-anchored; derive the other from the program
+        # duration. MEDIUM only if the derived position is within the slot —
+        # otherwise the "anchor" was implausible (e.g. a spurious neighbor outro
+        # that, minus dur, would put the start before the slot began) -> LOW.
         conf = "medium"
-        if start_sec is not None:
-            reason = "start marker-anchored, no valid end marker; end derived = start+dur"
-            if dur_ok and end_sec is None:
-                end_sec = start_sec + dur  # derived (report only, MEDIUM)
+        derived_ok = True
+        if start_sec is not None and end_sec is None and dur_ok:
+            end_sec = start_sec + dur
+            reason = "start marker-anchored, end derived = start+dur"
+        elif end_sec is not None and start_sec is None and dur_ok:
+            start_sec = end_sec - dur
+            reason = "end marker-anchored, start derived = end-dur"
         else:
-            reason = "end marker-anchored, no valid start marker; start derived = end-dur"
-            if dur_ok and end_sec is not None:
-                start_sec = end_sec - dur  # derived (report only, MEDIUM)
+            conf = "low"
+            reason = "one side anchored but no DB duration to derive the other"
+            derived_ok = False
+        if derived_ok and not (0 <= (start_sec or 0) < slot_sec and 0 <= (end_sec or 0) <= slot_sec):
+            conf = "low"
+            reason += " — derived position outside the slot (implausible)"
+            start_sec = None
+            end_sec = None
         window = (end_sec - start_sec) if (start_sec is not None and end_sec is not None) else None
     else:
         conf = "low"
@@ -1017,9 +1030,11 @@ def run_detection(program_id, limit=20, extra_programs=None, conn=None, log=prin
         rows.append({"session": s["id"], "program": s["program_id"], "stem": stem,
                      "dur": dur, "md5_same": same, **res})
         # per-episode line
-        log(f"  sid={s['id']:>5} prog={s['program_id']:>2} dur={dur//60}m "
+        def _d(x):
+            return f"{x//60}m" if x >= 60 else f"{x}s"
+        log(f"  sid={s['id']:>5} prog={s['program_id']:>2} dur={_d(dur):>4} "
             f"start={_ts_label_s(res['start_sec'])} end={_ts_label_s(res['end_sec'])} "
-            f"win={res['window_sec']}s conf={res['confidence']:>6} st={res['status']}")
+            f"win={_ms(res['window_sec'])} conf={res['confidence']:>6} st={res['status']}")
         for mk in res["markers_found"]:
             log(f"        [{mk['side']:>5} {mk['ts']}] {mk['text'][:70]}")
     # MD5 gate (STOP if any original changed)
@@ -1030,6 +1045,11 @@ def run_detection(program_id, limit=20, extra_programs=None, conn=None, log=prin
 
     # distribution table
     wins = sorted(r["window_sec"] for r in rows if r["window_sec"] is not None)
+    # only windows that are NOT exactly a derived dur (= dur) — i.e. real
+    # anchor-anchored windows — for the "is the window length stable" question
+    real_wins = sorted(r["window_sec"] for r in rows
+                       if r["window_sec"] is not None
+                       and r["evidence"].get("window_sec") != r["evidence"].get("dur_sec"))
     starts = sorted(r["start_sec"] for r in rows if r["start_sec"] is not None)
     durs = sorted(set(r["dur"] for r in rows if r["dur"]))
     def _med(v):
@@ -1040,14 +1060,36 @@ def run_detection(program_id, limit=20, extra_programs=None, conn=None, log=prin
     confs = [r["confidence"] for r in rows]
     log(f"HIGH={confs.count('high')}  MEDIUM={confs.count('medium')}  "
         f"NEEDS_REVIEW(low)={confs.count('low')}")
+    if real_wins:
+        log(f"real window-length (anchor-anchored) s: min={_ms(real_wins[0])} "
+            f"median={_ms(_med(real_wins))} max={_ms(real_wins[-1])}  (n={len(real_wins)})")
     if wins:
-        log(f"window-length s: min={_ms(wins[0])} median={_ms(_med(wins))} max={_ms(wins[-1])}")
-        if durs:
-            d0 = durs[0]
-            log(f"  vs duration ~{d0}s: min {wins[0]/d0:.2f}x, median {_med(wins)/d0:.2f}x, max {wins[-1]/d0:.2f}x")
+        log(f"all window-length s: min={_ms(wins[0])} median={_ms(_med(wins))} max={_ms(wins[-1])}")
+    if durs:
+        d0 = durs[0]
+        if real_wins and d0:
+            log(f"  vs duration ~{d0}s: min {real_wins[0]/d0:.2f}x, "
+                f"median {_med(real_wins)/d0:.2f}x, max {real_wins[-1]/d0:.2f}x")
     if starts:
-        log(f"start-position s (drift): min={_ms(starts[0])} median={_ms(_med(starts))} max={_ms(starts[-1])}  "
-            f"(spread {_ms(starts[-1]-starts[0])})")
+        log(f"start-position s (drift): min={_ms(starts[0])} median={_ms(_med(starts))} "
+            f"max={_ms(starts[-1])}  (spread {_ms(starts[-1]-starts[0])})")
+    # per-program tally (the STEP-8.6 gate is per-program: >=10 HIGH on the pilot)
+    by_prog = {}
+    for r in rows:
+        c = by_prog.setdefault(r["program"], {"high": 0, "med": 0, "low": 0, "n": 0})
+        c[r["confidence"]] += 1
+        c["n"] += 1
+    log("per-program tally (pid: total / high / medium / needs_review):")
+    for pid in sorted(by_prog):
+        c = by_prog[pid]
+        log(f"  prog {pid}: {c['n']} total -> HIGH={c['high']} MED={c['med']} "
+            f"NEEDS_REVIEW={c['low']}")
+    # per-episode window/dur ratio (only where both exist)
+    ratios = [(r["window_sec"] / r["dur"]) for r in rows
+              if r["window_sec"] is not None and r["dur"] and r["window_sec"] != r["dur"]]
+    if ratios:
+        log(f"window/dur ratio (real windows): min={min(ratios):.2f}x "
+            f"median={_med(sorted(ratios)):.2f}x max={max(ratios):.2f}x")
     return rows
 
 
