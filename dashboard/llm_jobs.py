@@ -1051,7 +1051,6 @@ def run_detection(program_id, limit=20, extra_programs=None, conn=None, log=prin
                        if r["window_sec"] is not None
                        and r["evidence"].get("window_sec") != r["evidence"].get("dur_sec"))
     starts = sorted(r["start_sec"] for r in rows if r["start_sec"] is not None)
-    durs = sorted(set(r["dur"] for r in rows if r["dur"]))
     def _med(v):
         return v[len(v)//2] if v else None
     log("")
@@ -1065,11 +1064,6 @@ def run_detection(program_id, limit=20, extra_programs=None, conn=None, log=prin
             f"median={_ms(_med(real_wins))} max={_ms(real_wins[-1])}  (n={len(real_wins)})")
     if wins:
         log(f"all window-length s: min={_ms(wins[0])} median={_ms(_med(wins))} max={_ms(wins[-1])}")
-    if durs:
-        d0 = durs[0]
-        if real_wins and d0:
-            log(f"  vs duration ~{d0}s: min {real_wins[0]/d0:.2f}x, "
-                f"median {_med(real_wins)/d0:.2f}x, max {real_wins[-1]/d0:.2f}x")
     if starts:
         log(f"start-position s (drift): min={_ms(starts[0])} median={_ms(_med(starts))} "
             f"max={_ms(starts[-1])}  (spread {_ms(starts[-1]-starts[0])})")
