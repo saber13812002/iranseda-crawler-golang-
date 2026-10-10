@@ -1138,12 +1138,13 @@ def _process_core(session, job_type, prompt_text, model, conn, base_url=None, ke
 
     file_rel = f"downloads/cleaned/{stem}{suffix}"
     if output_kind == "program":
-        # mechanical time-block crop -> <stem>.program.srt / .program.txt (a
-        # "new field"); the original <stem>.srt is left untouched.
+        # time-block crop -> <stem>.program.srt / .program.txt (a "new field");
+        # the original <stem>.srt is left untouched. _ensure_program_block only
+        # writes those files when a crop is actually active (HIGH-confidence auto
+        # or enabled fixed offset); for NEEDS_REVIEW it returns the full
+        # transcript (fallback) WITHOUT materializing a crop file.
         p_srt, p_full, _active = _ensure_program_block(conn, session, stem)
-        if p_srt:
-            _write(os.path.join(CLEANED, stem + ".program.srt"), p_srt)
-            _write(os.path.join(CLEANED, stem + ".program.txt"), p_full)
+        if _active and p_srt:
             srt_content, content = p_srt, p_full
         else:
             srt_content, content = None, None
