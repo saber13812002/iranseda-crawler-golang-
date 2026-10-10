@@ -202,6 +202,15 @@ field). **Plan approved** via ExitPlanMode
    a human must set the correct offset per program in the 🚀 Programs section,
    flip the crop on, then re-run that program's steps (re-runnable; the 10-item
    test does crop→summary→correct_text).
+
+   **➡️ STEP 7 (production crop pilot + backfill gate) is documented in
+   `docs/prompts/007-production-crop-and-backfill-gate.md`.** It was run on
+   2026-10-10 and **STOPPED at the offset gate**: a real-evidence sweep of every
+   candidate program (28 / 14 / 12 / 6) showed the in-slot `crop_offset` is not
+   stable (the target program's position floats per episode), so **crop was NOT
+   enabled on any production program and backfill was kept OFF**. See 007 §2 for
+   the per-file boundary-marker evidence and §11 for the one thing that will
+   unblock it (a human-supplied offset, or a per-episode auto-detect feature).
 2. **Backfill is OFF by default** (`running: false`) and the queue list is empty.
    To start: add a program suggestion in 📥 Backfill, then the toggle. It only
    promotes when the live download+subtitle queue is idle.
@@ -288,7 +297,11 @@ Admin endpoints (Bearer token from `dashboard/dashboard.env`):
 1. **Turn crop on for real** — pick a program, set its true in-slot
    `crop_offset` in 🚀 Programs, flip `crop_enabled`, re-run its steps (or the
    10-item test). This is the payoff of feature D and needs a human to set the
-   offsets (they can't be auto-derived).
+   offsets (they can't be auto-derived). **Status after STEP 7 (2026-10-10):**
+   a real-evidence sweep confirmed no program's offset is derivable (it floats
+   per episode) → crop left OFF, backfill left OFF. See
+   `docs/prompts/007-production-crop-and-backfill-gate.md` §11 for the exact
+   unblock.
 2. **Feed the idle pipeline** — add a monthly suggestion in 📥 Backfill + toggle
    on, when the user wants to re-download/re-subtitle an old program's backlog
    (it only fires when the live queue is idle).
