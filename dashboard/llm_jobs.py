@@ -1073,16 +1073,23 @@ def run_detection(program_id, limit=20, extra_programs=None, conn=None, log=prin
     if starts:
         log(f"start-position s (drift): min={_ms(starts[0])} median={_ms(_med(starts))} "
             f"max={_ms(starts[-1])}  (spread {_ms(starts[-1]-starts[0])})")
+    # main-program (pilot) window/dur ratio — the STEP-8.6 relevance
+    main_durs = [r["dur"] for r in rows if r["program"] == int(program_id) and r["dur"] >= 60]
+    if main_durs and real_wins:
+        md = main_durs[0]
+        log(f"pilot window/dur ratio: min {real_wins[0]/md:.2f}x "
+            f"median {_med(real_wins)/md:.2f}x max {real_wins[-1]/md:.2f}x "
+            f"(dur ~{md}s)")
     # per-program tally (the STEP-8.6 gate is per-program: >=10 HIGH on the pilot)
     by_prog = {}
     for r in rows:
-        c = by_prog.setdefault(r["program"], {"high": 0, "med": 0, "low": 0, "n": 0})
+        c = by_prog.setdefault(r["program"], {"high": 0, "medium": 0, "low": 0, "n": 0})
         c[r["confidence"]] += 1
         c["n"] += 1
     log("per-program tally (pid: total / high / medium / needs_review):")
     for pid in sorted(by_prog):
         c = by_prog[pid]
-        log(f"  prog {pid}: {c['n']} total -> HIGH={c['high']} MED={c['med']} "
+        log(f"  prog {pid}: {c['n']} total -> HIGH={c['high']} MED={c['medium']} "
             f"NEEDS_REVIEW={c['low']}")
     # per-episode window/dur ratio (only where both exist)
     ratios = [(r["window_sec"] / r["dur"]) for r in rows
