@@ -592,9 +592,9 @@ def _ctv2_window_prompt(cb, ca, t0, t1, blocks):
     """Build the user message for one window: [context before] / [target] /
     [context after]. Context is labeled read-only; the model only returns the
     corrected target blocks (joined by ' ||| ')."""
-    before = "\n\n".join(_ctv2_block(k, blocks[k]) for k in range(cb, t0))
-    target = "\n\n".join(_ctv2_block(k, blocks[k]) for k in range(t0, t1))
-    after = "\n\n".join(_ctv2_block(k, blocks[k]) for k in range(t1, ca))
+    before = "\n\n".join(_ctv2_block(k, blocks) for k in range(cb, t0))
+    target = "\n\n".join(_ctv2_block(k, blocks) for k in range(t0, t1))
+    after = "\n\n".join(_ctv2_block(k, blocks) for k in range(t1, ca))
     m = t1 - t0
     return (
         f"=== [پیش‌زمینه — فقط برای درکِ معنا، دست نزن] ===\n{before or '(—)'}\n\n"
