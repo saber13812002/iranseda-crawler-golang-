@@ -398,6 +398,120 @@ State در `dashboard_state.json["boost"]` است (منبع واحد حقیقت)
 
 ---
 
+## 🚦 Crop Pilot & Backfill Gate (STEP 7) — 2026-10-10
+
+This STEP's goal was narrow and safe: enable crop on **one** real program, prove
+it on **10 samples**, and only then decide on backfill — **no broad rollout**.
+The spec's own guard applies: *if the in-slot offset cannot be determined from
+real evidence, STOP and report that the program needs a human-provided value.*
+That is exactly what happened.
+
+### Current Status
+**STOP at the offset gate.** After a real-evidence sweep of every pilot
+candidate, **no program has a stable, derivable in-slot `crop_offset`**, so crop
+was **NOT** enabled on any production program and backfill was **kept OFF**.
+This is the intended STOP branch (not a bug, not a partial rollout). No LLM model
+calls were made; the pipeline is untouched and stable.
+
+### Completed Work (this STEP)
+- Recorded pre-change state (DB + dashboard + git) — all clean.
+- Selected the best pilot candidate (**program 28**, "حکایت آزادگی").
+- Determined the offset with **real evidence**: located the program's own
+  intro/outro markers ("شروع برنامه … حکایت آزادگی" / "پایان برنامه … حکایت
+  آزادگی") inside the actual SRT transcripts.
+- **3-file dry-run** of the crop engine: original SRT **MD5 identical
+  before/after**; crop output written to a temp file only.
+- Evaluated the **backfill gate from real queue state → KEEP OFF**.
+- Documented rollback + kill switch + next-agent checkpoint.
+- Saved the master prompt (`docs/prompts/007-…`) and linked it from `006`.
+
+### Production Crop Status
+**DISABLED everywhere.** `crop_enabled = 0` for all 55 programs (verified
+before and after). No crop was turned on.
+
+### Crop-enabled Programs
+**None.** (List is intentionally empty — the gate did not advance to enabling.)
+
+### Crop Offsets
+No offset was persisted as authoritative. Program 28 keeps its Phase-3 reference
+row (`crop_offset` NULL, `time` 00:20:00, `crop_enabled` 0).
+
+| Program | ID | Name | Duration | Crop offset | Crop enabled | 10-item QA | Date enabled |
+|---|---|---|---|---|---|---|---|
+| (pilot, NOT enabled) | 28 | حکایت آزادگی (Hokayat-e Azadegi) | 00:20:00 (real episodes ~21.6m) | **not derivable** (floats per episode) | **0 (disabled)** | n/a — stopped at offset gate | — |
+
+**Why the offset isn't derivable:** the ~30-min archive slot starts with
+variable-length neighbor content (a news bulletin / previous program's tail), so
+the program's own start lands at a different in-slot time on each episode.
+Program 28's end-marker was found at 04:11, 06:31, 07:17, 07:30 **and** 27:04
+across 12 files, and the clean intro at 05:26 in only one file. A single fixed
+offset — the only thing the crop engine supports — cannot be right for all of
+them (it would cut the real beginning/ending or keep a neighbor's content).
+
+### Quality Test Results
+**Not run** (no valid offset to test against; running with a guess would just
+reproduce the wrong crop). Dry-run (3 files): **3/3 PASS on the
+"original SRT unchanged" (MD5) condition**; original SRT **not modified**.
+
+### Backfill Status
+**OFF** (not tested, not enabled). Reason from the real queue:
+`pending_download = 181` (not low), whisper busy but steady, GPU/LLM busy
+(burning the `correct_subtitles` backlog via the night boost). Gate rule:
+*queue high → KEEP BACKFILL OFF.*
+
+### Known Issues
+- **GitLab `git.ai.ismc.ir` remote — BLOCKED (auth).** 53 and the local checkout
+  have **no GitLab credential**; `git push` to it returns
+  `Permission denied (publickey)`. The mandatory primary repo cannot be reached
+  until the user provisions a credential. All STEP-7 changes are committed +
+  pushed to GitHub `origin/download-db`.
+- The in-slot offset genuinely varies per episode (news-length dependent) — an
+  inherent property of this archive, not a data error.
+
+### Remaining Work
+- **Unblock crop** (needs the user / a human): for one program, supply the real
+  in-slot `crop_offset` (watch one episode, note where the program starts
+  *into* the file), **or** build a per-episode auto-detect that finds the
+  "شروع برنامه / بسم‌الله" intro phrase in each SRT (out of scope this STEP).
+- Once an offset is known for one program: set it, flip `crop_enabled=1`, run
+  the 10-item test (≥9/10 PASS), then propose a per-program rollout table and
+  re-check the backfill gate.
+
+### Operational Commands (on 53)
+```bash
+# state
+docker exec iranseda-mysql mysql -un8nuser -p"StrongPassword123!" radio \
+  -e "SELECT id,name,time,crop_offset,crop_enabled FROM radio_programs WHERE crop_enabled=1;"
+# set a program's crop once a real offset is known (keep-both, re-runnable)
+docker exec iranseda-mysql mysql -un8nuser -p"StrongPassword123!" radio \
+  -e "UPDATE radio_programs SET crop_offset='00:MM:SS', crop_enabled=1 WHERE id=<pid>;"
+# re-run the program's steps (crop → summary → correct_text)
+cd dashboard && set -a && . ./dashboard.env && set +a \
+  && ./venv/bin/python llm_jobs.py run --job summary --program-id <pid> --all
+```
+
+### Rollback
+```sql
+-- turn crop OFF for a program, KEEPING offset + duration (fallback = full
+-- transcript; nothing deleted):
+UPDATE radio_programs SET crop_enabled = 0 WHERE id = <pid>;
+```
+(or 🚀 Programs → program → uncheck "crop enabled" → save; or
+`POST /api/programs/crop` `{"id":<pid>,"crop_enabled":false}`). Kill switch
+(unchanged): `./scripts/stop-background.sh` stops ONLY iranseda background LLM
+work — never the model/whisper/LiteLLM/dashboard. Since no program was enabled,
+**no rollback was needed**.
+
+### NEXT_CHAT_CHECKPOINT
+State 2026-10-10: STEP 7 **STOPPED at the offset gate** — crop NOT enabled on
+any production program, backfill OFF. All Phase-3 features still built/deployed/
+live on 53. The one unblock is a human-supplied `crop_offset` (or a per-episode
+auto-detect feature). Full detail + evidence:
+`docs/prompts/007-production-crop-and-backfill-gate.md` (§2 evidence, §5
+dry-run, §11 unblock).
+
+---
+
 ## 📝 لایسنس
 
 این پروژه تحت مجوز MIT منتشر شده است.
@@ -410,5 +524,5 @@ State در `dashboard_state.json["boost"]` است (منبع واحد حقیقت)
 
 ---
 
-**آخرین به‌روزرسانی**: 2025-01-XX  
+**آخرین به‌روزرسانی**: 2026-10-10 (STEP 7 — crop pilot gate)  
 **وضعیت**: ✅ در حال اجرا و پایدار (6+ ماه)
