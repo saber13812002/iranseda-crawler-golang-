@@ -374,6 +374,120 @@ pipeline it should be a `.correct.v2` artifact the user can diff, not an overwri
 
 ---
 
+## 5.2 STEP 9B.2 — Conservative tuning + A/B re-measurement (2026-10-11)
+
+The §5 baseline changed **33 %** of blocks (up to 55 %) — a rewriter, not a
+corrector. STEP 9B.2 makes `correct_text_v2` conservative, then A/Bs the
+**same 20 files** before/after so the change is measurable, not asserted. Sub-steps:
+9B.2.1 (labels), 9B.2.2.1 (baseline archive), 9B.2.2.2 (the code change),
+9B.2.3 (re-run under the model-stop guard), 9B.2.4 (dual metrics), 9B.2.5 (label).
+
+### 9B.2.1 — Labeled ground-truth set (recall yardstick)
+
+`docs/prompts/v2-labeled-errors.md` — **50 hand-labeled obvious ASR errors**
+(`stem / block / original / expected / why`), each verified present in the
+original SRT before the re-run. Dominant families: place names (عراق/عراقی، قزوین،
+قم), religious honorifics & surah names (صلّی‌الله علیه، حجت‌الاسلام،
+نهج‌البلاغه، سجاد، بقره، نساء، آل عمران), captivity vocabulary (اسارت/اسرا،
+بعثیان), and homophone misspellings (عنوان، اردوگاه، محرمات، رمضان، محاصره).
+**Scoring rule:** a label is FIXED if the `expected` token is present in the v2
+block (the faithful signal — the "original gone" test is unsound when the expected
+word *contains* the original, e.g. `اردوگا ⊂ اردوگاه`).
+
+### 9B.2.2.1 — Baseline archive (before tuning)
+
+Archived the §5 baseline as `docs/prompts/v2-baseline-diffs.md` (+ all 957 changed
+blocks in `v2-baseline-edits.txt`) **before** touching the prompt, so the tuned
+run is a true A/B. Headline: avg 32.1 % / max 54.5 %, 957 changed blocks. The
+archive breaks down how much of that is real fixes vs. hamza/punctuation
+re-normalization noise (the rewriter's signature).
+
+### 9B.2.2.2 — The code change (conservative mode)
+
+Two changes in `dashboard/llm_jobs.py` (commit `cfe0f9f6`), nothing else:
+1. **temperature 0.2 → 0.0** at the `windowed_correct` `call_llm` site (deterministic
+   edits; no sampling noise that drifts the text).
+2. **Prompt tightened** to conservative mode. It now (a) fixes **only** real ASR
+   homophone/spelling errors, with positive examples; (b) **forbids**
+   colloquial→formal (keep `خونه`/`خودمان`/`داری`/`بیا`), restructuring,
+   adding/moving punctuation, and hamza/ta-marbuta/ZWNJ re-normalization
+   (`تقریبا‌ً`, `ان‌شاءالله` stay as-is); (c) says **if unsure/garbled → keep the
+   original byte-identical, never invent a word**; (d) no summarization; (e) no
+   number/timestamp/order changes. Output format (`|||`-joined blocks) unchanged.
+
+**Deliberately NOT changed:** the 8+3 window, the slide-by-target stitching,
+timestamp preservation, and the `.correct.v2.*` output — so the A/B isolates the
+temperature+prompt change. Still a **bounded 20-file QA, never a bulk/boost job.**
+
+### 9B.2.3 — Re-run on 53 (under the model-stop guard)
+
+Re-ran the same 20 files on 53 (`llm_jobs.py run --job correct_text_v2 --qa`).
+**Model-stop check ran FIRST: `allowed=True` — "ok (1 interactive requests ≤ cap 5)"**
+(the 1 was our own `run-all` burn worker, correctly excluded via
+`_count_runall_workers`). ~20 min (slower than the baseline's ~10 because the two
+`correct_subtitles` boost workers were competing for the model that night).
+
+### 9B.2.4 — Dual metrics (change rate down, recall held, precision checked)
+
+**Headline A/B** (baseline temp-0.2 → tuned temp-0.0; same 20 files, 3129 blocks):
+
+| metric | baseline (0.2) | **tuned (0.0)** |
+|---|---|---|
+| total changed blocks | 957 | **376** (−581) |
+| average per-file change rate | 33.2 % | **12.5 %** |
+| max per-file change rate | 54.5 % | **20.5 %** |
+| min per-file change rate | 15.3 % | **4.2 %** |
+| blocks in == out | 20/20 | 20/20 |
+| timestamps unchanged | 20/20 | 20/20 |
+| original SRT MD5 unchanged | 20/20 | 20/20 |
+| recall — obvious labeled errors fixed | n/a (predates labels) | **23/50 (46 %)** |
+
+Per-file tuned rates: `v2-tuned-diffs.md` (all 376 edits in `v2-tuned-edits.txt`).
+
+**Recall (23/50, 46 %):** it still fixes the **high-context** homophones — every
+`انوان→عنوان`, `اردوگا→اردوگاه`, `عصارت→اسارت` in clear context,
+`نهج‌البلاغه`, `سجاد`, `آل عمران`, `نساء`, `محاصره`, `رمضان` — but now **holds**
+the **lower-context** ones instead of guessing: `عصرا→اسرا` (could be "evening"),
+`عرق→عراق` in «تکریت», `صلامالله→صلّی‌الله`, `قوم→قم`, `قزه→قزوین`. **That is the
+intended conservatism trade-off, reported honestly, not hidden** — recall dropped
+*because* the model no longer rewrites uncertain tokens.
+
+**Precision (spot-check of all 376 edits):** ~129 cosmetic (hamza/ta-marbuta/ZWNJ/
+punctuation/spacing only — the no-normalization rule cut these but did not zero
+them), ~247 content. The **majority of the content edits are genuine ASR fixes**
+(`اردوبا→اردوگاه`, `پنجامه مهما→پنجم آبانماه`, `مخمد→محمد`, `لبخم→لبخند`,
+`باغر→باقر`, `سدجا→سجاد`, `نهج‌البرابه→نهج‌البلاغه`, …). Colloquial→formal **leak = 0**
+(no conversational token was formalized — the anti-colloquial rule held).
+
+**But precision is not 100 % — 3 regressions found** (the model swapped a
+*correct/acceptable* word for a *different wrong* one):
+
+| file | block | was | became |
+|---|---|---|---|
+| 04-08-06-02-00 | 169 | پرسمان (show name — correct) | پرسبان (broken) |
+| 04-08-13-02-00 | 106 | عربه (Quranic Erebah — correct) | عروه (Awrah — wrong) |
+| 04-08-13-02-00 | 201 | ریایش (ASR for نیایش) | ریاض (a *different* wrong word) |
+
+~3 regressions in 3129 blocks is rare, but it is the reason this stays a
+`.correct.v2` **artifact for diffing** and is **NOT** wired into the bulk pipeline
+(STOP rule). Conservatism is not a free lunch: it cuts the blast radius of the
+rewriter while leaving a small residual risk of "fixing" a fine word into a wrong
+one, mostly proper nouns.
+
+### 9B.2.5 — "سال گذشته / Last Year" site card label clarified
+
+The site's year cards bucket by DB `created_at` (when each session was **added to
+the archive**), by calendar year. "سال گذشته / Last Year" (and the 2/3/5/10-year
+siblings) read as "past 12 months" but actually count episodes added in that
+calendar year. **Display strings only** — `generate_site.py` changed all five to
+"افزوده‌شده به آرشیو در سال گذشته / Added to archive in the last year" etc. **NO
+schema, NO backfill, NO count-logic change; 9A stays STOPped.** Regenerated the
+site on 53 (the 23:00 cron had regenerated from pre-commit code, so the first
+regen with the new label was done explicitly): all 5 new labels present, 0 old,
+committed + pushed (see §6/§8).
+
+---
+
 ## 6. Docs / commits / GitLab
 
 - **009 doc:** this file (master prompt §2, Persian preamble §1), linked from 008.
@@ -388,6 +502,13 @@ pipeline it should be a `.correct.v2` artifact the user can diff, not an overwri
   3. `_ctv2_block` call-site fix (pass `blocks`, not `blocks[k]`),
   4. this 009 doc + 008 link,
   5. README STEP 9A+9B section.
+  6. **STEP 9B.2:** `b655f9d5` (9B.2.1 labeled set + 9B.2.2.1 baseline diff
+     archive), `cfe0f9f6` (9B.2.2.2 conservative prompt + temp 0.0),
+     `489d3c1b` (9B.2.5 year-card label strings in `generate_site.py`).
+  7. **STEP 9B.2.4 artifacts** (this commit): `v2-tuned-diffs.md` +
+     `v2-tuned-edits.txt` (post-tuning A/B) + this §5.2 in 009.
+  8. **STEP 9B.2.5 regen** (on 53, `19937ad7`): `docs/` regenerated with the new
+     labels.
 - **GitHub:** pushed to `origin/download-db`. On 53: fetch+rebase / `git am`,
   no scp-edits.
 - **GitLab `git.ai.ismc.ir`:** attempted on 53 → **BLOCKED (no credential).**
@@ -416,6 +537,10 @@ pipeline it should be a `.correct.v2` artifact the user can diff, not an overwri
   ```
   (It is never wired into a bulk/boost job, so disabling it changes nothing
   else.)
+- **9B.2 (the conservative prompt + temp):** `git revert cfe0f9f6` restores the
+  baseline temp-0.2 prompt (the change was prompt-text + the `call_llm`
+  temperature, in-code, so a revert is clean). Re-run the 20-file QA to
+  regenerate the baseline-shaped `.correct.v2.*` if desired.
 
 Kill switch (unchanged): `./scripts/stop-background.sh` stops ONLY iranseda
 background LLM work — never the model / whisper / LiteLLM / dashboard.
@@ -424,11 +549,16 @@ background LLM work — never the model / whisper / LiteLLM / dashboard.
 
 ## 8. NEXT_CHAT_CHECKPOINT
 
-> **State (2026-10-10): 9A STOPPED (calendar/year undecidable from the
+> **State (2026-10-11): 9A STOPPED (calendar/year undecidable from the
 > filename — evidence documented in §3; no schema change, no backfill, site
-> unchanged). 9B `correct_text_v2` BUILT + registered (row id 141) + 20-file QA
-> RUN under the model-stop guard (§5). NOT a bulk/boost job. Crop/backfill state
-> untouched (pilot 28 still 2 HIGH / 20 NEEDS_REVIEW; backfill OFF).**
+> unchanged). 9B `correct_text_v2` BUILT + registered (row id 141) + **STEP 9B.2
+> conservative tuning DONE**: temp 0.2→0.0 + tightened prompt (commit `cfe0f9f6`),
+> 50-error labeled set (9B.2.1), baseline archive (9B.2.2.1), re-run under the
+> model-stop guard (9B.2.3, "ok 1 interactive ≤ cap 5"), A/B measured
+> (9B.2.4): **change rate 33.2 %→12.5 %, recall 23/50 (46 %), 3 regressions
+> found** — §5.2. Site year-card labels clarified (9B.2.5, committed+regenerated
+> on 53 as `19937ad7`). NOT a bulk/boost job. Crop/backfill state untouched
+> (pilot 28 still 2 HIGH / 20 NEEDS_REVIEW; backfill OFF).**
 
 **The ONE thing to unblock 9A (needs the user, not more code):** supply the
 calendar + year the filename lacks. If confirmed, the backfill is mechanical:
@@ -438,12 +568,17 @@ parse `MM-DD`, stamp the confirmed year, `broadcast_date=NULL` on any parse fail
 the site once (use `refresh_site.sh` / explicit `*_PATH` — the server-mode
 default path has no trailing dash) and report before/after.
 
-**Optional 9B follow-up (only if the user wants a tighter editor):** the QA
-change-rate is reported in §5. If the median is >~20% (i.e. the model is
-"correcting" a large share of words), tighten the prompt — e.g. raise the
-conservatism of rule 2, add a few known-bad "do not change" examples, or lower
-`max_tokens`/temperature — and re-run the 20-file QA. Do NOT enable it as a
-bulk/boost job until the user explicitly wants it in the pipeline.
+**9B.2 follow-up (only if the user wants to push recall higher):** the
+conservative tuning cut the change rate to 12.5 % but recall on the 50 labeled
+obvious errors is 46 % — it still *holds* the lower-context cases (عصرا→اسرا،
+عرق→عراق in «تکریت»، صلامالله→صلّی‌الله، قوم→قم). Raising recall means either (a) a
+**factual-knowledge step** for proper nouns (place names / surah names / religious
+terms — feed a domain lexicon, or a second targeted pass that only touches the
+known families), or (b) accepting more edits (back toward the rewriter). And it
+must be weighed against the **3 regressions** in §5.2 (پرسمان→پرسبان،
+عربه→عروه، ریایش→ریاض) — more edits means more of that failure mode. Do NOT enable
+`correct_text_v2` as a bulk/boost job until the user explicitly wants it in the
+pipeline; keep it a `.correct.v2` diff artifact.
 
 Carry-over (unchanged from STEP 7/8): GitLab `git.ai.ismc.ir` remote —
 **BLOCKED on auth**.
@@ -494,6 +629,24 @@ Edge case:                    ASR repetition loop "شما همه‌ی" ×42 (blo
 Bulk enabled: NO  (bounded 20-file QA only; pipeline row id 141 exists, enabled, but
                  never wired into run-all/boost)
 
+9B.2 — CONSERVATIVE TUNING (A/B, same 20 files / 3129 blocks, 2026-10-11)
+Change: temp 0.2→0.0 + prompt tightened to conservative mode (commit cfe0f9f6).
+  No window/stitch/timestamp/output change. Still NOT a bulk/boost job.
+  Sub-steps: 9B.2.1 labels (50 obvious errors) → 9B.2.2.1 baseline archive →
+  9B.2.2.2 code → 9B.2.3 re-run (stop-check "ok 1 interactive ≤ cap 5") →
+  9B.2.4 dual metrics → 9B.2.5 site label.
+Change rate:   33.2% → **12.5%** (avg); max 54.5%→20.5%; min 15.3%→4.2%;
+  957 → 376 changed blocks (−581).   All hard constraints 20/20 (count/ts/md5).
+Recall:        **23/50 (46%)** of the obvious labeled errors fixed. Fixes high-context
+  homophones (عنوان/اردوگاه/اسارت/نهج‌البلاغه/سجاد/آل عمران/محاصره/رمضان); HOLDS the
+  lower-context ones (عصرا→اسرا، عرق→عراق، صلامالله→صلّی‌الله، قوم→قم) — intended trade-off.
+Precision:     ~129 cosmetic + ~247 content (majority genuine); colloquial-leak = 0;
+  **3 regressions** (پرسمان→پرسبان، عربه→عروه، ریایش→ریاض) — conservatism not perfect.
+Artifacts:     v2-labeled-errors.md, v2-baseline-diffs.md + v2-baseline-edits.txt,
+  v2-tuned-diffs.md + v2-tuned-edits.txt.
+9B.2.5:        site year-card labels → "افزوده‌شده به آرشیو در … / Added to archive …"
+  (display only; no schema/backfill/count change; regenerated on 53, commit 19937ad7).
+
 COMMITS / PUSH / GITLAB:
 README: YES
 009 doc: YES
@@ -502,8 +655,9 @@ NEXT_CHAT_CHECKPOINT:
     backfill broadcast_date (parse MM-DD, stamp year, NULL on fail), recompute the
     period cards from broadcast_date (primary) with created_at as a labeled
     "ingested" fallback, regenerate site once (via refresh_site.sh / explicit *_PATH).
-  9B — optional: tighten the prompt to cut the 33% change rate (stronger conservatism
-    on rule 2, known-bad examples, lower temperature) and re-run the 20-file QA. Do NOT
-    bulk-enable until the user explicitly wants it. Crop/backfill state untouched.
+  9B.2 — DONE (conservative tuning, A/B measured, 9B.2.5 label shipped). Follow-up
+    only if user wants higher recall: a proper-noun lexicon / second targeted pass
+    (trades against the 3 regressions). Do NOT bulk-enable correct_text_v2 until
+    the user explicitly wants it. Crop/backfill state untouched.
   Carry-over: GitLab git.ai.ismc.ir BLOCKED on auth.
 ```
