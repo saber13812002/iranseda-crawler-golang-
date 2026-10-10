@@ -12,6 +12,10 @@
 > Crop (auto mode) is live for the pilot only and has already cropped 2
 > HIGH-confidence episodes; everything else is NEEDS_REVIEW (full-transcript
 > fallback). Backfill was kept OFF. No production rollout beyond the pilot.**
+>
+> **→ NEXT STEP (9A + 9B):** stats broadcast-vs-ingest date + windowed ASR
+> correction (`correct_text_v2`) — see
+> `009-stats-broadcast-date-and-correct-text-v2.md`.
 
 ---
 
