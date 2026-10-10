@@ -672,9 +672,7 @@ scope).
 > blocks, acting as an aggressive rewriter rather than a conservative proofreader.
 > Every sample edit is plausibly correct, but a good v2 should fix the *minority*.
 > This is a **prompt-tightening follow-up** (§9 of 009), **not** a defect in
-> counts/timestamps/immutability (all 20/20). **Not enabled as a bulk/boost job.**
-
-**Known issues:** (1) 9A blocked on the calendar/year (user input); (2) 9B change
+> counts/timestamps/immutability (all 20/20). **Not enabled as a bulk/boost job.****Known issues:** (1) 9A blocked on the calendar/year (user input); (2) 9B change
 rate is high — tighten the prompt before any pipeline use; (3) the model-stop
 guard now subtracts our own `run-all` workers so a busy boost doesn't false-block
 the QA. **Rollback (9B):** `rm downloads/cleaned/*.correct.v2.{srt,txt}` and/or
@@ -689,6 +687,66 @@ no schema change, site unchanged). **9B `correct_text_v2` BUILT + registered
 rate 33.2% flagged); **not a bulk job**. **Unblock 9A:** user supplies calendar+
 year → mechanical backfill + site recompute. **Optional 9B:** tighten the prompt
 to cut the change rate. Carry-over: GitLab BLOCKED on auth.
+
+---
+
+## 📣 Project Reporter (skeleton) — STEP 9C — 2026-10-11
+
+The user runs their **own publication web service** (~5 years old, hosted in
+Germany) that fans a report out to **Telegram / Bale / Eitaa / Soroush**. IranSeda
+should send it a report when something notable happens. **That service's contract
+is not available yet**, so this STEP builds the **local half — the skeleton — and
+nothing about the real transport.**
+Full master prompt + the interface the adapter must implement + open contract
+questions: `docs/prompts/010-project-reporter-skeleton.md`.
+
+**What EXISTS now:**
+* `publication_task` table (idempotent DDL in `llm_jobs.ensure_schema`;
+  `UNIQUE idempotency_key` = the no-double-publish guarantee).
+* `dashboard/reporter.py` — the `PublisherClient` **abstract interface**
+  (`publish(task)`, `check_status(external_task_id)`) + an honest **`StubClient`**
+  (the only concrete client). The stub **never fakes a published state**.
+* `report_event(...)` — the single idempotent entry point
+  (key = `sha1(event_type+title+artifact_url+git_commit)` when not given).
+* A **60s worker** (boost/backfill pattern) driving the state machine
+  `queued → submitted → checking → published | failed` (+ `skipped`), with
+  **bounded retries (3)** and a bounded `check_after` schedule (5m/15m/1h).
+* **`GET /api/reporter`** + **`POST /api/reporter/selftest`** (idempotent per
+  minute) + a **📣 Reporter** dashboard section (enabled/configured, per-status
+  counts, last 20 tasks, self-test button).
+
+**What is NOT wired yet (by design):**
+* **Real transport** — the German `PublisherClient` adapter (endpoints/auth/
+  payload). **No endpoint, auth scheme, or payload is assumed anywhere.** The
+  stub leaves `queued` tasks as **`skipped (publisher not configured)`** with no
+  retry loop.
+* **Live event firing** — the known event types (`download_batch`,
+  `transcribe_batch`, `program_summary_done`, `program_correct_done`,
+  `dataset_ready`, `git_release`, `milestone`) are defined as constants but **no
+  pipeline code calls `report_event` yet.** Only the dashboard self-test creates
+  a row today.
+* **Phase 3** (view-count metrics collector) — the `views` column is reserved.
+
+**How the real adapter plugs in (later):** implement
+`class GermanServiceAdapter(PublisherClient)` with the two methods, then
+`reporter.set_client(GermanServiceAdapter())` at startup and set
+`IRANSEDA_REPORTER_ENABLED=1`. Nothing else changes — the worker, table, state
+machine, and API all key off `PublisherClient`.
+
+**Open contract questions for the user's German service** (see 010 §5): (1)
+publish endpoint + auth scheme; (2) payload shape; (3) which response field is
+the task id; (4) status-check endpoint + response shape; (5) exact channel names
+for `post_urls`; (6) whether any channel exposes view counts via API (phase 3).
+
+**Verification:** `ensure_schema` idempotent (run twice, no error); selftest →
+one `skipped (publisher not configured)` row, no duplicate within the same
+minute; dashboard section renders; `/api/health` green; boost / backfill / crop
+untouched.
+
+**GitLab push: BLOCKED — credential not provisioned** (standing state; `git push`
+to `git.ai.ismc.ir` returns an auth error on 53 and locally — no credential is
+configured). This STEP's code is committed + pushed to GitHub `origin/download-db`
+and deployed to 53; the GitLab mirror remains blocked on the missing credential.
 
 ---
 
