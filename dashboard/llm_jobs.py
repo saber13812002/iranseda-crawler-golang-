@@ -33,6 +33,7 @@ CLI:
     python llm_jobs.py report --n 3
 """
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -152,6 +153,24 @@ SCHEMA = [
         KEY k_job (job_id), KEY k_session (session_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     """,
+    # Per-episode crop boundary detection (STEP 8). One row per session — the
+    # in-slot window found in THIS file's transcript by the rule-based
+    # detector, plus a confidence + status for a human to review. Idempotent
+    # (UNIQUE on session_id); re-detected every run (no stale cache).
+    """
+    CREATE TABLE IF NOT EXISTS crop_detection (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        session_id INT NOT NULL UNIQUE,
+        program_id INT,
+        start_sec INT NULL,
+        end_sec INT NULL,
+        confidence ENUM('high','medium','low') NOT NULL DEFAULT 'low',
+        status ENUM('cropped','needs_review','none') NOT NULL DEFAULT 'none',
+        evidence MEDIUMTEXT,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    """,
     # The pipeline-steps registry. Makes the set of phases data-driven: a new
     # step (input file + model + master prompt -> new per-file field) is a row,
     # and every consumer (engine dispatch, guards, site, labels) reads this
@@ -198,6 +217,13 @@ MIGRATIONS = [
     ("radio_programs", "crop_offset", "ALTER TABLE radio_programs ADD COLUMN crop_offset TIME NULL"),
     ("radio_programs", "crop_enabled",
      "ALTER TABLE radio_programs ADD COLUMN crop_enabled TINYINT NOT NULL DEFAULT 0"),
+    # STEP 8: per-episode auto crop switch. When 1, _ensure_program_block uses
+    # the per-episode detected window (crop_detection) for HIGH-confidence
+    # sessions; otherwise it falls back to the fixed offset (if enabled) else
+    # the full transcript. Defaults 0 so the existing fixed-offset mode is
+    # unchanged.
+    ("radio_programs", "crop_auto",
+     "ALTER TABLE radio_programs ADD COLUMN crop_auto TINYINT NOT NULL DEFAULT 0"),
 ]
 
 # One-time index drops. The original llm_job schema had UNIQUE KEY uq
@@ -600,12 +626,159 @@ def crop_program(srt_text, offset_sec, dur_sec):
     return "\n\n".join(srt_out) + "\n", " ".join(full_parts).strip()
 
 
+# ---------------------------------------------------------------------------
+# STEP 8 — per-episode crop boundary auto-detection (rule-based, NO LLM).
+#
+# Why per-episode: STEP 7 proved a fixed per-program `crop_offset` is
+# structurally unreliable — the target program's in-slot position drifts every
+# episode because the ~30-min archive slot opens with variable-length neighbor
+# content. So the window is re-detected INDEPENDENTLY in each file's transcript.
+#
+# The rules are strict and deterministic. A program only gets cropped when its
+# boundary is HIGH confidence (both start AND end anchored on real marker lines
+# in THIS file, and the resulting window is a plausible length for the program).
+# Everything else is NEEDS_REVIEW (no crop, full-transcript fallback, reason +
+# markers stored for a human).
+# ---------------------------------------------------------------------------
+CROP_SLOT_DEFAULT_SEC = 1800  # assume a ~30-min slot unless the file is longer
+
+# Clean program-START cue. Whisper garbles names, but this phrase is a strong,
+# program-specific "we are starting this program now" announcement. From the
+# STEP-8.1 census this is RARE (1/12 P28, 0/12 P14, 0/11 P12) — that rarity is
+# exactly what keeps false starts low; we do NOT use the (mid-program-repeated)
+# program-name phrase alone as a start.
+_START_PAT = re.compile(r"شروع برامه|شروع برنامه|شروع برامه‌|شروع برنامه‌")
+# Program-END cue ("end of the program"). Generic, so it can also fire on a
+# neighbor's outro — the plausibility window below is what rejects those.
+_END_PAT = re.compile(r"پایان برامه|پایان برنامه|به پایان|خاتمه برامه|خاتمه برنامه")
+
+
+def _norm_text(t):
+    """Normalize for marker matching: strip ZWNJ, collapse whitespace."""
+    return re.sub(r"\s+", " ", (t or "").replace("‌", "")).strip()
+
+
+def detect_boundary(srt_text, program_name=None, program_dur_sec=None,
+                    slot_sec=CROP_SLOT_DEFAULT_SEC):
+    """Rule-based, per-episode crop boundary detection on ONE SRT transcript.
+
+    Returns a dict:
+      {
+        "start_sec": int|None, "end_sec": int|None,
+        "confidence": "high"|"medium"|"low",
+        "status": "cropped"|"needs_review",
+        "markers_found": [ {"side","ts","text"}, ... ],   # the actual lines matched
+        "evidence": {"reason","start","end","window_sec","dur_sec","..."},
+        "window_sec": int|None,
+      }
+
+    Confidence (strict, documented in docs/prompts/008):
+      HIGH   — BOTH start and end anchored on real marker lines in this file,
+               AND window length within [0.7*dur, min(1.2*dur, slot)].
+      MEDIUM — exactly ONE side marker-anchored, the other derived from dur
+               (e.g. start = end - dur). Do NOT crop; report only.
+      LOW    — no usable markers, or window implausible, or no DB duration.
+    When in doubt -> LOW (NEEDS_REVIEW).
+    """
+    _full, blocks = srt_parse(srt_text or "")
+    if not blocks:
+        return {"start_sec": None, "end_sec": None, "confidence": "low",
+                "status": "needs_review", "markers_found": [],
+                "evidence": {"reason": "empty srt", "dur_sec": program_dur_sec},
+                "window_sec": None}
+    dur = int(program_dur_sec) if program_dur_sec else 0
+    dur_ok = dur > 0
+    lo = int(0.7 * dur) if dur_ok else 0
+    hi = min(int(1.2 * dur), int(slot_sec)) if dur_ok else 0
+
+    # mid-point seconds + normalized text per block
+    rows = []
+    for _idx, ts, lines in blocks:
+        mid = srt_mid_seconds(ts)
+        if mid is None:
+            continue
+        rows.append((mid, ts, _norm_text(" ".join(l.strip() for l in lines))))
+
+    start_cands = [(m, ts, t) for (m, ts, t) in rows if _START_PAT.search(t)]
+    end_cands = [(m, ts, t) for (m, ts, t) in rows if _END_PAT.search(t)]
+    markers = []
+    for (m, ts, t) in start_cands:
+        markers.append({"side": "start", "ts": _ts_label(ts), "text": t[:120]})
+    for (m, ts, t) in end_cands:
+        markers.append({"side": "end", "ts": _ts_label(ts), "text": t[:120]})
+
+    start_sec = min(m for (m, _ts, _t) in start_cands) if start_cands else None
+    ev = {"dur_sec": dur, "start_cands": len(start_cands), "end_cands": len(end_cands),
+          "lo": lo, "hi": hi}
+
+    # --- end selection given a start: prefer a plausible window closest to dur ---
+    end_sec = None
+    if end_cands:
+        e_all = sorted(m for (m, _ts, _t) in end_cands)
+        if start_sec is not None:
+            plausible = [e for e in e_all if e > start_sec and lo <= (e - start_sec) <= hi]
+            if plausible:
+                end_sec = min(plausible, key=lambda e: abs((e - start_sec) - dur))
+            else:
+                # no plausible end after start: keep the latest as evidence, LOW
+                end_sec = max(e_all)
+        else:
+            end_sec = max(e_all)
+
+    window = (end_sec - start_sec) if (start_sec is not None and end_sec is not None) else None
+
+    if start_sec is not None and end_sec is not None:
+        if dur_ok and lo <= window <= hi:
+            conf = "high"
+            reason = (f"start@{start_sec}s + end@{end_sec}s both marker-anchored; "
+                      f"window {window}s in [{lo},{hi}]s (dur {dur}s)")
+        elif dur_ok:
+            conf = "low"
+            reason = (f"start@{start_sec}s + end@{end_sec}s anchored but window "
+                      f"{window}s outside [{lo},{hi}]s (dur {dur}s) — implausible")
+        else:
+            conf = "low"
+            reason = "start+end anchored but no DB duration to validate the window"
+    elif start_sec is not None or end_sec is not None:
+        conf = "medium"
+        if start_sec is not None:
+            reason = "start marker-anchored, no valid end marker; end derived = start+dur"
+            if dur_ok and end_sec is None:
+                end_sec = start_sec + dur  # derived (report only, MEDIUM)
+        else:
+            reason = "end marker-anchored, no valid start marker; start derived = end-dur"
+            if dur_ok and end_sec is not None:
+                start_sec = end_sec - dur  # derived (report only, MEDIUM)
+        window = (end_sec - start_sec) if (start_sec is not None and end_sec is not None) else None
+    else:
+        conf = "low"
+        reason = "no start/end markers found in this transcript"
+
+    ev.update({"reason": reason, "start": start_sec, "end": end_sec,
+               "window_sec": window,
+               "name_in_text": bool(program_name and
+                                    any(program_name.replace("‌", "") in t for (_m, _ts, t) in rows))})
+    return {"start_sec": start_sec, "end_sec": end_sec, "confidence": conf,
+            "status": "cropped" if conf == "high" else "needs_review",
+            "markers_found": markers, "evidence": ev, "window_sec": window}
+
+
+def _ts_label(ts):
+    """'HH:MM:SS,mmm --> HH:MM:SS,mmm' -> 'HH:MM:SS' (mid, for display)."""
+    m = srt_mid_seconds(ts)
+    if m is None:
+        return "???:???:??"
+    m = int(m)
+    return f"{m//3600:02d}:{m%3600//60:02d}:{m%60:02d}"
+
+
 def _program_window_for(conn, stem, session):
     """Resolve a session's crop window from its program row.
 
-    Returns (offset_sec, dur_sec, enabled). Uses session['program_id'] when
-    present (DB path), else looks the stem up. `time`=duration, `crop_offset`=
-    in-slot start, `crop_enabled`=switch."""
+    Returns (offset_sec, dur_sec, enabled, auto, name). Uses session['program_id']
+    when present (DB path), else looks the stem up. `time`=duration,
+    `crop_offset`=in-slot start, `crop_enabled`=fixed-offset switch,
+    `crop_auto`=per-episode detection switch, name=program name (for detection)."""
     try:
         pid = session.get("program_id")
         if not pid:
@@ -616,19 +789,54 @@ def _program_window_for(conn, stem, session):
                 r = cur.fetchone()
                 pid = r["program_id"] if r else None
         if not pid:
-            return 0, 0, False
+            return 0, 0, False, False, ""
         with conn.cursor() as cur:
-            cur.execute("SELECT `time`, crop_offset, crop_enabled FROM radio_programs "
-                        "WHERE id=%s", (pid,))
+            cur.execute("SELECT `time`, crop_offset, crop_enabled, crop_auto, name "
+                        "FROM radio_programs WHERE id=%s", (pid,))
             p = cur.fetchone()
         if not p:
-            return 0, 0, False
+            return 0, 0, False, False, ""
         off = _time_value_to_seconds(p.get("crop_offset")) or 0
         dur = _time_value_to_seconds(p.get("time")) or 0
         enabled = bool(p.get("crop_enabled"))
-        return off, dur, enabled
+        auto = bool(p.get("crop_auto"))
+        name = (p.get("name") or "").strip()
+        return off, dur, enabled, auto, name
     except Exception:  # noqa: BLE001
-        return 0, 0, False
+        return 0, 0, False, False, ""
+
+
+def _load_detection(conn, session_id):
+    """Read a session's stored crop_detection row (or None)."""
+    if not conn or not session_id:
+        return None
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM crop_detection WHERE session_id=%s", (session_id,))
+            return cur.fetchone()
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _store_detection(conn, session_id, program_id, res):
+    """Upsert a session's crop_detection row (idempotent)."""
+    if not conn or not session_id:
+        return
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO crop_detection "
+                "(session_id, program_id, start_sec, end_sec, confidence, status, evidence) "
+                "VALUES (%s,%s,%s,%s,%s,%s,%s) "
+                "ON DUPLICATE KEY UPDATE program_id=VALUES(program_id), "
+                "start_sec=VALUES(start_sec), end_sec=VALUES(end_sec), "
+                "confidence=VALUES(confidence), status=VALUES(status), "
+                "evidence=VALUES(evidence)",
+                (session_id, program_id, res["start_sec"], res["end_sec"],
+                 res["confidence"], res["status"], json.dumps(res["evidence"], ensure_ascii=False)))
+        conn.commit()
+    except Exception as e:  # noqa: BLE001
+        print(f"[detect] store failed sid={session_id}: {e}", file=sys.stderr)
 
 
 def _ensure_program_block(conn, session, stem):
@@ -637,31 +845,63 @@ def _ensure_program_block(conn, session, stem):
     time crop is active, so changing offset/duration takes effect on the next
     run (no stale file is ever served).
 
-    crop_active (enabled + duration set): returns the program-only crop and
-      writes the files; if the window matched no blocks, falls back to the
-      full transcript.
-    not crop_active: returns the full (original) transcript; nothing written.
+    Two modes (STEP 8):
+      * auto (crop_auto=1): re-detect the boundary in THIS file (rule-based, no
+        LLM). If HIGH confidence -> crop to that per-episode window. Otherwise
+        (MEDIUM/LOW) -> full-transcript fallback (NEEDS_REVIEW). The detection
+        (window + confidence + markers) is stored in crop_detection for review.
+      * fixed (crop_enabled=1, auto off): crop to the stored fixed offset+dur.
+
+    The original <stem>.srt is only ever READ, never written.
 
     Returns (program_srt, program_full, crop_active)."""
+    sid = session.get("id")
     p_srt_path = os.path.join(CLEANED, stem + ".program.srt")
     p_txt_path = os.path.join(CLEANED, stem + ".program.txt")
-    off, dur, enabled = _program_window_for(conn, stem, session) if conn else (0, 0, False)
-    crop_active = bool(enabled and dur > 0)
-    if crop_active:
+    if not conn:
+        full, srt_text, _blocks, _ = load_session_input(session)
+        return srt_text, full, False
+    off, dur, enabled, auto, name = _program_window_for(conn, stem, session)
+    orig_path = os.path.join(DOWNLOADS, stem + ".srt")
+    if auto and dur > 0 and os.path.exists(orig_path):
+        # per-episode detection (re-detected every run; no stale cache)
+        srt_text = open(orig_path, encoding="utf-8", errors="replace").read()
+        res = detect_boundary(srt_text, program_name=name, program_dur_sec=dur)
+        _store_detection(conn, sid, session.get("program_id") or
+                         _program_id_for(conn, session), res)
+        if res["confidence"] == "high" and res["start_sec"] is not None:
+            p_srt, p_full = crop_program(srt_text, res["start_sec"],
+                                         max(1, (res["end_sec"] or 0) - res["start_sec"]))
+            if p_srt:
+                os.makedirs(CLEANED, exist_ok=True)
+                _write(p_srt_path, p_srt)
+                _write(p_txt_path, p_full)
+                return p_srt, p_full, True
+    if enabled and dur > 0 and not auto:
+        # legacy fixed-offset crop (unchanged behavior)
         srt_text = ""
-        if os.path.exists(os.path.join(DOWNLOADS, stem + ".srt")):
-            srt_text = open(os.path.join(DOWNLOADS, stem + ".srt"),
-                            encoding="utf-8", errors="replace").read()
+        if os.path.exists(orig_path):
+            srt_text = open(orig_path, encoding="utf-8", errors="replace").read()
         p_srt, p_full = crop_program(srt_text, off, dur)
         if p_srt:
             os.makedirs(CLEANED, exist_ok=True)
             _write(p_srt_path, p_srt)
             _write(p_txt_path, p_full)
             return p_srt, p_full, True
-        # crop window matched no blocks -> fall back to the full transcript
-    # not crop_active (or an empty crop) -> the original, uncropped transcript
+    # not crop_active (or empty/low-confidence) -> full (original) transcript
     full, srt_text, _blocks, _ = load_session_input(session)
-    return srt_text, full, crop_active
+    return srt_text, full, False
+
+
+def _program_id_for(conn, session):
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT program_id FROM radio_program_sessions WHERE id=%s",
+                        (session.get("id"),))
+            r = cur.fetchone()
+            return r["program_id"] if r else None
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def _resolve_step_input(conn, session, stem, input_ref, steps_by_slug):
@@ -705,6 +945,118 @@ def known_step_slugs(conn=None):
     except Exception:  # noqa: BLE001
         pass
     return fallback
+
+
+# ---------------------------------------------------------------------------
+# STEP 8 — detection dry-run / census
+# ---------------------------------------------------------------------------
+
+def _stem_of(session):
+    return os.path.splitext(session.get("filename") or "")[0]
+
+
+def _program_duration(conn, pid):
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT `time` FROM radio_programs WHERE id=%s", (pid,))
+            r = cur.fetchone()
+        return _time_value_to_seconds(r["time"]) if r else 0
+    except Exception:  # noqa: BLE001
+        return 0
+
+
+def _md5_file(path):
+    try:
+        return hashlib.md5(open(path, "rb").read()).hexdigest()
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def run_detection(program_id, limit=20, extra_programs=None, conn=None, log=print):
+    """STEP 8.4 dry-run: detect boundaries for up to `limit` episodes (padded
+    from `extra_programs` if the main program has fewer), report per-episode +
+    a distribution table, and assert the ORIGINAL SRT MD5 is unchanged. NO crops
+    are written and NO crop_detection rows are stored (pure read)."""
+    conn = conn or _db_conn()
+    extra = [int(x) for x in (extra_programs or "").split(",") if x.strip()] if extra_programs else []
+    pids = [int(program_id)] + extra
+
+    # gather candidate sessions (subtitled, real SRT on disk), main program first
+    sessions = []
+    with conn.cursor() as cur:
+        ph = ",".join(["%s"] * len(pids))
+        cur.execute(
+            f"SELECT id, filename, program_id FROM radio_program_sessions "
+            f"WHERE is_subtitled=1 AND srt_filename IS NOT NULL AND srt_filename<>'' "
+            f"AND program_id IN ({ph}) ORDER BY (program_id=%s) DESC, id DESC",
+            pids + [int(program_id)])
+        for s in cur.fetchall():
+            stem = _stem_of(s)
+            if not stem or not os.path.exists(os.path.join(DOWNLOADS, stem + ".srt")):
+                continue
+            sessions.append(s)
+            if len(sessions) >= limit:
+                break
+    if not sessions:
+        log("no subtitled sessions with on-disk SRT for the requested program(s)")
+        return []
+
+    rows = []
+    md5_bad = 0
+    for s in sessions:
+        stem = _stem_of(s)
+        path = os.path.join(DOWNLOADS, stem + ".srt")
+        md5_before = _md5_file(path)
+        text = open(path, encoding="utf-8", errors="replace").read()
+        dur = _program_duration(conn, s["program_id"])
+        res = detect_boundary(text, program_name=None, program_dur_sec=dur)
+        md5_after = _md5_file(path)
+        same = (md5_before == md5_after)
+        if not same:
+            md5_bad += 1
+        rows.append({"session": s["id"], "program": s["program_id"], "stem": stem,
+                     "dur": dur, "md5_same": same, **res})
+        # per-episode line
+        log(f"  sid={s['id']:>5} prog={s['program_id']:>2} dur={dur//60}m "
+            f"start={_ts_label_s(res['start_sec'])} end={_ts_label_s(res['end_sec'])} "
+            f"win={res['window_sec']}s conf={res['confidence']:>6} st={res['status']}")
+        for mk in res["markers_found"]:
+            log(f"        [{mk['side']:>5} {mk['ts']}] {mk['text'][:70]}")
+    # MD5 gate (STOP if any original changed)
+    if md5_bad:
+        log(f"!! MD5 MISMATCH on {md5_bad} original SRT(s) — STOP")
+    else:
+        log(f"MD5: all {len(rows)} original SRT unchanged")
+
+    # distribution table
+    wins = sorted(r["window_sec"] for r in rows if r["window_sec"] is not None)
+    starts = sorted(r["start_sec"] for r in rows if r["start_sec"] is not None)
+    durs = sorted(set(r["dur"] for r in rows if r["dur"]))
+    def _med(v):
+        return v[len(v)//2] if v else None
+    log("")
+    log("=== DRY-RUN DISTRIBUTION ===")
+    log(f"episodes: {len(rows)}")
+    confs = [r["confidence"] for r in rows]
+    log(f"HIGH={confs.count('high')}  MEDIUM={confs.count('medium')}  "
+        f"NEEDS_REVIEW(low)={confs.count('low')}")
+    if wins:
+        log(f"window-length s: min={_ms(wins[0])} median={_ms(_med(wins))} max={_ms(wins[-1])}")
+        if durs:
+            d0 = durs[0]
+            log(f"  vs duration ~{d0}s: min {wins[0]/d0:.2f}x, median {_med(wins)/d0:.2f}x, max {wins[-1]/d0:.2f}x")
+    if starts:
+        log(f"start-position s (drift): min={_ms(starts[0])} median={_ms(_med(starts))} max={_ms(starts[-1])}  "
+            f"(spread {_ms(starts[-1]-starts[0])})")
+    return rows
+
+
+def _ms(sec):
+    return f"{int(sec)//60:02d}:{int(sec)%60:02d}" if sec is not None else "n/a"
+
+
+def _ts_label_s(sec):
+    return _ms(sec) if sec is not None else "  n/a "
 
 
 # ---------------------------------------------------------------------------
@@ -1168,7 +1520,7 @@ def report_markdown(items):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("cmd", choices=["ensure-schema", "discover", "run", "run-all",
-                                    "report", "fulltext-all"])
+                                    "report", "fulltext-all", "detect"])
     ap.add_argument("--job", default="summary",
                     help="a pipeline_steps slug (full_text, summary, correct_text, "
                          "correct_subtitles, program_block, or a custom step)")
@@ -1186,6 +1538,12 @@ def main():
     ap.add_argument("--shards", type=int, default=1,
                     help="run-all: total number of parallel workers")
     ap.add_argument("--n", type=int, default=1, help="report size")
+    ap.add_argument("--program", type=int, default=None,
+                    help="detect: main program to census (radio_programs.id)")
+    ap.add_argument("--extra", default=None,
+                    help="detect: comma-separated extra program ids to pad the census")
+    ap.add_argument("--dry-run", action="store_true",
+                    help="detect: do not write crops / store rows (default for detect)")
     args = ap.parse_args()
 
     if args.cmd == "ensure-schema":
@@ -1220,6 +1578,13 @@ def main():
         print(report_markdown(items))
     elif args.cmd == "fulltext-all":
         backfill_fulltext_from_disk()
+    elif args.cmd == "detect":
+        ensure_schema()
+        if not args.program:
+            ap.error("detect needs --program <id> (optionally --extra 14,12 --limit 20)")
+        run_detection(args.program,
+                      limit=(args.limit if args.limit and args.limit > 0 else 20),
+                      extra_programs=args.extra)
 
 
 if __name__ == "__main__":
