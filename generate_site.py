@@ -525,23 +525,23 @@ def render_index(programs, stats_by_program_id, whisper_stats=None, whisper_tota
           <span class="stat-value">{time_stats['this_year']}</span>
         </div>
         <div class="stat-item">
-          <span class="stat-label">سال گذشته / Last Year:</span>
+          <span class="stat-label">افزوده‌شده به آرشیو در سال گذشته / Added to archive in the last year:</span>
           <span class="stat-value">{time_stats['last_year']}</span>
         </div>
         <div class="stat-item">
-          <span class="stat-label">دو سال گذشته / 2 Years Ago:</span>
+          <span class="stat-label">افزوده‌شده به آرشیو در دو سال گذشته / Added to archive 2 years ago:</span>
           <span class="stat-value">{time_stats['two_years_ago']}</span>
         </div>
         <div class="stat-item">
-          <span class="stat-label">سه سال گذشته / 3 Years Ago:</span>
+          <span class="stat-label">افزوده‌شده به آرشیو در سه سال گذشته / Added to archive 3 years ago:</span>
           <span class="stat-value">{time_stats['three_years_ago']}</span>
         </div>
         <div class="stat-item">
-          <span class="stat-label">پنج سال گذشته / 5 Years Ago:</span>
+          <span class="stat-label">افزوده‌شده به آرشیو در پنج سال گذشته / Added to archive 5 years ago:</span>
           <span class="stat-value">{time_stats['five_years_ago']}</span>
         </div>
         <div class="stat-item">
-          <span class="stat-label">ده سال گذشته / 10 Years Ago:</span>
+          <span class="stat-label">افزوده‌شده به آرشیو در ده سال گذشته / Added to archive 10 years ago:</span>
           <span class="stat-value">{time_stats['ten_years_ago']}</span>
         </div>
       </div>
