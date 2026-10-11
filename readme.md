@@ -750,6 +750,39 @@ and deployed to 53; the GitLab mirror remains blocked on the missing credential.
 
 ---
 
+## 🔤 Proper-Noun Lexicon Post-Pass — STEP 9B.3 — 2026-10-11
+
+Follow-up to the 9B.2 conservative tuning (recall 23/50, change rate 12.5 %).
+The user asked to **mine the 376-edits gold archive** (`docs/prompts/
+v2-tuned-edits.txt`) for **recurring proper nouns** (place names / surah names
+/ religious terms) into a **lexicon** to improve recall. Full analysis +
+per-label results: `docs/prompts/011-correct-text-v2-lexicon-postpass.md`.
+
+**What EXISTS now (measurement + asset — NOT wired into any pipeline):**
+* `dashboard/lexicon.json` — v1 lexicon: 36 safe non-word ASR forms
+  (انوان→عنوان، اردوگا/اردوگای→اردوگاه، عصارت/حصارت/احصارت→اسارت،
+  انکبود/بغره→بقره، رمزان→رمضان، …) + 3 cue-guarded context rules
+  (عرق→عراق only next to تکریت/افسر/نگهبان/…; قوم→قم only in the
+  «حبزه‌ی علمی» pattern) + 23 protected program/show names (from
+  `radio_programs` where `is_legacy=0`) that a corrector must never touch.
+* `dashboard/postpass_v2.py` — standalone, deterministic (no LLM, zero model
+  spend) post-pass + 50-label scorer. Writes only to the OS temp dir; never
+  touches `downloads/`.
+* **Measured on the authoritative 53 outputs** (the exact 9B.2.4 tuned run):
+  recall **23/50 → 44/50** (whole-word convention) / **20/50 → 40/50**
+  (strict substring), **82/3129 blocks touched, 0 post-pass regressions**,
+  all protected terms intact (رادیو معارف ×41, حکایت آزادگی ×32, پرسمان ×11…).
+* **Not a bulk/boost job** — `correct_text_v2` stays a `.correct.v2` diff
+  artifact; `llm_jobs.py` and the pipeline are unchanged (no 53 deploy
+  needed for this step).
+
+**Still held (honest):** 4× عصرا→اسرا and 1× عرق→عراق (wrong form is a real
+word — needs the sentence-level context layer) and 1× محبرات where the LLM
+chose a different valid word (محظورات). The 3 known LLM regressions
+(9B.2.4) are untouched by the post-pass — out of its safety scope.
+
+---
+
 ## 📝 لایسنس
 
 این پروژه تحت مجوز MIT منتشر شده است.
