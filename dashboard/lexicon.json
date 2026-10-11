@@ -1,0 +1,94 @@
+{
+  "_meta": {
+    "step": "9B.3",
+    "version": 1,
+    "created": "2026-10-11",
+    "purpose": "Deterministic proper-noun / non-word post-pass for correct_text_v2. Raises recall on obvious ASR errors the conservative windowed model holds (because the wrong token is a real word) or fixes inconsistently. Runs AFTER windowed_correct, before writing .correct.v2.srt. NO LLM, NO model spend, NO bulk pipeline change.",
+    "principle": "A token is SAFE to correct by plain token-replace only when the ASR form is a NON-WORD (cannot appear in correct Persian), so replacing it can never corrupt a correct sentence. A wrong token that is itself a REAL word (عصرا, قوم, عرق, قزه) is CONTEXT-DEPENDENT and is either handled by a file-level guard, or left for the LLM context layer (not built). Protected terms are program/show names that a corrector must NEVER 'fix'.",
+    "sources": [
+      "docs/prompts/v2-labeled-errors.md (50 hand-labeled obvious errors)",
+      "docs/prompts/v2-tuned-edits.txt (376 changed blocks, temp-0.0 tuned run)",
+      "docs/prompts/v2-tuned-diffs.md (A/B: 23/50 recall, 3 regressions)",
+      "radio_programs (is_legacy=0) — 25 live program names"
+    ]
+  },
+
+  "protected": [
+    "پرسمان", "بر کرانه نور", "گنج سعادت", "پیام ولایت", "امیر مؤمنان",
+    "اخبار معارفی", "مکارم خوبان", "زمزم احکام", "پارسایان", "بر بال سخن",
+    "سمت خدا", "کلام امام", "خبر جهان اسلام", "فقه پویا", "برای بیداری",
+    "راهبرد", "محوطه گفتگو", "تا جمعه ظهور", "نشان صبح", "مبنا",
+    "اندیشه‌های ماندگار", "حکایت آزادگی", "رادیو معارف"
+  ],
+
+  "safe_nonword": {
+    "انوان": "عنوان",
+    "اردوگا": "اردوگاه",
+    "اردوگای": "اردوگاه",
+    "اردوبا": "اردوگاه",
+    "اردگی": "اردوگاه",
+    "عصارت": "اسارت",
+    "حصارت": "اسارت",
+    "احصارت": "اسارت",
+    "اصارت": "اسارت",
+    "عصرا" : null,
+    "عصرای": "اسرای",
+    "موزوران": "بعثیان",
+    "عرقی": "عراقی",
+    "قزه": "قزوین",
+    "صلام‌الله": "صلّی‌الله",
+    "صلامالله": "صلّی‌الله",
+    "سلامالله": "صلّی‌الله",
+    "صلام‌الله علی": "صلّی‌الله علیه",
+    "صلامالله علی": "صلّی‌الله علیه",
+    "سلامالله علی": "صلّی‌الله علیه",
+    "حجرت‌الاسلام": "حجت‌الاسلام",
+    "هجت‌الاسلام": "حجت‌الاسلام",
+    "هجت‌ان": "حجتان",
+    "هجت": "حجت",
+    "نحجی البلاغه": "نهج‌البلاغه",
+    "نهجی البلاغه": "نهج‌البلاغه",
+    "نهجه‌البلاغه": "نهج‌البلاغه",
+    "نهج‌البرابه": "نهج‌البلاغه",
+    "رهجه‌البلاغه": "نهج‌البلاغه",
+    "نهر": null,
+    "انکبود": "بقره",
+    "بغره": "بقره",
+    "سدجا": "سجاد",
+    "محترات": "محرمات",
+    "محوصی": "محاصره",
+    "رمزان": "رمضان"
+  },
+
+  "context_rules": [
+    {
+      "wrong": "عرق",
+      "right": "عراق",
+      "when_block_contains_any": ["تکریت", "تکریت"],
+      "note": "عرق (sweat) is a real word → only swap when the block co-occurs with Tikrit, unambiguously Iraq.",
+      "labels_covered": ["04-08-27-22-00:133"]
+    },
+    {
+      "wrong": "عرق",
+      "right": "عراق",
+      "when_block_contains_any": ["افسر", "نگهبان", "دریجه", "رسته", "سرباز"],
+      "note": "military-context collocations make عرق=Iraq.",
+      "labels_covered": ["04-08-26-22-00:49", "04-08-27-02-00:23", "04-08-27-02-00:3"]
+    },
+    {
+      "wrong": "قوم",
+      "right": "قم",
+      "when_block_contains_any": ["حبزه", "حوزه", "علمی", "مطالعات"],
+      "note": "علمی/حوزه + scientific-hub sense → Qom the city, not people.",
+      "labels_covered": ["04-08-06-02-00:64"]
+    }
+  ],
+
+  "_deferred_context_layer": [
+    {
+      "wrong": "عصرا", "right": "اسرا",
+      "reason": "عصرا (afternoon) is a real word; the right call (prisoners) needs sentence meaning. Left for the LLM context layer, not the deterministic post-pass.",
+      "labels": ["04-08-19-02-00:16", "04-08-20-02-00:25", "04-08-20-02-00:27", "04-08-26-22-00:25"]
+    }
+  ]
+}
