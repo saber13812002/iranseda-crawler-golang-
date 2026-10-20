@@ -1,0 +1,19 @@
+{
+  "session_id": 3,
+  "program_id": 1,
+  "filename": "radio-maaref-03-08-17-21-30.mp3",
+  "source_url": "http://headend1.iranseda.ir/DLFile/?VALID=TRUE&vid=2651448_201",
+  "source_page": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=152507883",
+  "mirror_note": "server6 .mp3 (headend1). Alternatives: server7 .mp4 vid=2612566_206, server8 .mp4 vid=2561463_207122",
+  "http_status": 200,
+  "download_started_at": "2026-10-20T13:26:20Z",
+  "download_finished_at": "2026-10-20T13:27:03Z",
+  "download_duration_s": 43,
+  "download_bytes": 14326519,
+  "sha256": "14cf3a3aaa6c6843f330c883cd0f56aed5fac38a9ee7d2232fb679e2fc65bee4",
+  "audio_duration_s": 1790.784,
+  "audio_codec": "mp3",
+  "sample_rate": 48000,
+  "channels": 2,
+  "bit_rate": 64001
+}
