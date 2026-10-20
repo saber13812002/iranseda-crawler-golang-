@@ -783,6 +783,144 @@ chose a different valid word (محظورات). The 3 known LLM regressions
 
 ---
 
+## 🎙️ Roshan ASR Pilot & Dual-ASR Dataset — STEP 12 — 2026-10-20
+
+Goal: re-download an old deleted audio, run it through the **Roshan** ASR
+service (independent of Whisper), and lay the foundation for a **paired
+dual-ASR corpus** (Whisper + Roshan per session) for future comparison /
+content-search / time-based retrieval / model training. **This STEP is a
+single-file pilot only — no bulk job.**
+
+Full master prompt + live evidence: `docs/prompts/
+012-roshan-asr-pilot-and-dual-dataset.md`.
+
+### Current Status — **PARTIAL: ASR phase BLOCKED on a Roshan upstream outage**
+
+Everything that is *inside our control* is built, deployed on 53, and
+tested. The only blocker is that the **Roshan backend itself is down** — an
+external service (`asr.ismc.ir`) owned by another team, not part of this repo.
+
+| Sub-step | Status | Evidence |
+|---|---|---|
+| 12.1 Discovery | ✅ DONE | Roshan = `asr-ismc-fa` @ `52:8050` → `asr.ismc.ir`; OpenAI-compatible `{text,language,duration,segments}` |
+| 12.2 Pick file | ✅ DONE | session **3** (maaref, 29:51, mp3 missing, SRT/TXT/full intact) |
+| 12.3 Redownload | ✅ DONE | 14.3 MB, sha256 `14cf3a3a…`, ffprobe OK (mp3 48k/64k/2ch) |
+| 12.4 Direct test | ⛔ BLOCKED | 200 at 08:48, then 503/401 all afternoon; **34 probes, no 200** |
+| 12.5 Formats | ⏸ ready | original/WAV/MP3/FLAC 90s samples built |
+| 12.6 Chunks | ⏸ ready | 11 × 3-min chunks (10 s overlap) built |
+| 12.7 Route A vs B | ✅ DONE | **Direct (B) recommended** — LiteLLM adds only a hop + error-wrap |
+| 12.8 Storage | ✅ DONE | `asr_output` table created (additive migration) + pending row |
+| 12.9 SRT/fulltext | ⏸ ready | `dashboard/roshan_pilot.py finalize` (deterministic, no LLM) |
+| 12.10 Compare | ⏸ ready | `roshan_pilot.py compare` (nearest-timestamp side-by-side) |
+| 12.11 Logging | ✅ DONE | `run_log.jsonl` per probe/test (ts, http, latency, event) |
+
+**Why BLOCKED (root cause, from real logs):** `asr-proxy` (52:8050) is **up and
+healthy** (`/health` ok). Its upstream `https://asr.ismc.ir/api/transcribe_files/`
+sits behind a load balancer whose **Roshan worker pool is empty**:
+`503 "No server is available"` + `401 "token[0] network error: ReadError"`.
+The exporter's last successful health job was **2026-10-13** — Roshan has been
+flapping/down ~7 days; the only success today was 08:48. Per spec rule 12
+("if Roshan is unavailable, do discovery + connection test and report
+BLOCKED; do not fake a service"), this is reported as **BLOCKED**, not a
+fabricated success.
+
+**The pilot is NOT lost** — a retry-runner is live on 53 (PID 1521353, polling
+every ~33 s until ~14:14) that, on the **first 200**, automatically runs the full
+test matrix (90s sample + WAV/MP3/FLAC + 3 chunks + full audio) and saves every
+raw response. To run/finish the pilot the moment Roshan recovers:
+
+```bash
+# on 53 — check for a 200 + resulting raw JSONs
+tail -f /home/saber/saberprojects/iranseda-crawler-golang-/downloads/asr/roshan/3/run_stdout.log
+ls /home/saber/saberprojects/iranseda-crawler-golang-/downloads/asr/roshan/3/*.raw.json
+# then finalize (SRT + fulltext + manifest + DB row) from a good raw response:
+cd /home/saber/saberprojects/iranseda-crawler-golang-/dashboard && set -a && . ./dashboard.env && set +a
+./venv/bin/python roshan_pilot.py finalize --session 3 --program 1 \
+  --dir ../downloads/asr/roshan/3 --raw sample_90s.mp3.raw.json
+./venv/bin/python roshan_pilot.py compare --session 3 \
+  --dir ../downloads/asr/roshan/3 --whisper-dir ../downloads
+```
+
+### What EXISTS now (all additive; Whisper untouched)
+
+* **`migrations/2026-10-20_asr_output_dual_dataset.sql`** → `asr_output` table
+  on 53 (applied). Unique key `(session_id, provider, pipeline_version,
+  audio_sha256)` → controlled re-runs, historical versions survive. A `pending`
+  row (id 1, `UPSTREAM_503`) honestly records the pilot state.
+* **`dashboard/roshan_pilot.py`** — deterministic post-processor (no LLM):
+  `finalize` (parse segments → SRT + fulltext + manifest + DB row; `TEXT_ONLY`
+  if no timestamps; validations: no negative/inverted/unordered, UTF-8,
+  Persian, non-empty; **chunk merge** = `global = chunk_start + local`,
+  deterministic overlap dedup, uncertain borders → `needs_review`) and
+  `compare` (Whisper vs Roshan side-by-side by nearest timestamp).
+* **`downloads/asr/roshan/3/`** — pilot artifacts: re-downloaded MP3,
+  4 format samples, 11 chunks, `original-audio-metadata.json`, `run_log.jsonl`,
+  `run_stdout.log`.
+
+### Key finding — audio retention guard (STEP 12.13)
+
+`scripts/cleanup_audio.py --apply` (run by the `*/30` cron via
+`refresh_site.sh`) **deletes audio for sessions subtitled > `AUDIO_RETENTION_DAYS`
+(=10) days ago**. The first redownload (placed in `downloads/`) was pruned within
+30 min because session 3 was subtitled 2024-11-08. **Fix applied:** pilot audio
+lives in `downloads/asr/roshan/3/` — the cleaner only globs top-level
+`downloads/*`, so subdirs are safe. Any future redownload-backfill must place or
+exempt files the same way, or the audio vanishes before processing.
+
+### Rollback (additive — nothing to delete to restore)
+
+```sql
+-- undo the schema (only if ever wanted):
+DROP TABLE IF EXISTS asr_output;
+```
+Delete pilot artifacts: `rm -rf downloads/asr/roshan/3`. The original Whisper
+SRT/TXT were **never modified** (sha256 verified identical before/after).
+Kill switch (unchanged): `./scripts/stop-background.sh` — stops only iranseda
+background LLM work, never model/whisper/LiteLLM/dashboard.
+
+### NEXT_CHAT_CHECKPOINT
+
+```
+PROJECT: IranSeda
+CURRENT STEP: Roshan ASR Pilot (STEP 12)
+LAST VERIFIED STATE: 2026-10-20 13:55 UTC
+WHAT WAS COMPLETED:
+  - Discovery (Roshan = asr-ismc-fa @ 52:8050 -> asr.ismc.ir; OpenAI {text,language,duration,segments})
+  - Pilot file: session 3 (maaref, 29:51) redownloaded + ffprobe-verified (sha256 14cf3a3a...)
+  - Formats (WAV/MP3/FLAC 90s) + 11 chunks (3min/10s overlap) built
+  - asr_output table created (additive) + honest pending row (UPSTREAM_503)
+  - roshan_pilot.py (finalize/compare/merge) built; Whisper sha256-verified untouched
+  - Route A(LiteLLM) vs B(Direct) compared -> Direct recommended
+  - Retention-guard finding + fix (audio in downloads/asr/roshan/3/)
+WHAT FAILED / BLOCKED:
+  - Roshan backend (asr.ismc.ir) sustained outage: 503 "No server available" /
+    401 "token ReadError"; last ok 08:48 today; 34 probes no 200. EXTERNAL service.
+ACTUAL ROSHAN API CONTRACT:
+  POST http://172.20.1.52:8050/v1/audio/transcriptions
+  multipart: file, model=asr-ismc-fa, language=fa
+  -> {"text","language","duration","segments"}  (timestamp support unverified - needs 200)
+  Direct preferred over LiteLLM (asr-ismc) - same upstream, fewer hops.
+DATABASE CHANGES: asr_output table (additive), 1 pending row (session 3)
+OUTPUT FILES: downloads/asr/roshan/3/{mp3, samples, chunks, metadata, run_log.jsonl}
+QUALITY RESULTS: n/a (blocked before first 200); Whisper baseline = 890 segs / 2370 words / 29:50
+KNOWN ISSUES: Roshan up (asr.ismc.ir) ~7 days flapping (exporter last ok 2026-10-13);
+  audio retention prunes top-level downloads/ (use subdir); GitLab push BLOCKED (auth)
+SAFE COMMANDS: (see "finish the pilot" block above)
+STOP/RESUME: kill PID 1521353 to stop the retry-runner; re-run /tmp/roshan_run.sh to resume
+REMAINING WORK: on first Roshan 200 -> run matrix, finalize, compare, fill report C/E/F/H
+NEXT RECOMMENDED ACTION: ping the asr.ismc.ir owner to restore the Roshan worker
+  pool; on recovery run the finalize/compare commands; then do the 10-file Phase-2
+  decision per the user's decision tree (full-file ok -> same format/route; long/heavy
+  problem -> chunking; slow-but-good -> then consider LiteLLM/replicas)
+```
+
+**GitLab push: BLOCKED — credential not provisioned** (standing state; no
+credential on 53/local → `git push` to `git.ai.ismc.ir` returns an auth error).
+This STEP's code is committed + pushed to GitHub `origin/download-db` and deployed
+to 53; the GitLab mirror remains blocked on the missing credential.
+
+---
+
 ## 📝 لایسنس
 
 این پروژه تحت مجوز MIT منتشر شده است.
