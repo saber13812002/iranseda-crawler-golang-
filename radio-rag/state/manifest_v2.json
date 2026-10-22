@@ -1,0 +1,31 @@
+{
+ "dump_version": "2.0",
+ "schema_version": "2.0",
+ "generated_at": "2026-10-22",
+ "key": "session_id (collision-safe)",
+ "params": {
+  "chunk_window_sec": 300,
+  "max_chunk_chars": 800,
+  "srt_source": "downloads/cleaned/<stem>.correct.srt",
+  "summary_sources": [
+   "summary.txt",
+   "summary.en.txt"
+  ]
+ },
+ "sessions_total": 4100,
+ "sessions_eligible_air": 3622,
+ "sessions_no_air": 478,
+ "air_source_counts": {
+  "filename+created_at": 1393,
+  "filename": 1,
+  "time_description": 2228
+ },
+ "episodes_written": 4002,
+ "episodes_airless": 422,
+ "chunks": 76543,
+ "chars": 63017666,
+ "dump_file": "dump_v2.jsonl",
+ "dump_bytes": 159687002,
+ "dump_sha256": "0a737e0298758cd777f5679d068ce03d91fd9b60b67ebc60d13656c135b88351",
+ "gen_seconds": 6.3
+}

@@ -1,0 +1,169 @@
+{
+ "generated_at": "2026-10-22",
+ "total_sessions_mp4_subtitled": 4100,
+ "distinct_stems": 3192,
+ "total_session_rows": 4100,
+ "eligible_air_date": 3192,
+ "no_air_date": 0,
+ "no_air_with_time_description_potential": 0,
+ "stem_collision": {
+  "stems_with_multiple_sessions": 652,
+  "extra_session_rows_from_collisions": 908,
+  "max_sessions_per_stem": 9,
+  "top_collisions": [
+   {
+    "stem": "radio-maaref-04-07-11-11-00",
+    "session_count": 9,
+    "session_ids": [
+     4083,
+     4103,
+     4104,
+     4128,
+     4130,
+     4263,
+     4274,
+     4419,
+     4426
+    ]
+   },
+   {
+    "stem": "radio-maaref-04-05-18-11-00",
+    "session_count": 6,
+    "session_ids": [
+     2645,
+     2646,
+     2661,
+     2669,
+     2887,
+     2922
+    ]
+   },
+   {
+    "stem": "radio-maaref-04-05-19-11-00",
+    "session_count": 6,
+    "session_ids": [
+     2697,
+     2698,
+     2768,
+     2787,
+     2886,
+     2919
+    ]
+   },
+   {
+    "stem": "radio-maaref-04-05-20-11-00",
+    "session_count": 6,
+    "session_ids": [
+     2715,
+     2716,
+     2767,
+     2784,
+     2885,
+     2916
+    ]
+   },
+   {
+    "stem": "radio-maaref-04-06-01-11-00",
+    "session_count": 6,
+    "session_ids": [
+     3140,
+     3141,
+     3146,
+     3147,
+     3157,
+     3161
+    ]
+   },
+   {
+    "stem": "radio-maaref-04-07-11-13-30",
+    "session_count": 6,
+    "session_ids": [
+     4086,
+     4087,
+     4102,
+     4126,
+     4251,
+     4412
+    ]
+   },
+   {
+    "stem": "radio-maaref-04-07-11-19-30",
+    "session_count": 6,
+    "session_ids": [
+     4091,
+     4092,
+     4097,
+     4121,
+     4221,
+     4393
+    ]
+   },
+   {
+    "stem": "radio-maaref-04-05-17-23-30",
+    "session_count": 5,
+    "session_ids": [
+     2631,
+     2675,
+     2683,
+     2949,
+     2962
+    ]
+   },
+   {
+    "stem": "radio-maaref-04-07-11-06-30",
+    "session_count": 5,
+    "session_ids": [
+     4080,
+     4112,
+     4140,
+     4346,
+     4473
+    ]
+   },
+   {
+    "stem": "radio-maaref-04-07-11-07-30",
+    "session_count": 5,
+    "session_ids": [
+     4081,
+     4098,
+     4122,
+     4222,
+     4394
+    ]
+   }
+  ]
+ },
+ "artifact_coverage_over_distinct_stems": {
+  "raw_srt": 3192,
+  "raw_txt": 3192,
+  "correct_srt": 3097,
+  "correct_txt": 3064,
+  "summary_fa": 3064,
+  "summary_en": 3063,
+  "mp4": 90
+ },
+ "missing_correct_srt_but_raw_present": 95,
+ "missing_correct_srt_sample": [
+  "radio-maaref-05-07-19-23-00",
+  "radio-maaref-05-07-19-23-30",
+  "radio-maaref-05-07-20-01-30",
+  "radio-maaref-05-07-20-03-00",
+  "radio-maaref-05-07-20-03-30",
+  "radio-maaref-05-07-20-06-00",
+  "radio-maaref-05-07-20-07-30",
+  "radio-maaref-05-07-20-09-00",
+  "radio-maaref-05-07-20-12-30",
+  "radio-maaref-05-07-20-13-30",
+  "radio-maaref-05-07-20-23-00",
+  "radio-maaref-05-07-20-23-30",
+  "radio-maaref-05-07-21-01-30",
+  "radio-maaref-05-07-21-03-00",
+  "radio-maaref-05-07-21-03-30",
+  "radio-maaref-05-07-21-06-00",
+  "radio-maaref-05-07-21-07-30",
+  "radio-maaref-05-07-21-09-00",
+  "radio-maaref-05-07-21-12-30",
+  "radio-maaref-05-07-21-13-30"
+ ],
+ "note": "keying on session_id (not stem) is REQUIRED for the full run: 652 stems map to >1 session_id; total session rows = 4100 vs 3192 stems."
+}

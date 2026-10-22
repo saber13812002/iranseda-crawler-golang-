@@ -8,3 +8,8 @@ radio-rag/state/radio_embeddings.jsonl
 __pycache__/
 *.pyc
 *.lock
+# STEP 2 full-run large artifacts (dump + vectors) stay out of git
+radio-rag/state/full_dump/
+radio-rag/state/vectors_v2.jsonl
+radio-rag/state/dump_v2.jsonl
+radio-rag/state/episodes_v2.jsonl
