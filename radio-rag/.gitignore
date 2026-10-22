@@ -1,0 +1,10 @@
+# large / data / non-code artifacts stay out of git
+radio-rag/state/dump_v1.jsonl
+radio-rag/state/pilot_episodes.json
+radio-rag/state/retrieval_test.json
+radio-rag/state/*.jsonl
+radio-rag/state/*.embeddings.jsonl
+radio-rag/state/radio_embeddings.jsonl
+__pycache__/
+*.pyc
+*.lock
