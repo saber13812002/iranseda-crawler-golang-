@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>دستیار صوتی رادیو معارف</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="/style.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8E%A0%3C/text%3E%3C/svg%3E" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">📻</span>
+      <div>
+        <h1 id="site-name">دستیار صوتی رادیو معارف</h1>
+        <p id="site-tagline">پاسخ مستند از آرشیو کامل رادیو</p>
+      </div>
+    </div>
+    <div class="health" id="health" title="وضعیت سرویس">…</div>
+  </header>
+
+  <main class="chat">
+    <div class="messages" id="messages">
+      <div class="msg bot">
+        <div class="avatar">📻</div>
+        <div class="bubble">
+          سلام! من دستیار رادیو معارف هستم. سوال خود را درباره برنامه‌های رادیو
+          بپرسید؛ پاسخ را مستند به برنامه، تاریخ پخش و زمان دقیق می‌دهم.
+        </div>
+      </div>
+    </div>
+
+    <div class="examples" id="examples"></div>
+
+    <form class="input-row" id="form">
+      <textarea id="input" rows="1" placeholder="سوال خود را بنویسید… (مثلاً: حکم وضو و شرایط صحیح نماز چیست؟)"></textarea>
+      <button type="submit" id="send" aria-label="ارسال">ارسال ↑</button>
+    </form>
+    <p class="hint">پاسخ‌ها بر اساس آرشیو کامل رادیو معارف و با استناد واقعی به برنامه و زمان پخش ارائه می‌شوند.</p>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,99 @@
+# docker-compose.radio.yml
+# INDEPENDENT Radio Mar'ef RAG service on server 53.
+#
+# It is a SEPARATE service from mesbah/eiis/taghrir/rag-portal:
+#   * its own containers (radio_api, radio_frontend), its own ports (8043/8044),
+#     its own config, its own backend code (radio_pilot/backend/api.py).
+#   * it queries the SHARED neo4j server's INDEPENDENT `radio` database only.
+#   * it reuses the EXISTING LiteLLM gateway for BOTH the embedding model
+#     (Qwen3-Embedding-0.6B / 1024-dim) and the generation LLM (qwen38) — the
+#     same ones that built and serve the other products. No new model is loaded.
+#
+# No build: reuses the local image mrbaqeri/qa_lang_neo4j_mesbah:1.0.0 which
+# already ships fastapi/uvicorn/neo4j driver (proven to connect). httpx is
+# installed at runtime. nginx:alpine serves the static frontend and proxies
+# /api/ to radio_api:8003.
+#
+# Bring up:
+#   docker compose -p radio -f docker-compose.radio.yml --env-file .env.radio up -d
+# Tear down (rollback):
+#   docker compose -p radio -f docker-compose.radio.yml down
+#
+# Env (in .env.radio, gitignored — never commit secrets):
+#   NEO4J_PASSWORD, LITELLM_API_KEY
+
+services:
+  api:
+    image: mrbaqeri/qa_lang_neo4j_mesbah:1.0.0
+    container_name: radio_api
+    restart: unless-stopped
+    # 53's docker built-in DNS can't reach the internet; 8.8.8.8 is the
+    # "ExtServer" the embedded resolver forwards external lookups to while
+    # still resolving internal container names (neo4j_db).
+    dns:
+      - 8.8.8.8
+    ports:
+      - "8043:8003"
+    working_dir: /app/app
+    # The base image ships the neo4j driver; fastapi/uvicorn/httpx/pydantic are
+    # installed at runtime (the host's docker bridge has no external DNS, so a
+    # `build:` step can't reach PyPI — this mirrors how every product container
+    # on 53 installs its web deps at startup). uvicorn binds 0.0.0.0:8003.
+    command: ["bash", "-c", "pip install --no-cache-dir fastapi uvicorn httpx pydantic >/dev/null 2>&1 && python -m uvicorn api:app --host 0.0.0.0 --port 8003"]
+    environment:
+      - NEO4J_URI=bolt://neo4j_db:7687
+      - NEO4J_USERNAME=neo4j
+      - NEO4J_PASSWORD=${NEO4J_PASSWORD}
+      - NEO4J_DATABASE=radio
+      - VECTOR_INDEX=vector_index_chunk
+      - RADIO_TOP_K=5
+      - RADIO_MIN_SCORE=0.25
+      - LITELLM_BASE=http://172.20.1.52:4000/v1
+      - LITELLM_API_KEY=${LITELLM_API_KEY}
+      - EMBED_MODEL=Qwen3-Embedding-0.6B
+      - GEN_MODEL=qwen38
+      - SITE_NAME=${SITE_NAME:-دستیار صوتی رادیو معارف}
+      - SITE_TAGLINE=${SITE_TAGLINE:-پاسخ مستند از آرشیو کامل رادیو}
+      - SITE_EXAMPLES=${SITE_EXAMPLES:-}
+    volumes:
+      - ./api.py:/app/app/api.py:ro
+    networks:
+      - graph_rag_net
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request;urllib.request.urlopen('http://127.0.0.1:8003/api/health')\" || exit 1"]
+      interval: 10s
+      timeout: 15s
+      retries: 30
+      # First boot runs the runtime `pip install` (~40-60s) then uvicorn boots;
+      # a long start_period keeps docker from cycling the container during setup.
+      start_period: 120s
+
+  frontend:
+    image: nginx:alpine
+    container_name: radio_frontend
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "8044:80"
+    entrypoint: ["/entrypoint.sh"]
+    command: ["nginx", "-g", "daemon off;"]
+    environment:
+      - API_UPSTREAM=radio_api:8003
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/templates-api/default.conf.template:ro
+      - ./entrypoint.sh:/entrypoint.sh:ro
+    networks:
+      - graph_rag_net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+networks:
+  graph_rag_net:
+    external: true
+    name: graph-rag_default
