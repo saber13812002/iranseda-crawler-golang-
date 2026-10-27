@@ -614,6 +614,128 @@ def api_backfill_toggle():
 
 
 # ---------------------------------------------------------------------------
+# Program discovery (radio.iranseda.ir) — STEP 13 admin panel
+# ---------------------------------------------------------------------------
+
+@app.get("/api/discovery/channels")
+def api_disc_channels():
+    try:
+        return logic.disc_channels()
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(500, detail=str(e)[:300])
+
+
+@app.get("/api/discovery/channels/{ch}/programs")
+def api_disc_programs(ch: int, q: str = ""):
+    try:
+        return logic.disc_programs(ch, q)
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(500, detail=str(e)[:300])
+
+
+@app.get("/api/discovery/channels/{ch}/programs/{m}/detail")
+def api_disc_program_detail(ch: int, m: str):
+    try:
+        return logic.disc_program_detail(ch, int(m))
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(500, detail=str(e)[:300])
+
+
+@app.get("/api/discovery/channels/{ch}/programs/{m}/archive-start")
+def api_disc_archive_start(ch: int, m: str):
+    """Slow: bounded walk to the oldest page (~5-60s). Called on demand."""
+    try:
+        return logic.disc_archive_start(ch, int(m))
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(500, detail=str(e)[:300])
+
+
+@app.post("/api/discovery/add")
+async def api_disc_add(request: Request):
+    """One-click add: {ch, m, start_mode?, start_date?, name?}."""
+    body = await request.json()
+    try:
+        return logic.disc_add_program(
+            int(body["ch"]), int(body["m"]),
+            start_mode=body.get("start_mode") or "new_only",
+            start_date=body.get("start_date") or None,
+            name_override=body.get("name") or None)
+    except ValueError as e:
+        raise HTTPException(400, detail=str(e))
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(500, detail=str(e)[:300])
+
+
+@app.get("/api/discovery/programs/active")
+def api_disc_active():
+    try:
+        return logic.disc_active_programs()
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(500, detail=str(e)[:300])
+
+
+@app.post("/api/discovery/programs/{program_id}/start-point")
+async def api_disc_start_point(request: Request, program_id: int):
+    body = await request.json()
+    try:
+        return logic.disc_set_start_point(
+            program_id, body.get("start_mode") or "new_only",
+            body.get("start_date") or None)
+    except ValueError as e:
+        raise HTTPException(400, detail=str(e))
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(500, detail=str(e)[:300])
+
+
+@app.get("/api/reports/programs/{program_id}")
+def api_report_program(program_id: int):
+    try:
+        return logic.program_report(program_id)
+    except ValueError as e:
+        raise HTTPException(404, detail=str(e))
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(500, detail=str(e)[:300])
+
+
+@app.get("/api/reports/programs/{program_id}/trend")
+def api_report_trend(program_id: int, days: int = 30):
+    try:
+        return logic.program_report_trend(program_id, days=days)
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(500, detail=str(e)[:300])
+
+
+@app.get("/api/reports/channels/{ch}")
+def api_report_channel(ch: int):
+    """Channel-level rollup: sum of its activated programs' report windows."""
+    try:
+        act = logic.disc_active_programs()
+        pids = [p["id"] for p in act["programs"] if p.get("radio_id") == ch]
+        if not pids:
+            return {"ok": True, "channel": ch, "programs": [],
+                    "note": "برنامه‌ای فعال روی این شبکه نیست"}
+        windows = {}
+        totals = {}
+        progs = []
+        for pid in pids:
+            r = logic.program_report(pid)
+            if not r.get("ok"):
+                continue
+            w, t = r.get("windows") or {}, r.get("totals") or {}
+            progs.append({"id": pid, "name": r.get("name")})
+            for k, v in w.items():
+                if v is not None:
+                    windows[k] = windows.get(k, 0) + v
+            for k, v in t.items():
+                if v is not None and k != "audio_hours_processed":
+                    totals[k] = totals.get(k, 0) + v
+        return {"ok": True, "channel": ch, "programs": progs,
+                "windows": windows or None, "totals": totals or None}
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(500, detail=str(e)[:300])
+
+
+# ---------------------------------------------------------------------------
 # Project Reporter / Publication Bot (skeleton, STEP 9C)
 # ---------------------------------------------------------------------------
 

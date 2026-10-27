@@ -1,0 +1,841 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_PROM",
+      "label": "Prometheus",
+      "description": "",
+      "type": "datasource",
+      "pluginId": "prometheus",
+      "pluginName": "Prometheus"
+    },
+    {
+      "name": "DS_MYSQL",
+      "label": "MySQL (radio)",
+      "description": "MySQL datasource pointing at the `radio` DB (server 53, port 3308)",
+      "type": "datasource",
+      "pluginId": "mysql",
+      "pluginName": "MySQL"
+    }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": {
+          "type": "grafana",
+          "uid": "-- Grafana --"
+        },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Admin-panel views: per-program / per-network subtitle counts by period, this-week/this-month vs previous, per-ASR-provider breakdown, and drill-down to sessions + output files. All times converted to Asia/Tehran (+03:30) in SQL.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [
+    {
+      "asDropdown": true,
+      "icon": "dashboard",
+      "title": "Admin panel (web)",
+      "type": "link",
+      "url": "http://127.0.0.1:8990/"
+    },
+    {
+      "asDropdown": true,
+      "icon": "external-link",
+      "title": "Pipeline overview",
+      "type": "link",
+      "url": "http://127.0.0.1:3000/d/iranseda-pipeline"
+    }
+  ],
+  "liveNow": false,
+  "panels": [
+    {
+      "type": "row",
+      "title": "Filters / فیلترها",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "collapsed": false,
+      "panels": [],
+      "repeat": null
+    },
+    {
+      "type": "row",
+      "title": "Period comparison / مقایسه دوره‌ها (Asia/Tehran)",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 1
+      },
+      "collapsed": false,
+      "panels": [],
+      "repeat": null
+    },
+    {
+      "type": "stat",
+      "title": "This week / این هفته",
+      "datasource": {
+        "type": "${DS_MYSQL}",
+        "uid": "${DS_MYSQL}"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 2
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "scheme"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) AS value\nFROM radio_program_sessions s\nJOIN radio_programs p ON p.id = s.program_id\nWHERE s.is_subtitled = 1\n  AND CONVERT_TZ(s.updated_at, '+00:00', '+03:30') >= CURDATE() - INTERVAL WEEKDAY(CURDATE()) DAY\n  AND $__timeFilter(CONVERT_TZ(s.updated_at, '+00:00', '+03:30'))\n  AND ${program:raw}",
+          "format": "time_series",
+          "rawQuery": true,
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Last week / هفته گذشته",
+      "datasource": {
+        "type": "${DS_MYSQL}",
+        "uid": "${DS_MYSQL}"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 2
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "scheme"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) AS value\nFROM radio_program_sessions s\nJOIN radio_programs p ON p.id = s.program_id\nWHERE s.is_subtitled = 1\n  AND CONVERT_TZ(s.updated_at, '+00:00', '+03:30') >= CURDATE() - INTERVAL WEEKDAY(CURDATE()) DAY - INTERVAL 7 DAY\n  AND CONVERT_TZ(s.updated_at, '+00:00', '+03:30') < CURDATE() - INTERVAL WEEKDAY(CURDATE()) DAY\n  AND $__timeFilter(CONVERT_TZ(s.updated_at, '+00:00', '+03:30'))\n  AND ${program:raw}",
+          "format": "time_series",
+          "rawQuery": true,
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "This month / این ماه",
+      "datasource": {
+        "type": "${DS_MYSQL}",
+        "uid": "${DS_MYSQL}"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 2
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "scheme"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) AS value\nFROM radio_program_sessions s\nJOIN radio_programs p ON p.id = s.program_id\nWHERE s.is_subtitled = 1\n  AND DATE_FORMAT(CONVERT_TZ(s.updated_at, '+00:00', '+03:30'), '%Y-%m') = DATE_FORMAT(CURDATE(), '%Y-%m')\n  AND $__timeFilter(CONVERT_TZ(s.updated_at, '+00:00', '+03:30'))\n  AND ${program:raw}",
+          "format": "time_series",
+          "rawQuery": true,
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Last month / ماه گذشته",
+      "datasource": {
+        "type": "${DS_MYSQL}",
+        "uid": "${DS_MYSQL}"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 2
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "scheme"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT COUNT(*) AS value\nFROM radio_program_sessions s\nJOIN radio_programs p ON p.id = s.program_id\nWHERE s.is_subtitled = 1\n  AND DATE_FORMAT(CONVERT_TZ(s.updated_at, '+00:00', '+03:30'), '%Y-%m') = DATE_FORMAT(CURDATE() - INTERVAL 1 MONTH, '%Y-%m')\n  AND $__timeFilter(CONVERT_TZ(s.updated_at, '+00:00', '+03:30'))\n  AND ${program:raw}",
+          "format": "time_series",
+          "rawQuery": true,
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Throughput / نرخ تولید (Asia/Tehran)",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 6
+      },
+      "collapsed": false,
+      "panels": [],
+      "repeat": null
+    },
+    {
+      "type": "timeseries",
+      "title": "Daily / روزانه — subtitled per day",
+      "datasource": {
+        "type": "${DS_MYSQL}",
+        "uid": "${DS_MYSQL}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 7
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 25,
+            "lineWidth": 2,
+            "spanNulls": true,
+            "showPoints": "never",
+            "drawStyle": "bars",
+            "stacking": {
+              "mode": "none"
+            },
+            "barAlignment": 0
+          },
+          "thresholds": {
+            "mode": "scheme"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT CONVERT_TZ(s.updated_at, '+00:00', '+03:30') AS time,\n       COUNT(*) AS value\nFROM radio_program_sessions s\nJOIN radio_programs p ON p.id = s.program_id\nWHERE s.is_subtitled = 1\n  AND $__timeGroup(CONVERT_TZ(s.updated_at, '+00:00', '+03:30'), '1d')\n  AND ${program:raw}\nGROUP BY time",
+          "format": "time_series",
+          "rawQuery": true,
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Hourly / ساعتی — subtitled per hour",
+      "datasource": {
+        "type": "${DS_MYSQL}",
+        "uid": "${DS_MYSQL}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 7
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 25,
+            "lineWidth": 2,
+            "spanNulls": true,
+            "showPoints": "never",
+            "drawStyle": "bars",
+            "stacking": {
+              "mode": "none"
+            },
+            "barAlignment": 0
+          },
+          "thresholds": {
+            "mode": "scheme"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT CONVERT_TZ(s.updated_at, '+00:00', '+03:30') AS time,\n       COUNT(*) AS value\nFROM radio_program_sessions s\nJOIN radio_programs p ON p.id = s.program_id\nWHERE s.is_subtitled = 1\n  AND $__timeGroup(CONVERT_TZ(s.updated_at, '+00:00', '+03:30'), '1h')\n  AND ${program:raw}\nGROUP BY time",
+          "format": "time_series",
+          "rawQuery": true,
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Weekly / هفتگی (by ISO week)",
+      "datasource": {
+        "type": "${DS_MYSQL}",
+        "uid": "${DS_MYSQL}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 15
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 25,
+            "lineWidth": 2,
+            "spanNulls": true,
+            "showPoints": "never",
+            "drawStyle": "line",
+            "stacking": {
+              "mode": "none"
+            }
+          },
+          "thresholds": {
+            "mode": "scheme"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT STR_TO_DATE(CONCAT(YEARWEEK(CONVERT_TZ(s.updated_at, '+00:00', '+03:30'), 1), '-1'), '%X%V-%W') AS time,\n       COUNT(*) AS value\nFROM radio_program_sessions s\nJOIN radio_programs p ON p.id = s.program_id\nWHERE s.is_subtitled = 1\n  AND $__timeFilter(CONVERT_TZ(s.updated_at, '+00:00', '+03:30'))\n  AND ${program:raw}\nGROUP BY time",
+          "format": "time_series",
+          "rawQuery": true,
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Monthly / ماهانه",
+      "datasource": {
+        "type": "${DS_MYSQL}",
+        "uid": "${DS_MYSQL}"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 15
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "fillOpacity": 25,
+            "lineWidth": 2,
+            "spanNulls": true,
+            "showPoints": "never",
+            "drawStyle": "bars",
+            "stacking": {
+              "mode": "none"
+            },
+            "barAlignment": 0
+          },
+          "thresholds": {
+            "mode": "scheme"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT STR_TO_DATE(CONCAT(DATE_FORMAT(CONVERT_TZ(s.updated_at, '+00:00', '+03:30'), '%Y-%m'), '-01'), '%Y-%m-%d') AS time,\n       COUNT(*) AS value\nFROM radio_program_sessions s\nJOIN radio_programs p ON p.id = s.program_id\nWHERE s.is_subtitled = 1\n  AND $__timeFilter(CONVERT_TZ(s.updated_at, '+00:00', '+03:30'))\n  AND ${program:raw}\nGROUP BY time",
+          "format": "time_series",
+          "rawQuery": true,
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "By program / by network — top N (top programs, by network)",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 23
+      },
+      "collapsed": false,
+      "panels": [],
+      "repeat": null
+    },
+    {
+      "type": "bargauge",
+      "title": "Top programs — subtitled (this period)",
+      "datasource": {
+        "type": "${DS_MYSQL}",
+        "uid": "${DS_MYSQL}"
+      },
+      "gridPos": {
+        "h": 16,
+        "w": 12,
+        "x": 0,
+        "y": 24
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        }
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT p.name AS metric,\n       COUNT(*) AS value\nFROM radio_program_sessions s\nJOIN radio_programs p ON p.id = s.program_id\nWHERE s.is_subtitled = 1\n  AND $__timeFilter(CONVERT_TZ(s.updated_at, '+00:00', '+03:30'))\n  AND ${program:raw}\nGROUP BY p.name, p.id\nORDER BY value DESC\nLIMIT 15",
+          "format": "table",
+          "rawQuery": true,
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "bargauge",
+      "title": "By network / شبکه — subtitled (this period)",
+      "datasource": {
+        "type": "${DS_MYSQL}",
+        "uid": "${DS_MYSQL}"
+      },
+      "gridPos": {
+        "h": 16,
+        "w": 12,
+        "x": 12,
+        "y": 24
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        }
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT p.radio AS metric,\n       COUNT(*) AS value\nFROM radio_program_sessions s\nJOIN radio_programs p ON p.id = s.program_id\nWHERE s.is_subtitled = 1\n  AND $__timeFilter(CONVERT_TZ(s.updated_at, '+00:00', '+03:30'))\n  AND ${program:raw}\nGROUP BY p.radio, p.radio_id\nORDER BY value DESC\nLIMIT 20",
+          "format": "table",
+          "rawQuery": true,
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "ASR — provider / model / server (Roshan dual-ASR)",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 40
+      },
+      "collapsed": false,
+      "panels": [],
+      "repeat": null
+    },
+    {
+      "type": "bargauge",
+      "title": "Outputs by provider + model",
+      "datasource": {
+        "type": "${DS_MYSQL}",
+        "uid": "${DS_MYSQL}"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 0,
+        "y": 41
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        }
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT CONCAT(a.provider, ' / ', a.model_name) AS metric,\n       COUNT(DISTINCT a.session_id) AS value\nFROM asr_output a\nJOIN radio_program_sessions s ON s.id = a.session_id\nWHERE 1=1 AND ${asr_provider:raw} AND ${asr_model:raw}\nGROUP BY a.provider, a.model_name\nORDER BY value DESC",
+          "format": "table",
+          "rawQuery": true,
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "ASR executions — re-runs kept separate from unique files (unique files vs executions)",
+      "datasource": {
+        "type": "${DS_MYSQL}",
+        "uid": "${DS_MYSQL}"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 12,
+        "y": 41
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "executions"
+          }
+        ]
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT a.provider,\n       a.model_name,\n       a.pipeline_version,\n       COUNT(*) AS executions,\n       COUNT(DISTINCT a.session_id) AS unique_files\nFROM asr_output a\nJOIN radio_program_sessions s ON s.id = a.session_id\nWHERE 1=1 AND ${asr_provider:raw} AND ${asr_model:raw}\nGROUP BY a.provider, a.model_name, a.pipeline_version\nORDER BY executions DESC",
+          "format": "table",
+          "rawQuery": true,
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Queue & drill-down / صف و جزئیات (jobs + output files)",
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 51
+      },
+      "collapsed": false,
+      "panels": [],
+      "repeat": null
+    },
+    {
+      "type": "table",
+      "title": "Sessions — drill-down (click a row in the admin panel for the per-program report)",
+      "datasource": {
+        "type": "${DS_MYSQL}",
+        "uid": "${DS_MYSQL}"
+      },
+      "gridPos": {
+        "h": 12,
+        "w": 24,
+        "x": 0,
+        "y": 52
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "status"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "options": {
+                      "match": "value",
+                      "result": {
+                        "color": "green",
+                        "index": 0,
+                        "text": "subtitled"
+                      }
+                    },
+                    "type": 1
+                  },
+                  {
+                    "options": {
+                      "match": "value",
+                      "result": {
+                        "color": "orange",
+                        "index": 1,
+                        "text": "pending_download"
+                      }
+                    },
+                    "type": 1
+                  },
+                  {
+                    "options": {
+                      "match": "value",
+                      "result": {
+                        "color": "blue",
+                        "index": 2,
+                        "text": "pending_transcribe"
+                      }
+                    },
+                    "type": 1
+                  },
+                  {
+                    "options": {
+                      "match": "value",
+                      "result": {
+                        "color": "red",
+                        "index": 3,
+                        "text": "failed"
+                      }
+                    },
+                    "type": 1
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": true,
+            "displayName": "done_at (Tehran)"
+          }
+        ]
+      },
+      "targets": [
+        {
+          "rawSql": "SELECT s.id AS session_id,\n       p.name AS program,\n       p.radio AS network,\n       s.status,\n       CONVERT_TZ(s.updated_at, '+00:00', '+03:30') AS done_at_tehran,\n       s.link AS archive_url,\n       s.srt_path,\n       a.provider AS asr_provider,\n       a.model_name AS asr_model\nFROM radio_program_sessions s\nJOIN radio_programs p ON p.id = s.program_id\nLEFT JOIN asr_output a ON a.session_id = s.id\nWHERE $__timeFilter(CONVERT_TZ(s.updated_at, '+00:00', '+03:30'))\n  AND ${program:raw} AND ${status:raw} AND ${asr_provider:raw} AND ${asr_model:raw}\nORDER BY done_at_tehran DESC\nLIMIT 500",
+          "format": "table",
+          "rawQuery": true,
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": [
+    "iranseda",
+    "programs",
+    "admin"
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "program",
+        "label": "Program / برنامه",
+        "type": "query",
+        "datasource": {
+          "type": "${DS_MYSQL}",
+          "uid": "${DS_MYSQL}"
+        },
+        "query": "SELECT CONCAT(id, ':', name) AS value, CONCAT(name, ' — ', IFNULL(radio,'')) AS text\nFROM radio_programs\nWHERE is_legacy = 0 AND url IS NOT NULL\nORDER BY name",
+        "refresh": 2,
+        "includeAll": true,
+        "allValue": "1=1",
+        "multi": true,
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "sort": 1,
+        "regex": "",
+        "options": []
+      },
+      {
+        "name": "status",
+        "label": "Job status / وضعیت",
+        "type": "custom",
+        "query": "pending_download,pending_transcribe,transcribing,subtitled,failed,failed_permanent",
+        "refresh": 1,
+        "includeAll": true,
+        "allValue": "1=1",
+        "multi": true,
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": []
+      },
+      {
+        "name": "asr_provider",
+        "label": "ASR provider / ارائه‌دهنده",
+        "type": "custom",
+        "query": "whisper,roshan",
+        "refresh": 1,
+        "includeAll": true,
+        "allValue": "1=1",
+        "multi": true,
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "options": []
+      },
+      {
+        "name": "asr_model",
+        "label": "ASR model / مدل",
+        "type": "query",
+        "datasource": {
+          "type": "${DS_MYSQL}",
+          "uid": "${DS_MYSQL}"
+        },
+        "query": "SELECT DISTINCT CONCAT(id, ':', model_name) AS value, model_name AS text FROM asr_output",
+        "refresh": 2,
+        "includeAll": true,
+        "allValue": "1=1",
+        "multi": true,
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        },
+        "sort": 1,
+        "regex": "",
+        "options": []
+      }
+    ]
+  },
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "Asia/Tehran",
+  "title": "📡 iranseda programs — admin views",
+  "uid": "iranseda-programs",
+  "version": 1,
+  "weekStart": ""
+}

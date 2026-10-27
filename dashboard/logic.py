@@ -1585,3 +1585,604 @@ def backfill_promote(batch_id):
 
 def backfill_toggle():
     return _backfill().toggle()
+
+
+
+# ---------------------------------------------------------------------------
+# Program discovery (radio.iranseda.ir) — STEP 13 admin panel
+#
+# The site has no JSON API; all HTML parsing lives in the project-root
+# module `iranseda_site` (single source of truth for talking to the site).
+# This section:
+#   * lists channels / programs / archive ranges (live, cached 1h)
+#   * one-click add -> radio_programs (+ program_settings start point),
+#     deduped by URL and by site program id `m` (never by per-broadcast `e`)
+#   * seeds the start point by inserting the selected archive episodes
+#     directly into radio_program_sessions (status=pending_download) — the
+#     existing scan.go / download_db.go / whisper chain then processes them
+#     exactly like any other program. No duplicate pipeline.
+#   * per-program report (Asia/Tehran windows) — always real data; "بدون داده"
+#     when a window is empty.
+# ---------------------------------------------------------------------------
+
+import sys as _sys
+
+_SITE_MOD = None
+
+
+def _site():
+    """Lazily import iranseda_site (project root, stdlib-only)."""
+    global _SITE_MOD
+    if _SITE_MOD is None:
+        if PROJECT_ROOT not in _sys.path:
+            _sys.path.insert(0, PROJECT_ROOT)
+        import iranseda_site
+        _SITE_MOD = iranseda_site
+    return _SITE_MOD
+
+
+def _disc_db():
+    return _llm()._db_conn()
+
+
+_DISC_CACHE = {}
+_DISC_CACHE_TTL = 3600  # channel/program catalogs change rarely
+
+
+def _cache_get(key, fetch, ttl=_DISC_CACHE_TTL):
+    now = time.time()
+    hit = _DISC_CACHE.get(key)
+    if hit and now - hit[0] < ttl:
+        return hit[1]
+    data = fetch()
+    _DISC_CACHE[key] = (now, data)
+    return data
+
+
+# -- schema (idempotent; mirrors migrations/2026-10-21_program_discovery.sql)
+def _ensure_discovery_schema(conn):
+    with conn.cursor() as cur:
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS program_discovery (
+               id INT NOT NULL AUTO_INCREMENT,
+               m VARCHAR(8) NOT NULL,
+               ch INT NOT NULL,
+               channel_name VARCHAR(120) DEFAULT NULL,
+               name VARCHAR(255) NOT NULL,
+               url VARCHAR(255) NOT NULL,
+               first_seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+               last_seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                 ON UPDATE CURRENT_TIMESTAMP,
+               PRIMARY KEY (id), UNIQUE KEY uq_m (m), KEY k_ch (ch))""")
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS program_settings (
+               id INT NOT NULL AUTO_INCREMENT,
+               program_id INT NOT NULL,
+               start_mode VARCHAR(16) NOT NULL DEFAULT 'new_only',
+               start_date DATE DEFAULT NULL,
+               seeded TINYINT NOT NULL DEFAULT 0,
+               seeded_at DATETIME DEFAULT NULL,
+               last_discovery_at DATETIME DEFAULT NULL,
+               discovery_note VARCHAR(255) DEFAULT NULL,
+               created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+               updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                 ON UPDATE CURRENT_TIMESTAMP,
+               PRIMARY KEY (id), UNIQUE KEY uq_program (program_id))""")
+    conn.commit()
+
+
+# -- channels ---------------------------------------------------------------
+def disc_channels():
+    """All 75 channels (live, cached 1h) + per-channel activated-program count."""
+    chans = _cache_get("channels", lambda: _site().list_channels())
+    conn = _disc_db()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT radio_id, COUNT(*) c FROM radio_programs "
+                "WHERE is_legacy=0 GROUP BY radio_id")
+            counts = {int(r["radio_id"]): int(r["c"]) for r in cur.fetchall()}
+    finally:
+        conn.close()
+    for c in chans:
+        c["active_programs"] = counts.get(c["ch"], 0)
+    return {"ok": True, "channels": chans}
+
+
+# -- programs (per channel, cached) ------------------------------------------
+def disc_programs(ch, q=""):
+    """Catalog of one channel. q='' -> full catalog (cached 1h);
+    q=<name> -> filtered view (also cached).
+    Each row is enriched with activation state (never duplicates on re-add)."""
+    key = "progs-%s-%s" % (ch, q or "_all")
+
+    def _fetch():
+        s = _site()
+        if q:
+            return s.search_programs(ch, q)
+        return s.list_programs_all(ch)
+
+    data = _cache_get(key, _fetch)
+    conn = _disc_db()
+    try:
+        with conn.cursor() as cur:
+            _ensure_discovery_schema(conn)
+            ms = tuple(str(p["m"]).zfill(8) for p in data["programs"]) or ("__none",)
+            cur.execute("SELECT m FROM program_discovery WHERE m IN %s", (ms,))
+            seen = {r["m"] for r in cur.fetchall()}
+            cur.execute(
+                "SELECT id, url, name FROM radio_programs "
+                "WHERE is_legacy=0 AND url LIKE %s", ("%%ch=%s&m=%%" % ch,))
+            by_m = {}
+            for r in cur.fetchall():
+                mm = re.search(r"[&?]m=(\d+)", r["url"])
+                if mm:
+                    by_m[mm.group(1).zfill(8)] = r
+    finally:
+        conn.close()
+    for p in data["programs"]:
+        m8 = str(p["m"]).zfill(8)
+        p["discovered"] = m8 in seen
+        act = by_m.get(m8)
+        if act:
+            p["program_id"] = int(act["id"])
+            p["active_name"] = act["name"]
+    return {"ok": True, "ch": ch, "q": q, "count": data["count"],
+            "programs": data["programs"]}
+
+
+# -- program detail (name / meta / archive range) ----------------------------
+def disc_program_detail(ch, m):
+    """For one catalog entry: clean name + meta from a sample episode page.
+    The archive-range walk is a separate (slower) call: disc_archive_start."""
+    s = _site()
+    meta = None
+    sample = None
+    try:
+        eps = s.list_episodes(int(m), ch, 1)
+        if eps:
+            sample = eps[0]
+            meta = s.episode_meta(sample["e"], ch)
+    except Exception as e:  # noqa: BLE001
+        meta = {"error": str(e)[:200]}
+    return {"ok": True, "meta": meta, "sample_episode": sample}
+
+
+def disc_archive_start(ch, m):
+    """Oldest archived episodes (bounded binary search over pages, ~log2(N))."""
+    s = _site()
+    out = s.find_archive_start(int(m), ch)
+    return {"ok": True, **out}
+
+
+# -- one-click add -----------------------------------------------------------
+def disc_add_program(ch, m, start_mode="new_only", start_date=None,
+                     name_override=None):
+    """Activate a discovered program:
+    1. sample the site (meta + first episodes)
+    2. INSERT (or reuse) the radio_programs row — deduped by URL, then by m
+    3. record program_settings (start point, seeded=0)
+    4. kick the start-point seeding in a background thread (walks the archive
+       from the chosen point and inserts sessions). Returns immediately."""
+    s = _site()
+    eps = s.list_episodes(int(m), ch, 1)
+    if not eps:
+        raise ValueError("قسمتی از آرشیو این برنامه یافت نشد")
+    meta = s.episode_meta(eps[0]["e"], ch)
+    name = (name_override or meta.get("name") or "").strip()
+    if not name:
+        raise ValueError("نام برنامه از سایت قابل استخراج نبود")
+
+    # scan.go uses %06d for m in URLs; match that convention so the dedup
+    # check finds existing rows.
+    url = "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=%s&m=%06d" % (ch, int(m))
+    reused = False
+    conn = _disc_db()
+    program_id = None
+    try:
+        _ensure_discovery_schema(conn)
+        with conn.cursor() as cur:
+            # 1) already activated? (by URL or by m) — never create a duplicate.
+            #    Try both %06d and %08d URL formats since both may exist.
+            cur.execute("SELECT id FROM radio_programs WHERE url=%s AND is_legacy=0", (url,))
+            row = cur.fetchone()
+            if not row:
+                url8 = "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=%s&m=%08d" % (ch, int(m))
+                cur.execute("SELECT id FROM radio_programs WHERE url=%s AND is_legacy=0", (url8,))
+                row = cur.fetchone()
+            if not row:
+                cur.execute(
+                    "SELECT id FROM radio_programs WHERE is_legacy=0 "
+                    "AND url LIKE %s LIMIT 1", ("%%m=%08d" % int(m),))
+                row = cur.fetchone()
+            if row:
+                program_id = int(row["id"])
+                reused = True
+            else:
+                cur.execute(
+                    "INSERT INTO radio_programs "
+                    "(name, url, time, time_description, description, start, radio, radio_id, is_legacy) "
+                    "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,0)",
+                    (name[:255], url, meta.get("duration"),
+                     meta.get("time_description"), None,
+                     meta.get("start"), meta.get("radio"), int(ch)))
+                conn.commit()
+                cur.execute("SELECT LAST_INSERT_ID() AS id")
+                program_id = int(cur.fetchone()["id"])
+            # 2) discovery registry
+            cur.execute(
+                "INSERT INTO program_discovery (m, ch, channel_name, name, url) "
+                "VALUES (%s,%s,%s,%s,%s) "
+                "ON DUPLICATE KEY UPDATE last_seen_at=NOW()",
+                ("%08d" % int(m), int(ch), meta.get("radio") or "",
+                 name[:255], url))
+            # 3) settings (start point)
+            sd = start_date if start_mode == "from_date" and start_date else None
+            cur.execute(
+                "INSERT INTO program_settings (program_id, start_mode, start_date) "
+                "VALUES (%s,%s,%s) ON DUPLICATE KEY UPDATE "
+                "start_mode=VALUES(start_mode), start_date=VALUES(start_date), "
+                "seeded=0, discovery_note=NULL",
+                (program_id, start_mode, sd))
+            conn.commit()
+    finally:
+        conn.close()
+
+    # 4) seed in the background (bounded; may take a while for from_start)
+    handle = "seed-%s-%s" % (program_id, int(time.time()))
+    with _llm_run_lock:
+        _llm_run_state[handle] = {
+            "job_type": "program_seed", "label": "آماده‌سازی آرشیو: %s" % name,
+            "model": "—", "status": "running", "started_at": _now_iso(),
+            "detail": "در صف", "result": None,
+        }
+
+    def _work():
+        try:
+            res = _seed_program(program_id, start_mode, sd)
+            with _llm_run_lock:
+                _llm_run_state[handle].update(
+                    {"status": "done", "finished_at": _now_iso(),
+                     "detail": "%s قسمت از آرشیو ثبت شد" % res["inserted"],
+                     "result": res})
+        except Exception as e:  # noqa: BLE001
+            with _llm_run_lock:
+                _llm_run_state[handle].update(
+                    {"status": "error", "finished_at": _now_iso(),
+                     "detail": str(e)[:300]})
+            try:
+                c = _disc_db()
+                with c.cursor() as cur:
+                    cur.execute("UPDATE program_settings SET discovery_note=%s "
+                                "WHERE program_id=%s", (str(e)[:250], program_id))
+                c.commit()
+                c.close()
+            except Exception:  # noqa: BLE001
+                pass
+
+    run_in_thread(_work)
+    return {"ok": True, "program_id": program_id, "name": name,
+            "handle": handle, "reused": reused}
+
+
+def _seed_program(program_id, start_mode, start_date):
+    """Walk the program's archive from the chosen point and insert sessions
+    (status=pending_download) that the existing pipeline will pick up.
+
+    new_only  : only episodes NEWER than the newest existing session (page 1)
+    from_date : walk from newest back to start_date (inclusive) — bounded
+    from_start: walk to the oldest page — bounded by SEED_MAX_PAGES
+
+    Bounded by .env SEED_MAX_PAGES (default 300 = 6000 episodes) so a huge
+    archive can never stall the dashboard; the remainder stays for the
+    periodic discovery walks (and the monthly backfill)."""
+    try:
+        max_pages = int(_read_env_file(ENV_PATH).get("SEED_MAX_PAGES") or 300)
+    except (TypeError, ValueError):
+        max_pages = 300
+
+    conn = _disc_db()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT url FROM radio_programs WHERE id=%s", (program_id,))
+            row = cur.fetchone()
+            if not row:
+                raise ValueError("برنامه در دیتابیس یافت نشد")
+            url = row["url"]
+            mm = re.search(r"[&?]m=(\d+)", url)
+            mch = re.search(r"[&?]ch=(\d+)", url)
+            m, ch = int(mm.group(1)), int(mch.group(1))
+    finally:
+        conn.close()
+
+    # newest existing session for this program (e is a monotonic global id,
+    # so MAX(e) = newest broadcast already in the DB)
+    conn = _disc_db()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT MAX(CAST(SUBSTRING_INDEX(link,'e=',-1) AS UNSIGNED)) AS max_e "
+                "FROM radio_program_sessions WHERE program_id=%s AND link LIKE '%%e=%%'",
+                (program_id,))
+            new_max_e = int(cur.fetchone()["max_e"] or 0)
+    finally:
+        conn.close()
+
+    s = _site()
+    last_page = min(s._page_total(m, ch), max_pages)
+    inserted = 0
+    page = 1
+    pages_walked = 0
+    while page <= last_page:
+        items = s.parse_episode_cards(s.http_get(s._page_url(m, ch, page)))
+        if not items:
+            break
+        pages_walked = page
+        batch = []
+        stop = False
+        for it in items:
+            if start_mode == "new_only" and it["e"] <= new_max_e:
+                stop = True
+                break
+            if start_mode == "from_date" and start_date:
+                yr = it.get("year")
+                if yr and yr < _jalali_year_of(start_date):
+                    stop = True
+                    break
+            batch.append(it)
+        if batch:
+            c = _disc_db()
+            try:
+                with c.cursor() as cur:
+                    cur.executemany(
+                        "INSERT IGNORE INTO radio_program_sessions "
+                        "(program_id, link, status) VALUES (%s,%s,'pending_download')",
+                        [(program_id, it["url"]) for it in batch])
+                    inserted += len(batch)  # executemany rowcount is unreliable
+                c.commit()
+            finally:
+                c.close()
+        if stop or start_mode == "new_only":
+            break
+        page += 1
+
+    c = _disc_db()
+    try:
+        with c.cursor() as cur:
+            cur.execute(
+                "UPDATE program_settings SET seeded=1, seeded_at=NOW(), "
+                "discovery_note=%s WHERE program_id=%s",
+                ("seeded %d episodes (pages %d/%d)" % (inserted, pages_walked, last_page),
+                 program_id))
+        c.commit()
+    finally:
+        c.close()
+    return {"inserted": inserted, "pages_walked": pages_walked,
+            "last_page": last_page}
+
+
+def _jalali_year_of(datestr):
+    """Approximate Jalali year from a Gregorian YYYY-MM-DD string.
+    Coarse stop condition only — the site's own Jalali labels carry the exact
+    date in the UI."""
+    y, m, d = (int(x) for x in datestr.split("-"))
+    return y - 1 if (m, d) < (3, 21) else y
+
+
+def disc_active_programs():
+    """Activated programs (radio_programs is_legacy=0) joined with their
+    settings + live counts for the 'برنامه‌های فعال' list."""
+    conn = _disc_db()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT p.id, p.name, p.radio, p.radio_id, p.url, p.start, p.`time`, "
+                "  p.created_at, "
+                "  COALESCE(ps.start_mode,'new_only') AS start_mode, "
+                "  ps.start_date, ps.seeded, ps.last_discovery_at, ps.discovery_note, "
+                "  COUNT(s.id) AS total, "
+                "  SUM(s.status='pending_download') AS q_dl, "
+                "  SUM(s.status='pending_transcribe') AS q_tr, "
+                "  SUM(s.status='subtitled') AS subtitled, "
+                "  SUM(s.status IN ('failed','failed_permanent')) AS failed, "
+                "  MAX(s.updated_at) AS last_updated "
+                "FROM radio_programs p "
+                "LEFT JOIN program_settings ps ON ps.program_id=p.id "
+                "LEFT JOIN radio_program_sessions s ON s.program_id=p.id "
+                "WHERE p.is_legacy=0 "
+                "GROUP BY p.id ORDER BY p.name")
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+    for r in rows:
+        for k in ("q_dl", "q_tr", "subtitled", "failed"):
+            r[k] = int(r.get(k) or 0)
+        r["total"] = int(r.get("total") or 0)
+        r["seeded"] = bool(r.get("seeded"))
+    return {"ok": True, "programs": rows}
+
+
+def disc_set_start_point(program_id, start_mode, start_date=None):
+    """Change the start point (and re-seed). Resets seeded=0 first."""
+    if start_mode not in ("from_start", "from_date", "new_only"):
+        raise ValueError("start_mode نامعتبر است")
+    if start_mode == "from_date" and not start_date:
+        raise ValueError("برای «از تاریخ مشخص» تاریخ لازم است")
+    conn = _disc_db()
+    try:
+        _ensure_discovery_schema(conn)
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO program_settings (program_id, start_mode, start_date) "
+                "VALUES (%s,%s,%s) ON DUPLICATE KEY UPDATE "
+                "start_mode=VALUES(start_mode), start_date=VALUES(start_date), "
+                "seeded=0, discovery_note=NULL",
+                (int(program_id), start_mode,
+                 start_date if start_mode == "from_date" else None))
+            conn.commit()
+    finally:
+        conn.close()
+    handle = "reseed-%s-%s" % (program_id, int(time.time()))
+    with _llm_run_lock:
+        _llm_run_state[handle] = {
+            "job_type": "program_seed",
+            "label": "بازنویسی نقطه شروع", "model": "—",
+            "status": "running", "started_at": _now_iso(), "detail": "در صف",
+            "result": None,
+        }
+
+    def _work():
+        try:
+            res = _seed_program(int(program_id), start_mode, start_date)
+            with _llm_run_lock:
+                _llm_run_state[handle].update(
+                    {"status": "done", "finished_at": _now_iso(),
+                     "detail": "%s قسمت ثبت شد" % res["inserted"], "result": res})
+        except Exception as e:  # noqa: BLE001
+            with _llm_run_lock:
+                _llm_run_state[handle].update(
+                    {"status": "error", "finished_at": _now_iso(),
+                     "detail": str(e)[:300]})
+
+    run_in_thread(_work)
+    return {"ok": True, "handle": handle}
+
+
+# -- per-program report (Asia/Tehran) ----------------------------------------
+_TZ_OFF = "+03:30"  # fixed; Iran has no DST (same map as _tz_offset_str)
+
+
+def _tzcol(col):
+    return "CONVERT_TZ(%s, '+00:00', '%s')" % (col, _TZ_OFF)
+
+
+def program_report(program_id):
+    """The dedicated per-program report. Every number is computed from real
+    DB rows in Asia/Tehran time (DB stores UTC). A window with no rows is
+    returned as None -> the UI renders «بدون داده» (never invented stats)."""
+    pid = int(program_id)
+    conn = _disc_db()
+    out = {"ok": True, "program_id": pid, "windows": None, "totals": None,
+           "recent": [], "outputs_dir": None, "asr": None, "settings": None}
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id, name, radio, url FROM radio_programs WHERE id=%s", (pid,))
+            p = cur.fetchone()
+            if not p:
+                raise ValueError("برنامه یافت نشد")
+            out["name"] = p["name"]
+            out["radio"] = p["radio"]
+
+            U = _tzcol("updated_at")
+            cur.execute(
+                "SELECT "
+                " SUM(is_subtitled=1 AND DATE(" + U + ")=CURDATE()) AS today, "
+                " SUM(is_subtitled=1 AND DATE(" + U + ")=CURDATE()-INTERVAL 1 DAY) AS yesterday, "
+                " SUM(is_subtitled=1 AND " + U + ">=NOW()-INTERVAL 7 DAY) AS last7d, "
+                " SUM(is_subtitled=1 AND DATE(" + U + ")>=DATE_SUB(CURDATE(),INTERVAL (WEEKDAY(CURDATE())) DAY) "
+                "   AND DATE(" + U + ")<CURDATE()) AS this_week_partial, "
+                " SUM(is_subtitled=1 AND DATE(" + U + ")>=DATE_SUB(CURDATE(),INTERVAL (WEEKDAY(CURDATE()))+7 DAY) "
+                "   AND DATE(" + U + ")<DATE_SUB(CURDATE(),INTERVAL (WEEKDAY(CURDATE())) DAY)) AS last_week, "
+                " SUM(is_subtitled=1 AND DATE(" + U + ")>=DATE_FORMAT(CURDATE(),'%Y-%m-01')) AS this_month, "
+                " SUM(is_subtitled=1 AND DATE(" + U + ")>=DATE_SUB(DATE_FORMAT(CURDATE(),'%Y-%m-01'),INTERVAL 1 MONTH) "
+                "   AND DATE(" + U + ")<DATE_FORMAT(CURDATE(),'%Y-%m-01')) AS last_month, "
+                " SUM(is_subtitled=1) AS total_subtitled "
+                "FROM radio_program_sessions WHERE program_id=" + str(pid))
+            w = cur.fetchone()
+            out["windows"] = {
+                "today": w["today"],
+                "yesterday": w["yesterday"],
+                "last_7d": w["last7d"],
+                "this_week_partial": w["this_week_partial"],
+                "last_week": w["last_week"],
+                "this_month": w["this_month"],
+                "last_month": w["last_month"],
+                "total_subtitled": w["total_subtitled"],
+            }
+            out["windows"] = {k: (int(v) if v is not None else None)
+                              for k, v in out["windows"].items()}
+
+            cur.execute(
+                "SELECT COUNT(*) total, "
+                " SUM(status='pending_download') q_dl, "
+                " SUM(status='pending_transcribe') q_tr, "
+                " SUM(status='transcribing') q_trn, "
+                " SUM(status='subtitled') ok, "
+                " SUM(status IN ('failed','failed_permanent')) fail, "
+                " SUM(is_subtitled=0 AND status NOT IN ('failed','failed_permanent')) remaining "
+                "FROM radio_program_sessions WHERE program_id=" + str(pid))
+            t = cur.fetchone()
+            out["totals"] = {k: int(t[k] or 0) for k in
+                             ("total", "q_dl", "q_tr", "q_trn", "ok", "fail", "remaining")}
+            cur.execute("SELECT `time` FROM radio_programs WHERE id=" + str(pid))
+            dur = cur.fetchone()["time"]
+            if dur and out["totals"]["ok"]:
+                sec = 0
+                for part in str(dur).split(":"):
+                    sec = sec * 60 + int(part or 0)
+                out["totals"]["audio_hours_processed"] = round(
+                    sec * out["totals"]["ok"] / 3600.0, 1)
+            else:
+                out["totals"]["audio_hours_processed"] = None
+
+            cur.execute(
+                "SELECT start_mode, start_date, seeded, last_discovery_at, discovery_note "
+                "FROM program_settings WHERE program_id=" + str(pid))
+            out["settings"] = cur.fetchone() or None
+
+            cur.execute(
+                "SELECT id, link, filename, status, is_subtitled, srt_filename, "
+                " attempts, last_error, created_at, updated_at "
+                "FROM radio_program_sessions WHERE program_id=" + str(pid) +
+                " ORDER BY id DESC LIMIT 15")
+            out["recent"] = cur.fetchall()
+
+            try:
+                cur.execute(
+                    "SELECT a.session_id, a.provider, a.model_name, a.pipeline_version, "
+                    " a.processing_status, a.srt_path, a.fulltext_path, a.created_at "
+                    "FROM asr_output a WHERE a.program_id=" + str(pid) +
+                    " ORDER BY a.id DESC LIMIT 15")
+                out["asr"] = cur.fetchall()
+            except Exception:  # noqa: BLE001 — table may pre-date the migration
+                out["asr"] = None
+    finally:
+        conn.close()
+    out["outputs_dir"] = os.path.join(PROJECT_ROOT, "downloads")
+    return out
+
+
+def program_report_trend(program_id, days=30):
+    """Daily series (Asia/Tehran) of subtitled + discovered for the charts
+    and the this-week/this-month comparisons."""
+    pid = int(program_id)
+    U = _tzcol("updated_at")
+    C = _tzcol("created_at")
+    conn = _disc_db()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT DATE(" + U + ") d, SUM(is_subtitled=1) c "
+                "FROM radio_program_sessions "
+                "WHERE program_id=" + str(pid) +
+                " AND " + U + ">=NOW()-INTERVAL " + str(int(days)) +
+                " DAY GROUP BY DATE(" + U + ") ORDER BY d")
+            sub = {r["d"].isoformat(): int(r["c"] or 0) for r in cur.fetchall()}
+            cur.execute(
+                "SELECT DATE(" + C + ") d, COUNT(*) c "
+                "FROM radio_program_sessions "
+                "WHERE program_id=" + str(pid) +
+                " AND " + C + ">=NOW()-INTERVAL " + str(int(days)) +
+                " DAY GROUP BY DATE(" + C + ") ORDER BY d")
+            disc = {r["d"].isoformat(): int(r["c"] or 0) for r in cur.fetchall()}
+    finally:
+        conn.close()
+    from datetime import timedelta
+    days_out = []
+    today = _tznow(TEHRAN).date()
+    for i in range(int(days) - 1, -1, -1):
+        d = today - timedelta(days=i)
+        ds = d.isoformat()
+        days_out.append({"d": ds, "subtitled": sub.get(ds, 0),
+                         "discovered": disc.get(ds, 0)})
+    return {"ok": True, "days": days_out}

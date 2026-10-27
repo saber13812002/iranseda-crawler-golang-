@@ -374,7 +374,76 @@ summary{cursor:pointer;color:var(--mut);font-size:13px}
   </div>
 </div>
 
-<p class="small" style="margin:26px 0 40px">بروز خودکار هر ۳۰ ثانیه — <a href="/health">/health</a> · <a href="/metrics">/metrics</a> (Prometheus)</p>
+<!-- ================= STEP 13: کشف و فعال‌سازی برنامه‌ها ================= -->
+<h2>🔎 کشف برنامه‌ها — از رادیو ایران صدا / رادیو معارف</h2>
+<div class="card" style="margin-bottom:12px">
+  <h3>شبکه (کانال)</h3>
+  <div class="row">
+    <div style="flex:2"><label>شبکه</label><select id="disc-channel" onchange="discChannelChanged()"><option value="">— انتخاب شبکه —</option></select></div>
+    <div style="flex:2"><label>جست‌وجوی نام برنامه</label><input id="disc-q" placeholder="مثال: بر بال سخن" onkeydown="if(event.key==='Enter')discLoadPrograms()"></div>
+    <button class="btn primary" type="button" onclick="discLoadPrograms()">🔍 جست‌وجو</button>
+    <button class="btn" type="button" onclick="discRefreshCatalog()">↻ به‌روزرسانی فهرست (پاک‌کردن کش)</button>
+  </div>
+  <p class="small" style="margin-top:8px">فهرست هر شبکه یک‌بار از سایت خوانده و ۱ ساعت کش می‌شود. «e» شناسهٔ هر پخش و «m» شناسهٔ پایدار برنامه است — پنل همیشه با «m» کار می‌کند.</p>
+  <div style="max-height:340px;overflow:auto;margin-top:10px">
+    <table id="disc-table"><thead><tr><th>برنامه</th><th>شبکه</th><th>m</th><th>وضعیت</th><th></th></tr></thead><tbody><tr><td colspan="5" class="small">اول شبکه را انتخاب کنید</td></tr></tbody></table>
+  </div>
+</div>
+
+<div class="grid cols-2">
+  <div class="card">
+    <h3>جزئیات برنامه + نقطهٔ شروع آرشیو</h3>
+    <div id="disc-detail" class="small" style="white-space:pre-wrap;line-height:1.9">یک برنامه از فهرست بالا را انتخاب کنید.</div>
+    <div id="disc-archive" class="small" style="white-space:pre-wrap;line-height:1.9;margin-top:8px"></div>
+    <div style="margin-top:10px">
+      <label>نقطهٔ شروع پردازش</label>
+      <div class="row">
+        <div><select id="disc-start-mode" onchange="discStartModeChanged()">
+          <option value="new_only">فقط فایل‌های جدید (پیشنهادی)</option>
+          <option value="from_date">از تاریخ مشخص</option>
+          <option value="from_start">از ابتدا</option>
+        </select></div>
+        <div id="disc-start-date-wrap" style="display:none"><input id="disc-start-date" type="date"></div>
+      </div>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn primary" id="disc-add-btn" onclick="discAddProgram()" disabled>➕ افزودن برنامه (یک کلیک)</button>
+      <button class="btn" id="disc-archive-btn" onclick="discLoadArchive()">⏳ کشف قدیمی‌ترین تاریخ آرشیو</button>
+    </div>
+    <div id="disc-seed-status" class="small" style="white-space:pre-wrap;margin-top:8px"></div>
+  </div>
+
+  <div class="card">
+    <h3>برنامه‌های فعال (تحت پردازش)</h3>
+    <div style="max-height:420px;overflow:auto">
+      <table id="active-prog-table"><thead><tr><th>برنامه</th><th>شبکه</th><th>شروع</th><th>فایل‌ها</th><th>در صف</th><th>زیرنویس‌شده</th><th>آخرین</th><th></th></tr></thead><tbody></tbody></table>
+    </div>
+  </div>
+</div>
+
+<!-- ================= گزارش اختصاصی هر برنامه ================= -->
+<h2>📈 گزارش اختصاصی برنامه (آمار واقعی، منطقهٔ زمانی تهران)</h2>
+<div class="card" style="margin-bottom:12px">
+  <div class="row">
+    <div style="flex:2"><label>برنامهٔ فعال</label><select id="report-program" onchange="reportLoadProgram()"><option value="">— انتخاب —</option></select></div>
+    <button class="btn" type="button" onclick="reportLoadChannel()">گزارش سطح شبکه</button>
+  </div>
+</div>
+<div class="card" id="report-card" style="display:none">
+  <h3 id="report-title">—</h3>
+  <div class="grid cols-4" id="report-windows"></div>
+  <div class="grid cols-4" id="report-totals" style="margin-top:12px"></div>
+  <div id="report-chart" class="chart" style="height:170px;margin-top:14px"></div>
+  <div class="legend"><span class="lg-sub">زیرنویس جدید (به وقت تهران)</span><span class="lg-new">کشف فایل جدید</span></div>
+  <details style="margin-top:14px"><summary>فایل‌های اخیر (جدول جاب‌ها + نسخهٔ ASR)</summary>
+    <div style="max-height:280px;overflow:auto;margin-top:8px">
+      <table id="report-sessions"><thead><tr><th>جلسه</th><th>فایل</th><th>وضعیت</th><th>زیرنویس</th><th>ASR (provider/model)</th><th>به‌روزرسانی</th><th>خطا</th></tr></thead><tbody></tbody></table>
+    </div>
+  </details>
+  <div id="report-paths" class="small" style="white-space:pre-wrap;line-height:1.9;margin-top:10px"></div>
+</div>
+
+<p class="small" style="margin:26px 0 40px">بروز خودکار هر ۳۰ ثانیه — <a href="/health">/health</a> · <a href="/metrics">/metrics</a> (Prometheus) · <a href="grafana/d/iranseda-pipeline?orgId=1" target="_blank">Grafana</a></p>
 </main>
 
 <script>
@@ -1047,9 +1116,8 @@ async function loadReporter(){
     const r=await api("/api/reporter"); if(!r.ok)return;
     const c=r.counts||{};
     const cnt=(k)=>`<b class="mono">${c[k]||0}</b>`;
-    const pill={queued:"run",submitting:"run",submitted:"run",checking:"run",
-                published:"ok",failed:"bad",skipped:"bad"};
-    const pillFor=s=>`<span class="pill ${pill[s]||"run"}">${esc(s)}</span>`;
+    const pill=_PILL_MAP;
+    const pillFor=_pillFor;
     $("#reporter-summary").innerHTML=`
       <div class="row" style="gap:16px;flex-wrap:wrap;align-items:center">
         <span>فعال (IRANSEDA_REPORTER_ENABLED): <span class="pill ${r.enabled?"run":"bad"}">${r.enabled?"ON":"OFF"}</span></span>
@@ -1081,6 +1149,254 @@ async function reporterSelftest(){
   else{flash("خطا: "+(r.detail||r.error||""),false);}
 }
 
+/* shared status-pill helper (session/reporter statuses) */
+const _PILL_MAP={queued:"run",submitting:"run",submitted:"run",checking:"run",
+  published:"ok",failed:"bad",skipped:"bad",
+  pending_download:"run",pending_transcribe:"run",transcribing:"run",
+  subtitled:"ok",failed_permanent:"bad",downloaded:"ok",unknown:"run"};
+const _pillFor=s=>`<span class="pill ${_PILL_MAP[s]||"run"}">${esc(s)}</span>`;
+
+/* ===== 🔎 Program discovery (STEP 13) ===== */
+let _discChans=[]; let _discSel=null; // {ch,m,name,url,program_id?}
+async function discLoadChannels(){
+  try{
+    const r=await api("/api/discovery/channels"); if(!r.ok)return;
+    _discChans=r.channels||[];
+    const cur=$("#disc-channel").value;
+    const byGroup={};
+    _discChans.forEach(c=>{(byGroup[c.group]=byGroup[c.group]||[]).push(c);});
+    let html='<option value="">— انتخاب شبکه —</option>';
+    for(const g in byGroup){
+      html+=`<optgroup label="${esc(g)}">`;
+      byGroup[g].forEach(c=>{
+        html+=`<option value="${c.ch}">${esc(c.name)}${c.active_programs?` (${c.active_programs})`:""}</option>`;
+      });
+      html+='</optgroup>';
+    }
+    $("#disc-channel").innerHTML=html;
+    if(cur&&_discChans.some(c=>c.ch==cur))$("#disc-channel").value=cur;
+  }catch(e){console.error(e);}
+}
+function discChannelChanged(){
+  _discSel=null;
+  $("#disc-detail").textContent="یک برنامه از فهرست بالا را انتخاب کنید.";
+  $("#disc-archive").textContent="";
+  $("#disc-add-btn").disabled=true;
+  discLoadPrograms();
+}
+async function discLoadPrograms(){
+  const ch=$("#disc-channel").value;
+  if(!ch){$("#disc-table tbody").innerHTML="<tr><td colspan='5' class='small'>اول شبکه را انتخاب کنید</td></tr>";return;}
+  const q=$("#disc-q").value.trim();
+  $("#disc-table tbody").innerHTML="<tr><td colspan='5' class='small'>در حال خواندن از سایت… (۱ ساعت کش می‌شود)</td></tr>";
+  try{
+    const r=await api(`/api/discovery/channels/${ch}/programs?q=${encodeURIComponent(q)}`);
+    if(!r.ok){$("#disc-table tbody").innerHTML="<tr><td colspan='5' class='small'>خطا: "+esc(r.detail||r.error||"")+"</td></tr>";return;}
+    const progs=r.programs||[];
+    $("#disc-table tbody").innerHTML=progs.map(p=>{
+      const status=p.program_id
+        ?`<span class="pill ok">فعال (id ${p.program_id})</span>`
+        :(p.discovered?'<span class="pill">کشف‌شده</span>':'<span class="pill">جدید</span>');
+      return `<tr style="cursor:pointer" onclick='discPickProgram(${JSON.stringify(p).replace(/'/g,"&#39;")})'>
+        <td>${esc(p.name)}</td><td class="small">${esc(ch)}</td>
+        <td class="mono">${p.m}</td><td>${status}</td>
+        <td>${p.program_id?`<button class="btn small" onclick="event.stopPropagation();reportGo(${p.program_id})">📈 گزارش</button>`:""}</td>
+      </tr>`;
+    }).join("")||"<tr><td colspan='5' class='small'>برنامه‌ای با این مشخصات یافت نشد</td></tr>";
+  }catch(e){console.error(e);}
+}
+function discRefreshCatalog(){
+  if(confirm("فهرست کش‌شده پاک و دوباره از سایت خوانده شود؟"))discLoadPrograms();
+}
+async function discPickProgram(p){
+  _discSel={ch:p.ch||$("#disc-channel").value,m:p.m,name:p.name,url:p.url,program_id:p.program_id||null};
+  $("#disc-add-btn").disabled=false;
+  $("#disc-detail").textContent="در حال خواندن جزئیات از سایت…";
+  $("#disc-archive").textContent="";
+  try{
+    const r=await api(`/api/discovery/channels/${_discSel.ch}/programs/${_discSel.m}/detail`);
+    if(!r.ok)return;
+    const m=r.meta||{};
+    $("#disc-detail").textContent=
+      `برنامه: ${m.name||esc(p.name)}\n`+
+      (m.radio?`شبکه: ${m.radio}\n`:"")+
+      (m.start?`ساعت پخش: ${m.start}\n`:"")+
+      (m.duration?`مدت: ${m.duration}\n`:"")+
+      (m.time_description?`توضیح: ${m.time_description}\n`:"")+
+      `\nآدرس آرشیو: ${p.url}`;
+    if(p.program_id)$("#disc-detail").textContent+=`\n\n✅ قبلاً فعال است (id ${p.program_id}) — «افزودن» نسخهٔ تکراری نمی‌سازد.`;
+  }catch(e){console.error(e);}
+}
+function discStartModeChanged(){
+  const m=$("#disc-start-mode").value;
+  $("#disc-start-date-wrap").style.display=(m==="from_date")?"block":"none";
+}
+async function discLoadArchive(){
+  if(!_discSel)return;
+  $("#disc-archive").textContent="⏳ در حال پیمایش آرشیو تا قدیمی‌ترین صفحه… (چند تا چند десят ثانیه طول می‌کشد)";
+  try{
+    const r=await api(`/api/discovery/channels/${_discSel.ch}/programs/${_discSel.m}/archive-start`);
+    if(!r.ok){$("#disc-archive").textContent="خطا: "+(r.detail||r.error||"");return;}
+    $("#disc-archive").textContent=
+      `قدیمی‌ترین آرشیو یافت‌شده: ${r.oldest_jalali||"—"}\n`+
+      `تعداد صفحات آرشیو: ${r.pages_total} (هر صفحه ۲۰ قسمت)\n`+
+      (r.oldest_year?`قدیمی‌ترین سال شمسی: ${r.oldest_year}\n`:"")+
+      (r.start_mode?`پیشنهاد نقطه شروع: ${r.start_mode}`:"");
+  }catch(e){console.error(e);}
+}
+async function discAddProgram(){
+  if(!_discSel)return;
+  const start_mode=$("#disc-start-mode").value;
+  const start_date=(start_mode==="from_date")?($("#disc-start-date").value||null):null;
+  if(start_mode==="from_date"&&!start_date){flash("برای «از تاریخ مشخص» تاریخ را انتخاب کنید",false);return;}
+  const body={ch:+_discSel.ch,m:+_discSel.m,start_mode,start_date};
+  if(!confirm(`برنامه «${_discSel.name}» با نقطه شروع «${start_mode}» فعال شود؟\nقسمت‌های آرشیو از آن نقطه به صف دانلود اضافه می‌شوند.`))return;
+  $("#disc-add-btn").disabled=true;
+  $("#disc-seed-status").textContent="در حال ثبت در دیتابیس و پیمایش آرشیو…";
+  try{
+    const r=await api("/api/discovery/add",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    if(!r.ok){flash("خطا: "+(r.detail||r.error||""),false);$("#disc-add-btn").disabled=false;return;}
+    flash("برنامه ثبت شد ✓ — در حال آماده‌سازی آرشیو",true);
+    _discSel.program_id=r.program_id;
+    discPollSeed(r.handle);
+    await discLoadPrograms(); loadActivePrograms(); reportFillSelects();
+  }catch(e){console.error(e);}
+}
+function discPollSeed(handle,ticks=0){
+  if(ticks>60)return;
+  api("/api/llm/runs").then(r=>{
+    const found=(r.runs||[]).find(([h])=>h===handle);
+    if(!found){discPollSeed(handle,ticks+1);return;}
+    const v=found[1];
+    $("#disc-seed-status").textContent=`وضعیت آماده‌سازی آرشیو: ${v.status}\n${esc(v.detail||"")}`;
+    if(v.status==="running"||v.status==="queued")discPollSeed(handle,ticks+1);
+    else{$("#disc-add-btn").disabled=false;loadActivePrograms();}
+  }).catch(()=>discPollSeed(handle,ticks+1));
+}
+async function loadActivePrograms(){
+  try{
+    const r=await api("/api/discovery/programs/active"); if(!r.ok)return;
+    const rows=(r.programs||[]).map(p=>{
+      const startMap={from_start:"از ابتدا",from_date:"از "+(p.start_date||"?"),new_only:"فقط جدید"};
+      return `<tr>
+        <td>${esc(p.name)}</td><td class="small">${esc(p.radio||"")}</td>
+        <td class="small">${startMap[p.start_mode]||p.start_mode}${p.seeded?" ✓":"…"}</td>
+        <td class="mono">${p.total}</td>
+        <td class="mono">${p.q_dl+p.q_tr}</td>
+        <td class="mono">${p.subtitled}</td>
+        <td class="small mono" style="font-size:11px">${esc((p.last_updated||"").slice(0,16)||"—")}</td>
+        <td style="white-space:nowrap"><button class="btn small" onclick="reportGo(${p.id})">📈 گزارش</button>
+          <button class="btn small" onclick="openStartPoint(${p.id},'${esc(p.start_mode||'new_only')}','${p.start_date||''}')">🕐 شروع</button></td>
+      </tr>`;
+    }).join("")||"<tr><td colspan='8' class='small'>—</td></tr>";
+    $("#active-prog-table tbody").innerHTML=rows;
+    // keep the report select in sync
+    const sel=$("#report-program");const cur=sel.value;
+    sel.innerHTML='<option value="">— انتخاب —</option>'+(r.programs||[]).map(p=>
+      `<option value="${p.id}">${esc(p.name)} (${esc(p.radio||"")})</option>`).join("");
+    if(cur&&(r.programs||[]).some(p=>p.id==cur))sel.value=cur;
+  }catch(e){console.error(e);}
+}
+async function openStartPoint(id,mode,date){
+  const m=prompt("نقطه شروع جدید (from_start | from_date | new_only):",mode);
+  if(m===null)return;
+  let sd=null;
+  if(m==="from_date"){sd=prompt("تاریخ شروع (YYYY-MM-DD):",date);if(!sd){flash("تاریخ خالی است",false);return;}}
+  const r=await api(`/api/discovery/programs/${id}/start-point`,{method:"POST",
+    headers:{"Content-Type":"application/json"},body:JSON.stringify({start_mode:m,start_date:sd})});
+  if(r.ok){flash("نقطه شروع ذخیره شد — در حال بازنویسی آرشیو ✓",true);discPollSeed(r.handle);}
+  else flash("خطا: "+(r.detail||r.error||""),false);
+}
+
+/* ===== 📈 Per-program report (STEP 13) ===== */
+function reportGo(id){
+  $("#report-program").value=id;
+  reportLoadProgram();
+  document.getElementById("report-card").scrollIntoView({behavior:"smooth"});
+}
+async function reportLoadProgram(){
+  const pid=$("#report-program").value;
+  if(!pid){$("#report-card").style.display="none";return;}
+  try{
+    const [r,t]=await Promise.all([
+      api(`/api/reports/programs/${pid}`),
+      api(`/api/reports/programs/${pid}/trend?days=30`)
+    ]);
+    if(!r.ok){$("#report-card").style.display="none";return;}
+    $("#report-card").style.display="block";
+    $("#report-title").textContent=`${r.name}${r.radio?" — "+r.radio:""}`;
+    const w=r.windows||{},tt=r.totals||{};
+    const nd=v=>(v===null||v===undefined)?"بدون داده":v;
+    $("#report-windows").innerHTML=
+      tile(nd(w.today),"امروز")+tile(nd(w.yesterday),"دیروز")+
+      tile(nd(w.last_7d),"۷ روز گذشته")+tile(nd(w.last_week),"هفتهٔ قبل")+
+      tile(nd(w.this_week_partial),"این هفته تا الان")+tile(nd(w.this_month),"ماه جاری")+
+      tile(nd(w.last_month),"ماه قبل")+tile(nd(w.total_subtitled),"مجموع زیرنویس‌شده");
+    $("#report-totals").innerHTML=
+      tile(tt.total,"مجموع فایل‌ها")+tile(tt.ok,"موفق (زیرنویس‌شده)")+
+      tile(tt.fail,"ناموفق")+tile((tt.q_dl||0)+(tt.q_tr||0),(tt.q_trn||0),"در صف / در حال پردازش")+
+      tile(tt.remaining,"باقی‌مانده")+
+      tile(tt.audio_hours_processed===null?"بدون داده":tt.audio_hours_processed,"ساعت صوت پردازش‌شده");
+    drawReportChart(t.days||[]);
+    // sessions + asr join
+    const asrBySess={};(r.asr||[]).forEach(a=>{(asrBySess[a.session_id]=asrBySess[a.session_id]||[]).push(a);});
+    $("#report-sessions tbody").innerHTML=(r.recent||[]).map(s=>{
+      const asrs=(asrBySess[s.id]||[]).map(a=>`${a.provider}/${a.model_name}${a.pipeline_version?"@"+a.pipeline_version:""}`).join(", ");
+      return `<tr><td class="mono">${s.id}</td><td class="mono" style="font-size:11px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(s.filename||"")}">${esc(s.filename||"—")}</td>
+        <td>${_pillFor(s.status)}</td><td class="mono" style="font-size:11px">${esc(s.srt_filename||"—")}</td>
+        <td class="small mono" style="font-size:11px">${esc(asrs||"—")}</td>
+        <td class="small mono" style="font-size:11px">${esc((s.updated_at||"").slice(0,16))}</td>
+        <td class="small mono" style="font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(s.last_error||"")}">${esc(s.last_error||"")||"—"}</td></tr>`;
+    }).join("")||"<tr><td colspan='7' class='small'>هنوز داده‌ای ثبت نشده (بدون داده)</td></tr>";
+    const st=r.settings||{};
+    $("#report-paths").textContent=
+      `مسیر خروجی (Storage/Repository): ${r.outputs_dir||"—"}\n`+
+      `زیرنویس اصلی: <downloads>/<filename>.srt و .txt\n`+
+      `خروجی‌های تصحیح‌شده: <downloads>/cleaned/<filename>.correct.srt / .full.txt / .summary.txt\n`+
+      (st.start_mode?`نقطهٔ شروع: ${st.start_mode}${st.start_date?" از "+st.start_date:""}${st.seeded?" (آماده‌سازی شده ✓)":" (در حال آماده‌سازی…)"}`:"");
+  }catch(e){console.error(e);}
+}
+function drawReportChart(days){
+  const el=$("#report-chart");const W=600,H=170,P=22;
+  if(!days.length){el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:100%"><text x="20" y="80" fill="#8b98ab">بدون داده</text></svg>`;return;}
+  const max=Math.max(1,...days.map(d=>Math.max(d.subtitled,d.discovered)));
+  const bw=(W-2*P)/days.length;let out="";
+  days.forEach((d,i)=>{
+    const x=P+i*bw;
+    const h1=(d.discovered||0)/max*(H-2*P),h2=(d.subtitled||0)/max*(H-2*P);
+    out+=`<rect x="${x+1}" y="${H-P-h1/2}" width="${bw/2-1}" height="${h1/2}" fill="#4f9cf7"><title>${d.d}: ${d.discovered||0} کشف</title></rect>`;
+    out+=`<rect x="${x+bw/2}" y="${H-P-h2/2}" width="${bw/2-1}" height="${h2/2}" fill="#3fb96f"><title>${d.d}: ${d.subtitled||0} زیرنویس</title></rect>`;
+  });
+  out+=`<line x1="${P}" y1="${H-P}" x2="${W-P}" y2="${H-P}" stroke="#2a3342"/>`;
+  el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:100%">${out}</svg>`;
+}
+async function reportLoadChannel(){
+  const ch=$("#disc-channel").value||prompt("شناسه شبکه (ch) برای گزارش سطح شبکه:",14);
+  if(!ch)return;
+  try{
+    const r=await api(`/api/reports/channels/${ch}`);
+    if(!r.ok)return;
+    const chName=(_discChans.find(c=>c.ch==ch)||{}).name||("شبکه "+ch);
+    const w=r.windows||{},tt=r.totals||{};
+    const nd=v=>(v===null||v===undefined)?"بدون داده":v;
+    $("#report-card").style.display="block";
+    $("#report-title").textContent=`گزارش شبکه: ${chName} (${(r.programs||[]).length} برنامه فعال)`;
+    $("#report-windows").innerHTML=
+      tile(nd(w.today),"امروز")+tile(nd(w.yesterday),"دیروز")+
+      tile(nd(w.last_7d),"۷ روز گذشته")+tile(nd(w.last_week),"هفتهٔ قبل")+
+      tile(nd(w.this_week_partial),"این هفته تا الان")+tile(nd(w.this_month),"ماه جاری")+
+      tile(nd(w.last_month),"ماه قبل")+tile(nd(w.total_subtitled),"مجموع زیرنویس‌شده");
+    $("#report-totals").innerHTML=
+      tile(tt.total,"مجموع فایل‌ها")+tile(tt.ok,"موفق")+
+      tile(tt.fail,"ناموفق")+tile((tt.q_dl||0)+(tt.q_tr||0),"در صف")+
+      tile(tt.remaining,"باقی‌مانده")+tile("—","ساعت صوت");
+    $("#report-chart").innerHTML="";
+    $("#report-sessions tbody").innerHTML="<tr><td colspan='7' class='small'>برای جزئیات هر فایل، برنامهٔ مربوطه را از فهرست بالا انتخاب کنید</td></tr>";
+    $("#report-paths").textContent="برنامه‌های این شبکه: "+(r.programs||[]).map(p=>p.name).join("، ");
+  }catch(e){console.error(e);}
+}
+function reportFillSelects(){loadActivePrograms();}
+
 async function init(){
   // Lock the window/سانس section while the user is editing it so the 30s
   // auto-refresh doesn't clobber unsaved edits (shift fields, tz, the enable
@@ -1098,7 +1414,10 @@ async function init(){
   }
   await Promise.all([refresh(),loadSettings(),loadLlm(),loadLlmPrompts(),loadDataset()]);
   loadLlmJobDefaults();
+  // STEP 13: discovery + active programs + report
+  discLoadChannels(); loadActivePrograms();
   setInterval(refresh,30000);
+  setInterval(loadActivePrograms,120000);
 }
 init();
 </script>

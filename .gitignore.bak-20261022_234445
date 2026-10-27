@@ -1,0 +1,19 @@
+downloads/*.mp4
+downloads/*.mp3
+/.env
+downloads/*.wav
+scripts/venv/*
+venv/*
+dashboard/venv/*
+dashboard/__pycache__/
+dashboard/dashboard.env
+dashboard/dashboard_state.json
+dashboard/dashboard_state.json.tmp
+dashboard/logs/
+scripts/logs/
+__pycache__/
+*.pyc
+
+# STEP 13 recovery: never auto-commit generated ASR pilot data (audio/logs).
+# Top-level downloads/*.mp3 etc. already ignored; subdirs were not. Reversible: restore .gitignore.bak-*
+downloads/asr/

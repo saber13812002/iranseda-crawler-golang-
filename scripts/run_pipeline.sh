@@ -20,6 +20,7 @@ export GOBIN="$HOME/gopath/bin"
 LOG_DIR="$R/scripts/logs"
 LOG="$LOG_DIR/pipeline.log"
 SCAN_OUT="$LOG_DIR/scan_last.out"
+DISC_OUT="$LOG_DIR/discover_last.out"
 DL_OUT="$LOG_DIR/download_last.out"
 LOCK="$R/.pipeline.lock"
 mkdir -p "$LOG_DIR"
@@ -33,6 +34,19 @@ run(){
     echo "scan: OK ($(grep -c 'Inserted:' "$SCAN_OUT") new sessions)"
   else
     echo "scan: FAILED -> tail of $SCAN_OUT:"; tail -n 8 "$SCAN_OUT"; return 1
+  fi
+
+  # 1.5) Periodic discovery (panel-added programs). For every active program
+  #      in radio_programs, walk the most-recent archive pages and insert any
+  #      episode not yet in radio_program_sessions (pending_download). Bounded
+  #      by NEW_SCAN_PAGES (default 14 pages = ~280 episodes). This is what
+  #      keeps one-click-added programs current on their own — scan.go only
+  #      advances the id cursor of programs it itself registered. Never fatal:
+  #      a hiccup here must not block downloads.
+  if python3 "$R/scripts/discover_new.py" > "$DISC_OUT" 2>&1; then
+    echo "discover: $(tail -n 1 "$DISC_OUT")"
+  else
+    echo "discover: FAILED -> tail of $DISC_OUT:"; tail -n 8 "$DISC_OUT"
   fi
 
   # 2) Download the newest pending media (bounded by .env MAX_DOWNLOADS).
