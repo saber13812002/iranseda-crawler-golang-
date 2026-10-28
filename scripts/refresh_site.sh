@@ -11,7 +11,7 @@ LOG_DIR="$R/scripts/logs"
 LOG="$LOG_DIR/refresh_site.log"
 GEN_OUT="$LOG_DIR/generate_last.out"
 LOCK="$R/.refresh_site.lock"
-BRANCH=download-db
+BRANCH=$(git -C "$R" rev-parse --abbrev-ref HEAD)
 mkdir -p "$LOG_DIR"
 
 run(){
