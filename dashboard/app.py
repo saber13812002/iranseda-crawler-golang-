@@ -46,6 +46,7 @@ Bearer <DASH_AUTH_TOKEN>` (header or ?token=*** When DASH_AUTH_TOKEN is
 unset the dashboard runs open (only for LAN testing).
 """
 import os
+import threading
 import time
 
 from fastapi import FastAPI, HTTPException, Request
@@ -66,6 +67,18 @@ OPEN_PATHS = {"/", "/health", "/metrics"}
 # tiny cache so the auto-refresh (every 30s) doesn't hammer the DB
 _cache = {"stats": None, "health": None, "ts": 0.0}
 CACHE_TTL = 15  # seconds
+
+# last-HTTP-Modified of the public GitHub Pages site (probed async in a
+# background thread, ~90s period, 15s timeout) — used by the
+# iranseda_public_site_last_modified_timestamp gauge so we can alert when
+# the public site is behind the last repo push.
+_public_site_probe = {
+    "ts": 0,
+    "url": "https://saber13812002.github.io/iranseda-crawler-golang-/index.html",
+    "lock": threading.Lock(),
+    "last_started": 0.0,
+    "in_flight": False,
+}
 
 
 def _label_escape(s: str) -> str:
@@ -103,6 +116,31 @@ def _cached_health():
         _cache["health"] = logic.system_health()
         _cache["ts"] = now
     return _cache["health"]
+
+
+def _public_site_probe_worker():
+    """Background probe of the public GitHub Pages site: fetch the page and
+    parse the Last-Modified header into _public_site_probe['ts']. Bounded:
+    15s timeout, one in-flight probe at a time, 0 on any error."""
+    import email.utils
+    import ssl
+    import urllib.request
+    try:
+        req = urllib.request.Request(_public_site_probe["url"], method="GET")
+        req.add_header("User-Agent", "iranseda-dashboard-probe/1.0")
+        ctx = ssl._create_unverified_context()  # probe only; tolerate any cert
+        resp = urllib.request.urlopen(req, timeout=15, context=ctx)
+        lm = resp.headers.get("Last-Modified")
+        resp.read(1)  # don't need the body
+        if lm:
+            ts = email.utils.parsedate_to_datetime(lm).timestamp()
+            with _public_site_probe["lock"]:
+                _public_site_probe["ts"] = int(ts)
+    except Exception:  # noqa: BLE001 — probe failures are silent by design
+        pass
+    finally:
+        with _public_site_probe["lock"]:
+            _public_site_probe["in_flight"] = False
 
 
 # ---------------------------------------------------------------------------
@@ -234,6 +272,51 @@ def metrics():
             g("iranseda_disk_used_ratio", pct, "Disk usage ratio (0-1) for /home")
         except (ValueError, TypeError):
             pass
+    # ------------------------------------------------------------------
+    # 30-minute pipeline runs (pipeline_runs table, written by
+    # scripts/record_run.py at the end of each run_pipeline.sh /
+    # refresh_site.sh). DB-backed, so cumulative counters survive
+    # exporter restarts. Grafana uses increase(...[30m]) per run slot.
+    # ------------------------------------------------------------------
+    try:
+        rms = logic.pipeline_run_stats()
+        if rms:
+            g("iranseda_pipeline_runs_total", rms.get("runs_total", 0), "Total recorded 30-min pipeline runs (cumulative)", labels='{status="any"}')
+            g("iranseda_pipeline_runs_total", rms.get("runs_ok", 0), "Total recorded 30-min pipeline runs (cumulative)", labels='{status="ok"}')
+            g("iranseda_pipeline_runs_total", rms.get("runs_failed", 0), "Total recorded 30-min pipeline runs (cumulative)", labels='{status="failed"}')
+            g("iranseda_pipeline_runs_no_new_work_total", rms.get("runs_no_new_work", 0), "OK runs with 0 new sessions (expected — NOT an error)")
+            g("iranseda_pipeline_runs_ok_no_srt_total", rms.get("runs_ok_no_srt", 0), "OK runs that produced no SRT")
+            g("iranseda_pipeline_runs_last_24h", rms.get("runs_last_24h", 0), "Pipeline runs started in the last 24h (gauge)")
+            g("iranseda_pipeline_new_sessions_total", rms.get("new_sessions_total", 0), "Cumulative new sessions discovered across all runs")
+            g("iranseda_pipeline_downloads_total", rms.get("downloads_ok", 0), "Cumulative download results by outcome", labels='{result="ok"}')
+            g("iranseda_pipeline_downloads_total", rms.get("downloads_fail", 0), "Cumulative download results by outcome", labels='{result="fail"}')
+            g("iranseda_pipeline_publishes_total", rms.get("publishes_total", 0), "Cumulative site publishes (push ok)")
+            g("iranseda_srt_produced_total", rms.get("srt_produced_total", 0), "Cumulative SRTs produced per run")
+            g("iranseda_srt_produced_today", rms.get("srt_today", 0), "SRTs produced today (Asia/Tehran, by production date)")
+            g("iranseda_srt_produced_yesterday", rms.get("srt_yesterday", 0), "SRTs produced yesterday (Asia/Tehran)")
+            g("iranseda_srt_produced_last_7d", rms.get("srt_last_7d", 0), "SRTs produced in the last 7 days (Asia/Tehran)")
+            g("iranseda_last_srt_timestamp", rms.get("last_srt_ts", 0), "Unix ts of the newest subtitled session (production time)")
+            g("iranseda_last_site_publish_timestamp", rms.get("last_publish_ts", 0), "Unix ts of the last successful site push")
+            g("iranseda_last_publish_paths", rms.get("last_publish_paths", 0), "Changed paths in the last successful site push")
+            g("iranseda_last_pipeline_run_timestamp", rms.get("last_pipeline_run_ts", 0), "Unix ts of the last recorded pipeline run start")
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        with _public_site_probe["lock"]:
+            pub_ts = _public_site_probe["ts"]
+            can_probe = (not _public_site_probe["in_flight"]) and \
+                (time.time() - _public_site_probe["last_started"] > 90)
+            if can_probe:
+                _public_site_probe["in_flight"] = True
+                _public_site_probe["last_started"] = time.time()
+        if pub_ts:
+            g("iranseda_public_site_last_modified_timestamp", pub_ts, "Unix ts from the public GitHub Pages Last-Modified header")
+        if can_probe:
+            threading.Thread(
+                target=_public_site_probe_worker, daemon=True, name="public-site-probe"
+            ).start()
+    except Exception:  # noqa: BLE001
+        pass
     g("iranseda_dashboard_up", 1, "Dashboard up")
     return "\n".join(lines) + "\n"
 

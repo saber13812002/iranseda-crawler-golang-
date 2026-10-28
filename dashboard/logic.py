@@ -204,6 +204,8 @@ _llm_metrics_cache = {"data": None, "ts": 0.0}
 LLM_METRICS_TTL = 30  # seconds — file counts change slowly; don't re-glob per scrape
 _site_metrics_cache = {"data": None, "ts": 0.0}
 _program_metrics_cache = {"data": None, "ts": 0.0}
+_pipeline_run_cache = {"data": None, "ts": 0.0}
+_PIPELINE_RUN_TTL = 20  # seconds — /metrics is scraped every 15s; one query burst per 20s
 
 
 def _count_by_suffix(directory, suffix):
@@ -291,6 +293,91 @@ def site_period_stats():
     except Exception:  # noqa: BLE001
         out = {}
     _site_metrics_cache.update(data=out, ts=now)
+    return out
+
+
+def pipeline_run_stats():
+    """Per-run pipeline records from the pipeline_runs table (written by
+    scripts/record_run.py at the end of every 30-min run_pipeline.sh /
+    refresh_site.sh). Returns a dict of counts/timestamps for /metrics:
+    cumulative run counters, no_new_work, download results, last SRT /
+    last publish / last run timestamps, and SRT production by date
+    (Asia/Tehran) — the "5-10 SRT/day" target measured on production date.
+    Cached _PIPELINE_RUN_TTL; never raises (exporter must stay up)."""
+    now = time.time()
+    if _pipeline_run_cache["data"] is not None and now - _pipeline_run_cache["ts"] < _PIPELINE_RUN_TTL:
+        return _pipeline_run_cache["data"]
+    out = {}
+    try:
+        conn = _disc_db()
+        off = _tz_offset_str(TEHRAN)
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT status, no_new_work, "
+                "COUNT(*) AS c, "
+                "COALESCE(SUM(new_sessions),0) AS ns, "
+                "COALESCE(SUM(download_success),0) AS dlo, "
+                "COALESCE(SUM(download_failure),0) AS dlf, "
+                "COALESCE(SUM(published_output_count),0) AS pub, "
+                "COALESCE(SUM(new_srt_count),0) AS srt "
+                "FROM pipeline_runs GROUP BY status, no_new_work"
+            )
+            rows = cur.fetchall()
+            out["runs_total"] = sum(r[2] for r in rows)
+            out["runs_ok"] = sum(r[2] for r in rows if r[0] == "ok")
+            out["runs_failed"] = sum(r[2] for r in rows if r[0] == "failed")
+            out["runs_no_new_work"] = sum(r[2] for r in rows if r[1] == 1)
+            out["runs_ok_no_srt"] = sum(r[2] for r in rows if r[0] == "ok" and r[7] == 0)
+            out["new_sessions_total"] = sum(r[3] for r in rows)
+            out["downloads_ok"] = sum(r[4] for r in rows)
+            out["downloads_fail"] = sum(r[5] for r in rows)
+            out["publishes_total"] = sum(r[6] for r in rows)
+            out["srt_produced_total"] = sum(r[7] for r in rows)
+            cur.execute(
+                "SELECT UNIX_TIMESTAMP(MAX(started_at)) FROM pipeline_runs WHERE kind='pipeline'"
+            )
+            r = cur.fetchone()
+            out["last_pipeline_run_ts"] = int(r[0]) if r and r[0] else 0
+            cur.execute(
+                "SELECT UNIX_TIMESTAMP(MAX(updated_at)) FROM radio_program_sessions "
+                "WHERE is_subtitled=1 AND status='subtitled'"
+            )
+            r = cur.fetchone()
+            out["last_srt_ts"] = int(r[0]) if r and r[0] else 0
+            cur.execute(
+                "SELECT UNIX_TIMESTAMP(MAX(started_at)), MAX(published_output_count) "
+                "FROM pipeline_runs WHERE kind='site' AND push_ok=1"
+            )
+            r = cur.fetchone()
+            out["last_publish_ts"] = int(r[0]) if r and r[0] else 0
+            out["last_publish_paths"] = int(r[1]) if r and r[1] else 0
+            cur.execute(
+                "SELECT COUNT(*) FROM pipeline_runs "
+                "WHERE kind='pipeline' AND started_at >= NOW() - INTERVAL 24 HOUR"
+            )
+            r = cur.fetchone()
+            out["runs_last_24h"] = int(r[0]) if r else 0
+            cur.execute(
+                "SELECT DATE(CONVERT_TZ(updated_at, '+00:00', %s)) AS d, COUNT(*) AS c "
+                "FROM radio_program_sessions "
+                "WHERE is_subtitled=1 AND status='subtitled' "
+                "AND updated_at >= CONVERT_TZ(DATE_SUB(NOW(), INTERVAL 3 DAY), %s, '+00:00') "
+                "GROUP BY d ORDER BY d DESC",
+                (off, off),
+            )
+            by_day = {r[0]: int(r[1]) for r in cur.fetchall() if r[0]}
+            from datetime import datetime, timedelta, timezone
+            tz = timezone(timedelta(hours=3, minutes=30))
+            today = datetime.now(tz).date()
+            out["srt_today"] = by_day.get(str(today), 0)
+            out["srt_yesterday"] = by_day.get(str(today - timedelta(days=1)), 0)
+            out["srt_last_7d"] = sum(
+                by_day.get(str(today - timedelta(days=i)), 0) for i in range(7)
+            )
+            out["srt_last_28d_days"] = len(by_day)
+    except Exception:  # noqa: BLE001 — exporter must never die on a DB blip
+        out = {}
+    _pipeline_run_cache.update(data=out, ts=time.time())
     return out
 
 
