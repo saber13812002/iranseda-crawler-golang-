@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"database/sql"
 	"fmt"
 	"io"
@@ -19,9 +20,23 @@ import (
 // کلاینت‌های HTTP با timeout: بدون timeout، یک اتصال stalled می‌تواند
 // کل اجرای cron را برای همیشه قفل کند (و اجرای بعدی به‌خاطر lock رد شود).
 var (
-	pageClient = &http.Client{Timeout: 60 * time.Second}  // صفحه آرشیو (~50KB)
-	fileClient = &http.Client{Timeout: 10 * time.Minute}  // فایل صوتی/ویدیو (~15MB)
+	pageClient *http.Client
+	fileClient *http.Client
 )
+
+func initClients() {
+	// IRANSEDA_NO_SSL_VERIFY=1 skips TLS cert verification (site cert expired)
+	if os.Getenv("IRANSEDA_NO_SSL_VERIFY") == "1" {
+		tr := &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		}
+		pageClient = &http.Client{Timeout: 60 * time.Second, Transport: tr}
+		fileClient = &http.Client{Timeout: 10 * time.Minute, Transport: tr}
+	} else {
+		pageClient = &http.Client{Timeout: 60 * time.Second}
+		fileClient = &http.Client{Timeout: 10 * time.Minute}
+	}
+}
 
 func main() {
 	// بارگذاری متغیرهای محیطی از .env
@@ -30,6 +45,7 @@ func main() {
 		fmt.Println("Error loading .env file:", err)
 		return
 	}
+	initClients()
 
 	// گرفتن کانکشن‌استرینگ از .env
 	connStr := os.Getenv("MYSQL_CONN")

@@ -13,3 +13,7 @@ dashboard/logs/
 scripts/logs/
 __pycache__/
 *.pyc
+
+# STEP 13 recovery: never auto-commit generated ASR pilot data (audio/logs).
+# Top-level downloads/*.mp3 etc. already ignored; subdirs were not. Reversible: restore .gitignore.bak-*
+downloads/asr/
