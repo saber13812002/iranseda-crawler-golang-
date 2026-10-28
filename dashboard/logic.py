@@ -313,27 +313,38 @@ def pipeline_run_stats():
         conn = _disc_db()
         off = _tz_offset_str(TEHRAN)
         with conn.cursor() as cur:
+            # Run counters only count kind='pipeline' rows (the 30-min
+            # scan+discover+download runs). kind='site' rows are summed
+            # separately below — that is where publishes + SRT files land.
             cur.execute(
                 "SELECT status AS st, no_new_work AS nnw, COUNT(*) AS c, "
                 "COALESCE(SUM(new_sessions),0) AS ns, "
                 "COALESCE(SUM(download_success),0) AS dlo, "
-                "COALESCE(SUM(download_failure),0) AS dlf, "
-                "COALESCE(SUM(published_output_count),0) AS pub, "
-                "COALESCE(SUM(new_srt_count),0) AS srt "
-                "FROM pipeline_runs GROUP BY status, no_new_work"
+                "COALESCE(SUM(download_failure),0) AS dlf "
+                "FROM pipeline_runs WHERE kind='pipeline' "
+                "GROUP BY status, no_new_work"
             )
             rows = cur.fetchall()
             out["runs_total"] = sum(int(r["c"]) for r in rows)
             out["runs_ok"] = sum(int(r["c"]) for r in rows if r["st"] == "ok")
             out["runs_failed"] = sum(int(r["c"]) for r in rows if r["st"] == "failed")
             out["runs_no_new_work"] = sum(int(r["c"]) for r in rows if int(r["nnw"]) == 1)
-            out["runs_ok_no_srt"] = sum(
-                int(r["c"]) for r in rows if r["st"] == "ok" and int(r["srt"]) == 0)
             out["new_sessions_total"] = sum(int(r["ns"]) for r in rows)
             out["downloads_ok"] = sum(int(r["dlo"]) for r in rows)
             out["downloads_fail"] = sum(int(r["dlf"]) for r in rows)
-            out["publishes_total"] = sum(int(r["pub"]) for r in rows)
-            out["srt_produced_total"] = sum(int(r["srt"]) for r in rows)
+            # kind='site' runs: cumulative published paths, cumulative SRT
+            # files committed, and OK site runs that published zero new SRTs.
+            cur.execute(
+                "SELECT COUNT(*) AS c, "
+                "COALESCE(SUM(published_output_count),0) AS pub, "
+                "COALESCE(SUM(new_srt_count),0) AS srt, "
+                "COALESCE(SUM(status='ok' AND new_srt_count=0),0) AS ok_no_srt "
+                "FROM pipeline_runs WHERE kind='site'"
+            )
+            r = cur.fetchone()
+            out["publishes_total"] = int(r["pub"]) if r and r["pub"] is not None else 0
+            out["srt_produced_total"] = int(r["srt"]) if r and r["srt"] is not None else 0
+            out["runs_ok_no_srt"] = int(r["ok_no_srt"]) if r and r["ok_no_srt"] is not None else 0
             cur.execute(
                 "SELECT UNIX_TIMESTAMP(MAX(started_at)) AS v "
                 "FROM pipeline_runs WHERE kind='pipeline'"
