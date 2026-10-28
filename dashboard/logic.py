@@ -309,12 +309,12 @@ def pipeline_run_stats():
         return _pipeline_run_cache["data"]
     out = {}
     try:
+        # NOTE: _disc_db() uses pymysql DictCursor — rows are dicts, index by name.
         conn = _disc_db()
         off = _tz_offset_str(TEHRAN)
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT status, no_new_work, "
-                "COUNT(*) AS c, "
+                "SELECT status AS st, no_new_work AS nnw, COUNT(*) AS c, "
                 "COALESCE(SUM(new_sessions),0) AS ns, "
                 "COALESCE(SUM(download_success),0) AS dlo, "
                 "COALESCE(SUM(download_failure),0) AS dlf, "
@@ -323,40 +323,43 @@ def pipeline_run_stats():
                 "FROM pipeline_runs GROUP BY status, no_new_work"
             )
             rows = cur.fetchall()
-            out["runs_total"] = sum(r[2] for r in rows)
-            out["runs_ok"] = sum(r[2] for r in rows if r[0] == "ok")
-            out["runs_failed"] = sum(r[2] for r in rows if r[0] == "failed")
-            out["runs_no_new_work"] = sum(r[2] for r in rows if r[1] == 1)
-            out["runs_ok_no_srt"] = sum(r[2] for r in rows if r[0] == "ok" and r[7] == 0)
-            out["new_sessions_total"] = sum(r[3] for r in rows)
-            out["downloads_ok"] = sum(r[4] for r in rows)
-            out["downloads_fail"] = sum(r[5] for r in rows)
-            out["publishes_total"] = sum(r[6] for r in rows)
-            out["srt_produced_total"] = sum(r[7] for r in rows)
+            out["runs_total"] = sum(int(r["c"]) for r in rows)
+            out["runs_ok"] = sum(int(r["c"]) for r in rows if r["st"] == "ok")
+            out["runs_failed"] = sum(int(r["c"]) for r in rows if r["st"] == "failed")
+            out["runs_no_new_work"] = sum(int(r["c"]) for r in rows if int(r["nnw"]) == 1)
+            out["runs_ok_no_srt"] = sum(
+                int(r["c"]) for r in rows if r["st"] == "ok" and int(r["srt"]) == 0)
+            out["new_sessions_total"] = sum(int(r["ns"]) for r in rows)
+            out["downloads_ok"] = sum(int(r["dlo"]) for r in rows)
+            out["downloads_fail"] = sum(int(r["dlf"]) for r in rows)
+            out["publishes_total"] = sum(int(r["pub"]) for r in rows)
+            out["srt_produced_total"] = sum(int(r["srt"]) for r in rows)
             cur.execute(
-                "SELECT UNIX_TIMESTAMP(MAX(started_at)) FROM pipeline_runs WHERE kind='pipeline'"
+                "SELECT UNIX_TIMESTAMP(MAX(started_at)) AS v "
+                "FROM pipeline_runs WHERE kind='pipeline'"
             )
             r = cur.fetchone()
-            out["last_pipeline_run_ts"] = int(r[0]) if r and r[0] else 0
+            out["last_pipeline_run_ts"] = int(r["v"]) if r and r["v"] else 0
             cur.execute(
-                "SELECT UNIX_TIMESTAMP(MAX(updated_at)) FROM radio_program_sessions "
+                "SELECT UNIX_TIMESTAMP(MAX(updated_at)) AS v FROM radio_program_sessions "
                 "WHERE is_subtitled=1 AND status='subtitled'"
             )
             r = cur.fetchone()
-            out["last_srt_ts"] = int(r[0]) if r and r[0] else 0
+            out["last_srt_ts"] = int(r["v"]) if r and r["v"] else 0
             cur.execute(
-                "SELECT UNIX_TIMESTAMP(MAX(started_at)), MAX(published_output_count) "
+                "SELECT UNIX_TIMESTAMP(MAX(started_at)) AS v, "
+                "MAX(published_output_count) AS n "
                 "FROM pipeline_runs WHERE kind='site' AND push_ok=1"
             )
             r = cur.fetchone()
-            out["last_publish_ts"] = int(r[0]) if r and r[0] else 0
-            out["last_publish_paths"] = int(r[1]) if r and r[1] else 0
+            out["last_publish_ts"] = int(r["v"]) if r and r["v"] else 0
+            out["last_publish_paths"] = int(r["n"]) if r and r["n"] else 0
             cur.execute(
-                "SELECT COUNT(*) FROM pipeline_runs "
+                "SELECT COUNT(*) AS v FROM pipeline_runs "
                 "WHERE kind='pipeline' AND started_at >= NOW() - INTERVAL 24 HOUR"
             )
             r = cur.fetchone()
-            out["runs_last_24h"] = int(r[0]) if r else 0
+            out["runs_last_24h"] = int(r["v"]) if r and r["v"] is not None else 0
             cur.execute(
                 "SELECT DATE(CONVERT_TZ(updated_at, '+00:00', %s)) AS d, COUNT(*) AS c "
                 "FROM radio_program_sessions "
@@ -365,7 +368,7 @@ def pipeline_run_stats():
                 "GROUP BY d ORDER BY d DESC",
                 (off, off),
             )
-            by_day = {r[0]: int(r[1]) for r in cur.fetchall() if r[0]}
+            by_day = {str(r["d"]): int(r["c"]) for r in cur.fetchall() if r["d"]}
             from datetime import datetime, timedelta, timezone
             tz = timezone(timedelta(hours=3, minutes=30))
             today = datetime.now(tz).date()
