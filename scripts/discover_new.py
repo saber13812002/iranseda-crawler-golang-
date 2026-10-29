@@ -13,8 +13,18 @@ pipeline. Bounded by NEW_SCAN_PAGES (default 14 = ~280 most-recent episodes per
 program, plenty for a daily cadence; programs that missed more than that fall
 back to the monthly backfill).
 
-Run (server 53):  python3 scripts/discover_new.py
-Env: NEW_SCAN_PAGES (default 14). Reads DB settings from ./.env.
+Dedup uses the canonical episode key (iranseda_site.canon_episode_link), so an
+episode is recognized as already known even if the stored link and the freshly
+parsed link differ in host/scheme, "../" prefix, VALID flag, trailing slash or
+parameter order. Stored links are never rewritten — only comparison is
+canonical.
+
+Run (server 53):  python3 scripts/discover_new.py [--dry-run]
+Env: NEW_SCAN_PAGES (default 14), DRY_RUN=1 (same as --dry-run). Reads DB
+settings from ./.env.
+
+--dry-run: read-only. Walks the archive, reports what WOULD be inserted,
+but performs no DB writes at all (no inserts, no program_settings updates).
 """
 import os
 import re
@@ -79,6 +89,9 @@ def existing_links(conn, pid):
 
 
 def main():
+    dry_run = ("--dry-run" in sys.argv or
+               os.environ.get("DRY_RUN") == "1" or
+               load_env().get("DRY_RUN") == "1")
     try:
         pages = int(os.environ.get("NEW_SCAN_PAGES") or
                     load_env().get("NEW_SCAN_PAGES") or 14)
@@ -88,6 +101,8 @@ def main():
     conn = db_conn()
     total_new = 0
     t0 = time.time()
+    if dry_run:
+        print("discover: DRY RUN — read-only, no DB writes")
     try:
         ensure_schema(conn)
         with conn.cursor() as cur:
@@ -107,7 +122,12 @@ def main():
         m, ch = int(mm.group(1)), int(mc.group(1))
         pid = p["id"]
         try:
-            known = existing_links(conn, pid)
+            # Canonicalized known keys: an episode already in the DB is
+            # recognized even if the stored link differs in format from the
+            # freshly parsed one (absolute vs relative, VALID, param order...).
+            known = {site.canon_episode_link(l)
+                     for l in existing_links(conn, pid)}
+            known.discard(None)
 
             inserted = 0
             for pg in range(1, pages + 1):
@@ -118,29 +138,32 @@ def main():
                 items = site.parse_episode_cards(html)
                 if not items:
                     break
-                new_items = [it for it in items if it["url"] not in known]
+                new_items = [it for it in items
+                             if it["canon"] and it["canon"] not in known]
                 if new_items:
-                    with conn.cursor() as cur:
-                        cur.executemany(
-                            "INSERT IGNORE INTO radio_program_sessions "
-                            "(program_id, link, status) "
-                            "VALUES (%s,%s,'pending_download')",
-                            [(pid, it["url"]) for it in new_items])
-                        for it in new_items:
-                            known.add(it["url"])
-                        inserted += len(new_items)
-                    conn.commit()
+                    if not dry_run:
+                        with conn.cursor() as cur:
+                            cur.executemany(
+                                "INSERT IGNORE INTO radio_program_sessions "
+                                "(program_id, link, status) "
+                                "VALUES (%s,%s,'pending_download')",
+                                [(pid, it["url"]) for it in new_items])
+                        conn.commit()
+                    for it in new_items:
+                        known.add(it["canon"])
+                    inserted += len(new_items)
                 # stop when we hit a page with nothing new (we've caught up)
                 if not new_items:
                     break
             total_new += inserted
-            with conn.cursor() as cur:
-                cur.execute(
-                    "INSERT INTO program_settings (program_id, start_mode) "
-                    "VALUES (%s,'new_only') ON DUPLICATE KEY UPDATE "
-                    "last_discovery_at=NOW(), discovery_note=%s",
-                    (pid, "periodic: %d new episodes" % inserted))
-            conn.commit()
+            if not dry_run:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "INSERT INTO program_settings (program_id, start_mode) "
+                        "VALUES (%s,'new_only') ON DUPLICATE KEY UPDATE "
+                        "last_discovery_at=NOW(), discovery_note=%s",
+                        (pid, "periodic: %d new episodes" % inserted))
+                conn.commit()
             print(f"discover: {p['url'][:60]} -> {inserted} new "
                   f"(known {len(known)})")
         except Exception as e:  # noqa: BLE001
@@ -150,8 +173,9 @@ def main():
             except Exception:  # noqa: BLE001
                 pass
 
+    mode = " (dry-run: nothing written)" if dry_run else ""
     print(f"discover: DONE in {time.time()-t0:.0f}s — {total_new} new episodes "
-          f"across {len(progs)} programs (pages/program={pages})")
+          f"across {len(progs)} programs (pages/program={pages}){mode}")
     conn.close()
     return 0
 

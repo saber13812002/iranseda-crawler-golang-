@@ -173,6 +173,64 @@ def _page_url(m, ch, page=1):
     return url
 
 
+def canon_episode_link(link):
+    """Canonical identity key for an archive-episode URL.
+
+    One consistent canonicalization used by EVERY dedup path (periodic
+    discovery, one-click seeding, scan.go session check) so that the SAME
+    episode is recognized regardless of how the URL was written:
+
+      relative vs absolute, with or without scheme/host, "../" prefix,
+      trailing slash, presence of the VALID=TRUE flag, and query-parameter
+      order are all equivalent.
+
+    The key is the site's own episode identity: `epgarchivePart/?ch=<ch>&e=<e>`.
+    Only `ch` and `e` are preserved — they uniquely identify a broadcast
+    episode — so distinct episodes can never collapse into one key.
+
+    Returns a string key for archive links, or None for anything that is
+    not an epgarchivePart episode link (e.g. Program pages), which callers
+    should treat as "not an episode" rather than compare.
+    """
+    if not link:
+        return None
+    s = link.strip()
+    # Drop scheme + host (absolute -> relative).
+    s = re.sub(r"^[a-zA-Z][a-zA-Z0-9+.-]*://[^/]+", "", s)
+    # Drop a leading path prefix such as "../" or "/".
+    s = s.lstrip("/")
+    if s.startswith("../"):
+        s = s[3:]
+    # A trailing slash (after the query or the path) carries no meaning.
+    s = s.rstrip("/")
+    # Keep only the path+query part from the epgarchivePart page onward.
+    i = s.find("epgarchivePart")
+    if i < 0:
+        return None
+    s = s[i:]
+    # Separate path from query.
+    path, _, query = s.partition("?")
+    # Normalize the path: strip trailing slash (epgarchivePart/ == epgarchivePart).
+    # (mirrors scan.go's canonEpisodeLink)
+    path = path.rstrip("/")
+    if path != "epgarchivePart":
+        return None
+    # Parse the query, keeping only the params that define the episode.
+    params = {}
+    for kv in query.split("&"):
+        if not kv:
+            continue
+        k, _, v = kv.partition("=")
+        k = k.strip().lower()
+        v = v.strip()
+        if k in ("ch", "e") and v:
+            params[k] = v
+    if "ch" not in params or "e" not in params:
+        return None
+    # Deterministic ordering (ch, then e) regardless of the source order.
+    return f"epgarchivePart?ch={params['ch']}&e={params['e']}"
+
+
 def parse_episode_cards(html):
     """Parse one Program page into 20 episode records, newest first.
     Card layout (live site):
@@ -207,13 +265,15 @@ def parse_episode_cards(html):
             date_jalali = f"{day.group(1)} {month}"
             if yr:
                 date_jalali += f" {yr.group(1)}"
+        url = f"../epgarchivePart/?VALID=TRUE&ch={ch}&e={e}"
         out.append({
             "e": int(e),
             "title": title,
             "date_jalali": date_jalali,
             "year": int(yr.group(1)) if yr else None,
             "time": yr.group(2) if yr else "",
-            "url": f"{BASE}/epgarchivePart/?VALID=TRUE&ch={ch}&e={e}",
+            "url": url,
+            "canon": canon_episode_link(url),
         })
     return out
 

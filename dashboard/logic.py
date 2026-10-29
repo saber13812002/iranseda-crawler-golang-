@@ -1875,11 +1875,25 @@ def _seed_program(program_id, start_mode, start_date):
 
     Bounded by .env SEED_MAX_PAGES (default 300 = 6000 episodes) so a huge
     archive can never stall the dashboard; the remainder stays for the
-    periodic discovery walks (and the monthly backfill)."""
+    periodic discovery walks (and the monthly backfill).
+
+    Per-episode dedup: every candidate is checked against the program's
+    existing sessions via the canonical episode key (canon_episode_link), so
+    re-seeding an already-queued episode never creates a duplicate row even
+    if the stored link's URL format differs (absolute vs relative, VALID
+    flag, param order, trailing slash).
+
+    Optional .env SEED_EPISODE_CAP hard-caps the total number of episodes
+    this seed inserts (used to run small controlled pilots). 0/unset = off."""
+    env = _read_env_file(ENV_PATH)
     try:
-        max_pages = int(_read_env_file(ENV_PATH).get("SEED_MAX_PAGES") or 300)
+        max_pages = int(env.get("SEED_MAX_PAGES") or 300)
     except (TypeError, ValueError):
         max_pages = 300
+    try:
+        episode_cap = int(env.get("SEED_EPISODE_CAP") or 0)
+    except (TypeError, ValueError):
+        episode_cap = 0
 
     conn = _disc_db()
     try:
@@ -1905,6 +1919,14 @@ def _seed_program(program_id, start_mode, start_date):
                 "FROM radio_program_sessions WHERE program_id=%s AND link LIKE '%%e=%%'",
                 (program_id,))
             new_max_e = int(cur.fetchone()["max_e"] or 0)
+            # Canonical keys of everything already queued for this program —
+            # per-episode dedup so re-seeding can never duplicate a row.
+            cur.execute(
+                "SELECT link FROM radio_program_sessions WHERE program_id=%s",
+                (program_id,))
+            canon = _site().canon_episode_link
+            known = {canon(r["link"]) for r in cur.fetchall()}
+            known.discard(None)
     finally:
         conn.close()
 
@@ -1929,6 +1951,15 @@ def _seed_program(program_id, start_mode, start_date):
                 if yr and yr < _jalali_year_of(start_date):
                     stop = True
                     break
+            if episode_cap and inserted + len(batch) >= episode_cap:
+                # cap reached: hard stop — the SEED_EPISODE_CAP is a strict
+                # per-run limit (used for controlled pilots); any remainder
+                # stays in the archive for a later explicit run
+                stop = True
+                break
+            if not it.get("canon") or it["canon"] in known:
+                # already queued (any URL format) — never insert twice
+                continue
             batch.append(it)
         if batch:
             c = _disc_db()
@@ -1939,6 +1970,8 @@ def _seed_program(program_id, start_mode, start_date):
                         "(program_id, link, status) VALUES (%s,%s,'pending_download')",
                         [(program_id, it["url"]) for it in batch])
                     inserted += len(batch)  # executemany rowcount is unreliable
+                    for it in batch:
+                        known.add(it["canon"])
                 c.commit()
             finally:
                 c.close()
