@@ -18,6 +18,34 @@ BRANCH=$(git -C "$R" rev-parse --abbrev-ref HEAD)
 REC_PY="$R/dashboard/venv/bin/python3"
 mkdir -p "$LOG_DIR"
 
+# Verify the live GitHub Pages site is serving what we just pushed.
+# GitHub Pages rebuilds can lag a few minutes, so a STALE verdict shortly
+# after a push is expected for ~5 min; PERSISTENT STALE means the Pages
+# deployment source (branch/folder) is not the branch this script pushes to.
+verify_pages(){
+  local url="https://saber13812002.github.io/iranseda-crawler-golang-/index.html"
+  local local_sha live_sha lm hdr tmp
+  local_sha=$(git hash-object docs/index.html 2>/dev/null || echo "?")
+  if ! command -v curl >/dev/null 2>&1; then
+    echo "pages-verify: SKIPPED (no curl)"
+    return 0
+  fi
+  tmp=$(mktemp)
+  hdr=$(mktemp)
+  if curl -fsSL --max-time 30 -D "$hdr" "$url" -o "$tmp" 2>/dev/null; then
+    live_sha=$(git hash-object "$tmp" 2>/dev/null || echo "?")
+    lm=$(grep -i '^last-modified:' "$hdr" | tr -d '\r' | awk '{print $2" "$3" "$4" "$5}')
+    if [ "$live_sha" = "$local_sha" ]; then
+      echo "pages-verify: OK live==pushed sha=${live_sha:0:8} last-modified=$lm"
+    else
+      echo "pages-verify: STALE live=${live_sha:0:8} pushed=${local_sha:0:8} last-modified=$lm -> Pages source likely != branch '$BRANCH'"
+    fi
+  else
+    echo "pages-verify: FETCH-FAILED url=$url"
+  fi
+  rm -f "$tmp" "$hdr"
+}
+
 record(){
   # best-effort per-run record; never fails the refresh
   REC_KIND=site REC_STARTED_AT="$1" REC_STATUS="$2" \
@@ -78,6 +106,9 @@ run(){
     if git push origin "$BRANCH" 2>&1 | tail -n 3; then
       echo "push: OK"
       PUSH_OK=1
+      # Pages rebuild lags a few minutes; the first check may be STALE by
+      # design. The next cron run's check is the authoritative signal.
+      verify_pages
     else
       echo "push: FAILED"
       REC_STATUS="failed"
