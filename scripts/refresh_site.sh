@@ -60,6 +60,9 @@ run(){
   cd "$R" || return 1
   export ENVIRONMENT=server
   export DB_HOST=172.20.1.53 DB_PORT=3308
+  # SRT/TXT links in the generated site must point at the branch this script
+  # pushes to (the operational branch), not the config.py default 'download-db'.
+  export GITHUB_BRANCH="$BRANCH"
   export DOWNLOADS_PATH="$R/downloads" DOCS_PATH="$R/docs" PROGRAMS_PATH="$R/docs/programs"
 
   local GEN_OK=1 PUSH_OK=0 CHANGED=0 SRT_NEW=0 TXT_NEW=0 REC_ERROR="" REC_STATUS="ok"

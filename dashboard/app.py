@@ -291,10 +291,20 @@ def metrics():
             g("iranseda_pipeline_downloads_total", rms.get("downloads_ok", 0), "Cumulative download results by outcome", labels='{result="ok"}')
             g("iranseda_pipeline_downloads_total", rms.get("downloads_fail", 0), "Cumulative download results by outcome", labels='{result="fail"}')
             g("iranseda_pipeline_publishes_total", rms.get("publishes_total", 0), "Cumulative site publishes (push ok)")
-            g("iranseda_srt_produced_total", rms.get("srt_produced_total", 0), "Cumulative SRTs produced per run")
+            # srt_produced_total is the cumulative subtitled-session count:
+            # monotonic (a session stays subtitled), so Grafana can use
+            # increase(iranseda_srt_produced_total[1d]) as the per-day
+            # production trend, localized to production time.
+            g("iranseda_srt_produced_total", rms.get("srt_produced_total", 0), "Cumulative subtitled sessions (monotonic; production date Asia/Tehran — same definition as today/7d)")
             g("iranseda_srt_produced_today", rms.get("srt_today", 0), "SRTs produced today (Asia/Tehran, by production date)")
             g("iranseda_srt_produced_yesterday", rms.get("srt_yesterday", 0), "SRTs produced yesterday (Asia/Tehran)")
             g("iranseda_srt_produced_last_7d", rms.get("srt_last_7d", 0), "SRTs produced in the last 7 days (Asia/Tehran)")
+            g("iranseda_srt_produced_last_14d", rms.get("srt_last_14d", 0), "SRTs produced in the last 14 days (Asia/Tehran)")
+            # True-zero count from the trusted DB source: complete Tehran days
+            # (today excluded — still running) with no SRT. Exporter-down /
+            # scrape-gap days are never mislabeled as zero-output days.
+            g("iranseda_srt_zero_output_days_14d", rms.get("srt_zero_output_days_14d", 0),
+              "Complete Tehran days in trailing 14d (excl. running today) with no SRT produced")
             g("iranseda_last_srt_timestamp", rms.get("last_srt_ts", 0), "Unix ts of the newest subtitled session (production time)")
             g("iranseda_last_site_publish_timestamp", rms.get("last_publish_ts", 0), "Unix ts of the last successful site push")
             g("iranseda_last_publish_paths", rms.get("last_publish_paths", 0), "Changed paths in the last successful site push")

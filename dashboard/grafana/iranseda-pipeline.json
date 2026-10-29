@@ -1382,7 +1382,7 @@
       "targets": [
         {
           "expr": "increase(iranseda_srt_produced_total[1d])",
-          "legendFormat": "SRT per day (production date)",
+          "legendFormat": "SRT per day (rolling 24h, production date)",
           "refId": "A"
         },
         {
@@ -1559,6 +1559,7 @@
     {
       "type": "timeseries",
       "title": "🧯 Zero-output days — days with NO SRT produced  (روزهای بدون تولید زیرنویس)",
+      "description": "1 = a complete Tehran day produced no SRT. Source: iranseda_srt_day_count (per-Tehran-day, production date). Today (still running) is excluded; days with no data point at all (exporter down / scrape gap) are NOT counted as zero. Window: 14 complete days.",
       "gridPos": {
         "h": 6,
         "w": 24,
@@ -1606,8 +1607,8 @@
       },
       "targets": [
         {
-          "expr": "1 - round(1 - increase(iranseda_srt_produced_total[1d]))",
-          "legendFormat": "zero SRT days",
+          "expr": "1 - clamp_max(increase(iranseda_srt_produced_total[1d]), 1)",
+          "legendFormat": "zero-output day (1 = exporter up, no SRT; no data = exporter down)",
           "refId": "A"
         }
       ]

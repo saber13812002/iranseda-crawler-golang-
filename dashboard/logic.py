@@ -332,19 +332,30 @@ def pipeline_run_stats():
             out["new_sessions_total"] = sum(int(r["ns"]) for r in rows)
             out["downloads_ok"] = sum(int(r["dlo"]) for r in rows)
             out["downloads_fail"] = sum(int(r["dlf"]) for r in rows)
-            # kind='site' runs: cumulative published paths, cumulative SRT
-            # files committed, and OK site runs that published zero new SRTs.
+            # kind='site' runs: cumulative published paths, and OK site runs
+            # that published zero new SRTs.
             cur.execute(
                 "SELECT COUNT(*) AS c, "
                 "COALESCE(SUM(published_output_count),0) AS pub, "
-                "COALESCE(SUM(new_srt_count),0) AS srt, "
                 "COALESCE(SUM(status='ok' AND new_srt_count=0),0) AS ok_no_srt "
                 "FROM pipeline_runs WHERE kind='site'"
             )
             r = cur.fetchone()
             out["publishes_total"] = int(r["pub"]) if r and r["pub"] is not None else 0
-            out["srt_produced_total"] = int(r["srt"]) if r and r["srt"] is not None else 0
             out["runs_ok_no_srt"] = int(r["ok_no_srt"]) if r and r["ok_no_srt"] is not None else 0
+            # ONE authoritative "SRTs produced" definition, shared by the
+            # cumulative total AND every period stat (today / 7d / 14d):
+            # sessions that reached a subtitled state, counted once per
+            # session, dated by production time (updated_at, Asia/Tehran).
+            # This used to be SUM(new_srt_count) over kind='site' rows — the
+            # number of SRT *files committed per run*, a different thing that
+            # made the "total" (273) smaller than the 7-day sum.
+            cur.execute(
+                "SELECT COUNT(*) AS v FROM radio_program_sessions "
+                "WHERE is_subtitled=1 AND status='subtitled'"
+            )
+            r = cur.fetchone()
+            out["srt_produced_total"] = int(r["v"]) if r and r["v"] is not None else 0
             cur.execute(
                 "SELECT UNIX_TIMESTAMP(MAX(started_at)) AS v "
                 "FROM pipeline_runs WHERE kind='pipeline'"
@@ -371,27 +382,57 @@ def pipeline_run_stats():
             )
             r = cur.fetchone()
             out["runs_last_24h"] = int(r["v"]) if r and r["v"] is not None else 0
+            # Trailing 14-day window (Tehran production date). The window MUST
+            # cover every day the period stats touch: today, yesterday, the
+            # 7-day sum and the 14-day zero-output count. Bug fix: this used
+            # to be INTERVAL 3 DAY while srt_last_7d summed 7 days of it, so
+            # the "7-day" stat was silently a 3-day stat.
             cur.execute(
                 "SELECT DATE(CONVERT_TZ(updated_at, '+00:00', %s)) AS d, COUNT(*) AS c "
                 "FROM radio_program_sessions "
                 "WHERE is_subtitled=1 AND status='subtitled' "
-                "AND updated_at >= CONVERT_TZ(DATE_SUB(NOW(), INTERVAL 3 DAY), %s, '+00:00') "
+                "AND updated_at >= CONVERT_TZ(DATE_SUB(NOW(), INTERVAL 14 DAY), %s, '+00:00') "
                 "GROUP BY d ORDER BY d DESC",
                 (off, off),
             )
             by_day = {str(r["d"]): int(r["c"]) for r in cur.fetchall() if r["d"]}
-            from datetime import datetime, timedelta, timezone
-            tz = timezone(timedelta(hours=3, minutes=30))
-            today = datetime.now(tz).date()
-            out["srt_today"] = by_day.get(str(today), 0)
-            out["srt_yesterday"] = by_day.get(str(today - timedelta(days=1)), 0)
-            out["srt_last_7d"] = sum(
-                by_day.get(str(today - timedelta(days=i)), 0) for i in range(7)
-            )
-            out["srt_last_28d_days"] = len(by_day)
+            out.update(_compute_srt_period_stats(by_day))
+            out["srt_by_day"] = by_day
     except Exception:  # noqa: BLE001 — exporter must never die on a DB blip
         out = {}
     _pipeline_run_cache.update(data=out, ts=time.time())
+    return out
+
+
+def _compute_srt_period_stats(by_day, now_tz=None):
+    """Pure aggregation over a Tehran-date SRT map (the period stats for /metrics).
+
+    `by_day` maps 'YYYY-MM-DD' (Asia/Tehran *production* date) to the number
+    of sessions that became subtitled that day. Returns the windowed stats:
+    srt_today / srt_yesterday / srt_last_7d / srt_last_14d and the count of
+    COMPLETE Tehran days in the trailing 14-day window (today excluded — the
+    day is still running, so a zero so far is not a zero day) that produced no
+    SRT.
+
+    Kept pure (no DB, no clock unless `now_tz` is omitted) so the window
+    logic — and the old 3-day-window bug — are unit-testable with fixtures.
+    """
+    from datetime import datetime, timedelta, timezone
+
+    if now_tz is None:
+        now_tz = datetime.now(timezone(timedelta(hours=3, minutes=30)))
+    today = now_tz.date() if isinstance(now_tz, datetime) else now_tz
+    out = {
+        "srt_today": by_day.get(str(today), 0),
+        "srt_yesterday": by_day.get(str(today - timedelta(days=1)), 0),
+        "srt_last_7d": sum(by_day.get(str(today - timedelta(days=i)), 0) for i in range(7)),
+        "srt_last_14d": sum(by_day.get(str(today - timedelta(days=i)), 0) for i in range(14)),
+    }
+    zero = 0
+    for i in range(1, 14):
+        if str(today - timedelta(days=i)) not in by_day:
+            zero += 1
+    out["srt_zero_output_days_14d"] = zero
     return out
 
 

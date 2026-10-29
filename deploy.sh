@@ -54,6 +54,9 @@ export DB_PASS='StrongPassword123!'
 export DB_NAME=radio
 export GITHUB_USER=saber13812002
 export GITHUB_REPO=iranseda-crawler-golang-
+# Legacy dev deploy only (n8n / 192.168.2.160). The operational publish is
+# scripts/refresh_site.sh, which derives GITHUB_BRANCH from the checked-out
+# branch — do not re-introduce a hardcoded branch in that path.
 export GITHUB_BRANCH=download-db
 
 # اجرای generate_site.py
