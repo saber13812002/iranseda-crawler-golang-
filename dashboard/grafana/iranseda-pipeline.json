@@ -1557,14 +1557,68 @@
       ]
     },
     {
+      "type": "stat",
+      "title": "🧯 Zero-output days — 14d (trusted DB)",
+      "description": "Complete Tehran days in the trailing 14-day window (today, still running, excluded) with zero SRT produced. Source: radio DB by production date — an exporter outage / scrape gap never produces a false zero.",
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 0,
+        "y": 121
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 3
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "expr": "iranseda_srt_zero_output_days_14d",
+          "legendFormat": "days",
+          "refId": "A"
+        }
+      ]
+    },
+    {
       "type": "timeseries",
       "title": "🧯 Zero-output days — days with NO SRT produced  (روزهای بدون تولید زیرنویس)",
-      "description": "1 = a complete Tehran day produced no SRT. Source: iranseda_srt_day_count (per-Tehran-day, production date). Today (still running) is excluded; days with no data point at all (exporter down / scrape gap) are NOT counted as zero. Window: 14 complete days.",
+      "description": "1 = a complete Tehran day produced no SRT. Rolling 24h increase of the monotonic srt_produced_total counter (production time). Today (still running) is excluded; days with no data point at all (exporter down / scrape gap) are NOT counted as zero. The trusted 14-day count is on the stat panel above.",
       "gridPos": {
         "h": 6,
         "w": 24,
         "x": 0,
-        "y": 121
+        "y": 125
       },
       "datasource": {
         "type": "prometheus",
