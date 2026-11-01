@@ -2177,6 +2177,159 @@ def disc_active_programs():
     return {"ok": True, "programs": rows}
 
 
+# -- B2: per-program management list (stable id + real counts, Tehran) -------
+
+def _b2_row_get(d, key):
+    if isinstance(d, dict):
+        return d.get(key)
+    return getattr(d, key, None)
+
+
+def _b2_parse_start(start, default=None):
+    """TIME value ('HH:MM:SS' / 'HH:MM' / datetime.time) -> 'HH:MM', or
+    `default` when missing/unparseable/out-of-range (like _hhmm_to_min)."""
+    if start is None:
+        return default
+    if hasattr(start, "hour"):
+        return "%02d:%02d" % (start.hour, start.minute)
+    parts = str(start).strip().split(":")
+    if len(parts) >= 2 and parts[0].isdigit() and parts[1].isdigit():
+        h, mi = int(parts[0]), int(parts[1])
+        if 0 <= h <= 23 and 0 <= mi <= 59:
+            return "%02d:%02d" % (h, mi)
+    return default
+
+
+def _b2_minutes(t):
+    """TIME ('HH:MM[:SS]' or datetime.time) -> minutes since midnight, or None."""
+    if t is None:
+        return None
+    if hasattr(t, "hour"):
+        return int(t.hour) * 60 + int(t.minute)
+    parts = str(t).strip().split(":")
+    try:
+        if len(parts) < 2 or not parts[0].isdigit() or not parts[1].isdigit():
+            return None
+        return int(parts[0]) * 60 + int(parts[1])
+    except ValueError:
+        return None
+
+
+def _b2_extract_m_from_url(url):
+    """Stable site program id `m` from a radio_programs url
+    (...&ch=14&m=044002 or ...&m=00044002); None if absent."""
+    m = re.search(r"[&?]m=(\d+)", url or "")
+    return m.group(1) if m else None
+
+
+def _b2_broadcast_days(dates, start):
+    """From REAL session rows inside the observation window:
+      days       -> sorted Tehran weekdays (ISO 1=Mon..7=Sun) on which the
+                    program actually broadcast (a row that day = a broadcast);
+      time_match -> rows whose Tehran start time is within 15 minutes of the
+                    program's declared `start` (0 when `start` is unknown).
+    Empty window -> {'days': [], 'time_match': 0} — nothing is invented."""
+    days = set()
+    matches = 0
+    declared = _b2_minutes(start)
+    for d in dates:
+        dw = _b2_row_get(d, "day_of_week")
+        if dw:
+            days.add(int(dw))
+        tmin = _b2_row_get(d, "time_min")
+        if declared is not None and tmin is not None and abs(tmin - declared) <= 15:
+            matches += 1
+    return {"days": sorted(days), "time_match": matches}
+
+
+def _b2_schedule_status(dates, start):
+    """stable / irregular / no_declared_start / no_data — how far the REAL
+    broadcast times deviate from the declared schedule (input to C3)."""
+    if not dates:
+        return "no_data"
+    declared = _b2_minutes(start)
+    if declared is None:
+        return "no_declared_start"
+    matches = sum(1 for d in dates
+                  if _b2_row_get(d, "time_min") is not None
+                  and abs(int(_b2_row_get(d, "time_min")) - declared) <= 15)
+    return "stable" if matches == len(dates) else "irregular"
+
+
+def disc_program_management_list():
+    """B2 — the per-program management list. One row per activated program
+    (radio_programs is_legacy=0) with: stable site id `m`, declared schedule
+    (start / duration), and REAL counts — broadcasts and subtitles over the
+    last 7/30 days, broadcast weekdays, schedule stability, queues and
+    failures. All windows are Asia/Tehran (DB stores UTC); an empty window
+    yields 0/None — never an invented number. Read-only: never inserts."""
+    conn = _disc_db()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT p.id, p.name, p.radio, p.radio_id, p.url, "
+                "  p.start, p.`time` AS duration, p.time_description, "
+                "  p.description, p.crop_enabled, p.crop_offset, "
+                "  COALESCE(ps.start_mode,'new_only') AS start_mode, "
+                "  ps.start_date, ps.seeded, ps.last_discovery_at, ps.discovery_note, "
+                "  COUNT(s.id) AS total, "
+                "  SUM(s.status='pending_download') AS q_dl, "
+                "  SUM(s.status='pending_transcribe') AS q_tr, "
+                "  SUM(s.is_subtitled=1) AS subtitled, "
+                "  SUM(s.status IN ('failed','failed_permanent')) AS failed, "
+                "  MAX(s.updated_at) AS last_updated, "
+                "  SUM(s.created_at >= NOW() - INTERVAL 7 DAY) AS broadcast_7d, "
+                "  SUM(s.created_at >= NOW() - INTERVAL 30 DAY) AS broadcast_30d, "
+                "  SUM(s.is_subtitled=1 AND s.updated_at >= NOW() - INTERVAL 7 DAY) "
+                "   AS subtitled_7d, "
+                "  SUM(s.is_subtitled=1 AND s.updated_at >= NOW() - INTERVAL 30 DAY) "
+                "   AS subtitled_30d "
+                "FROM radio_programs p "
+                "LEFT JOIN program_settings ps ON ps.program_id=p.id "
+                "LEFT JOIN radio_program_sessions s ON s.program_id=p.id "
+                "WHERE p.is_legacy=0 GROUP BY p.id ORDER BY p.name")
+            rows = cur.fetchall()
+            pids = [int(r["id"]) for r in rows]
+            dates_by_pid = {pid: [] for pid in pids}
+            if pids:
+                U = _tzcol("s.created_at")
+                ph = ",".join(["%s"] * len(pids))
+                cur.execute(
+                    "SELECT s.program_id, "
+                    "DATE(%s) AS day, "
+                    "TIME_TO_SEC(TIME(%s)) DIV 60 AS time_min, "
+                    "MOD(DAYOFWEEK(%s) + 5, 7) + 1 AS day_of_week "
+                    "FROM radio_program_sessions s "
+                    "WHERE s.program_id IN (%s) "
+                    "AND %s >= CONVERT_TZ(NOW(), '+00:00', '%s') - INTERVAL 30 DAY"
+                    % (U, U, U, ph, U, _TZ_OFF), pids)
+                for d in cur.fetchall():
+                    dates_by_pid.setdefault(int(d["program_id"]), []).append(d)
+    finally:
+        conn.close()
+
+    programs = []
+    for r in rows:
+        for k in ("q_dl", "q_tr", "subtitled", "failed",
+                  "broadcast_7d", "broadcast_30d", "subtitled_7d", "subtitled_30d"):
+            r[k] = int(r.get(k) or 0)
+        r["total"] = int(r.get("total") or 0)
+        r["seeded"] = bool(r.get("seeded"))
+        pid = int(r["id"])
+        dates = dates_by_pid.get(pid, [])
+        r["m"] = _b2_extract_m_from_url(r.get("url"))
+        r["start_display"] = _b2_parse_start(r.get("start"))
+        r["duration_minutes"] = _b2_minutes(r.get("duration"))
+        bd = _b2_broadcast_days(dates, r.get("start"))
+        r["broadcast_days"] = bd["days"]
+        r["schedule_matches"] = bd["time_match"]
+        r["schedule_status"] = _b2_schedule_status(dates, r.get("start"))
+        r["window_broadcast_days"] = len(dates)
+        programs.append(r)
+    return {"ok": True, "tz": "Asia/Tehran", "window_days": 30,
+            "count": len(programs), "programs": programs}
+
+
 def disc_set_start_point(program_id, start_mode, start_date=None):
     """Change the start point (and re-seed). Resets seeded=0 first."""
     if start_mode not in ("from_start", "from_date", "new_only"):

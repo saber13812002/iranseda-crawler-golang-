@@ -767,6 +767,16 @@ def api_disc_active():
         raise HTTPException(500, detail=str(e)[:300])
 
 
+@app.get("/api/discovery/programs/management")
+def api_disc_management_list():
+    """B2: per-program management list — stable id, schedule, REAL 7d/30d
+    counts (Asia/Tehran). Read-only."""
+    try:
+        return logic.disc_program_management_list()
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(500, detail=str(e)[:300])
+
+
 @app.post("/api/discovery/programs/{program_id}/start-point")
 async def api_disc_start_point(request: Request, program_id: int):
     body = await request.json()
