@@ -421,6 +421,36 @@ summary{cursor:pointer;color:var(--mut);font-size:13px}
   </div>
 </div>
 
+<!-- ================= B4: کشف و پیشنهاد برنامه‌ها (فهرست مدیریت + امتیازدهی LLM) ================= -->
+<h2>⭐ کشف و پیشنهاد برنامه‌ها — فهرست مدیریت و امتیازدهی LLM</h2>
+<div class="grid cols-2">
+  <div class="card">
+    <h3>فهرست مدیریت برنامه‌های فعال (آمار واقعی ۷/۳۰ روز — منطقهٔ زمانی تهران)</h3>
+    <div style="max-height:430px;overflow:auto">
+      <table id="b2-mgmt-table"><thead><tr>
+        <th>برنامه</th><th>شبکه</th><th>m</th><th>برنامهٔ زمانی</th><th>ثبات پخش</th>
+        <th>پخش ۷/۳۰</th><th>زیرنویس ۷/۳۰</th><th>صف (دانلود/ترنسکریپت)</th><th>خطا</th><th>آخرین</th><th></th>
+      </tr></thead><tbody><tr><td colspan="11" class="small">در حال بارگذاری…</td></tr></tbody></table>
+    </div>
+    <p class="small" style="margin-top:8px">«ثبات پخش» بر اساس تطابق واقعی ساعت پخش با ساعت اعلامی (حداکثر ۱۵ دقیقه اختلاف) محاسبه می‌شود — چیزی اختراع نمی‌شود.</p>
+  </div>
+
+  <div class="card">
+    <h3>امتیازدهی LLM به کاندیداهای فعال‌سازی</h3>
+    <div class="row" style="margin-bottom:8px">
+      <div style="flex:2"><label>فیلتر شبکه</label><select id="b3-ch-filter" onchange="b3LoadScores()"><option value="">همهٔ شبکه‌ها</option></select></div>
+      <button class="btn small" type="button" onclick="b3LoadScores()">↻ تازه‌سازی</button>
+    </div>
+    <p class="small" style="margin-bottom:8px">رتبه‌بندی امتیاز = <b>پیشنهاد فعال‌سازی</b>. مجموع امتیاز همیشه سمت سرور از ۶ بُعد محاسبه می‌شود (مجموع اعلامی LLM قابل‌اعتماد نیست). اگر LLM در دسترس نباشد، ردیف با وضعیت <b>pending</b> و خطای واقعی ذخیره می‌شود — هیچ امتیازی اختراع نمی‌شود. امتیازدهی <b>هرگز</b> برنامه را فعال نمی‌کند؛ فعال‌سازی فقط از بخش «کشف برنامه‌ها» و با تأیید است.</p>
+    <div style="max-height:380px;overflow:auto">
+      <table id="b3-scores-table"><thead><tr>
+        <th>نام</th><th>ch/m</th><th>امتیاز</th><th>اطمینان</th><th>مدل</th><th>وضعیت</th><th>زمان</th><th></th>
+      </tr></thead><tbody><tr><td colspan="8" class="small">در حال بارگذاری…</td></tr></tbody></table>
+    </div>
+    <div id="b3-detail" class="small" style="white-space:pre-wrap;line-height:1.9;margin-top:10px"></div>
+  </div>
+</div>
+
 <!-- ================= گزارش اختصاصی هر برنامه ================= -->
 <h2>📈 گزارش اختصاصی برنامه (آمار واقعی، منطقهٔ زمانی تهران)</h2>
 <div class="card" style="margin-bottom:12px">
@@ -1200,7 +1230,8 @@ async function discLoadPrograms(){
       return `<tr style="cursor:pointer" onclick='discPickProgram(${JSON.stringify(p).replace(/'/g,"&#39;")})'>
         <td>${esc(p.name)}</td><td class="small">${esc(ch)}</td>
         <td class="mono">${p.m}</td><td>${status}</td>
-        <td>${p.program_id?`<button class="btn small" onclick="event.stopPropagation();reportGo(${p.program_id})">📈 گزارش</button>`:""}</td>
+        <td style="white-space:nowrap">${p.program_id?`<button class="btn small" onclick="event.stopPropagation();reportGo(${p.program_id})">📈 گزارش</button>`:""}
+          <button class="btn small" onclick="event.stopPropagation();b3Score(${p.ch},'${p.m}')">🤖 امتیاز</button></td>
       </tr>`;
     }).join("")||"<tr><td colspan='5' class='small'>برنامه‌ای با این مشخصات یافت نشد</td></tr>";
   }catch(e){console.error(e);}
@@ -1306,6 +1337,143 @@ async function openStartPoint(id,mode,date){
     headers:{"Content-Type":"application/json"},body:JSON.stringify({start_mode:m,start_date:sd})});
   if(r.ok){flash("نقطه شروع ذخیره شد — در حال بازنویسی آرشیو ✓",true);discPollSeed(r.handle);}
   else flash("خطا: "+(r.detail||r.error||""),false);
+}
+
+/* ===== B4: فهرست مدیریت (B2) + امتیازدهی LLM کاندیداها (B3) ===== */
+const _B4_SCHED={"stable":"ثابت","irregular":"غیرمنظم","no_declared_start":"بدون ساعت اعلامی","no_data":"بدون داده"};
+const _B4_WEEKDAYS=["","دوشنبه","سه‌شنبه","چهارشنبه","پنجشنبه","جمعه","شنبه","یکشنبه"];
+async function b2LoadMgmt(){
+  const tb=$("#b2-mgmt-table tbody");
+  try{
+    const r=await api("/api/discovery/programs/management");
+    if(!r.ok){tb.innerHTML="<tr><td colspan='11' class='small'>خطا: "+esc(r.detail||r.error||"")+"</td></tr>";return;}
+    const progs=r.programs||[];
+    tb.innerHTML=progs.map(p=>{
+      const sched=p.start_display?`${p.start_display}${p.duration_minutes?` / ${p.duration_minutes}د`:""}`:"—";
+      const days=(p.broadcast_days||[]).map(d=>_B4_WEEKDAYS[d]).filter(Boolean).join("،")||"—";
+      const spill=p.schedule_status==="stable"?"ok":(p.schedule_status==="no_data"||p.schedule_status==="no_declared_start"?"":"bad");
+      return `<tr>
+        <td>${esc(p.name)}</td>
+        <td class="small">${esc(p.radio||"")}</td>
+        <td class="mono">${p.m||"—"}</td>
+        <td class="small">${sched}<br><span class="small">${days}</span></td>
+        <td><span class="pill ${spill}">${_B4_SCHED[p.schedule_status]||esc(p.schedule_status)}</span></td>
+        <td class="mono">${p.broadcast_7d} / ${p.broadcast_30d}</td>
+        <td class="mono">${p.subtitled_7d} / ${p.subtitled_30d}</td>
+        <td class="mono">${p.q_dl} / ${p.q_tr}</td>
+        <td class="mono">${p.failed}</td>
+        <td class="small mono" style="font-size:11px">${esc((p.last_updated||"").slice(5,16)||"—")}</td>
+        <td style="white-space:nowrap"><button class="btn small" onclick="reportGo(${p.id})">📈 گزارش</button></td>
+      </tr>`;
+    }).join("")||"<tr><td colspan='11' class='small'>برنامهٔ فعالی نیست</td></tr>";
+  }catch(e){tb.innerHTML="<tr><td colspan='11' class='small'>خطا: "+esc(e.message)+"</td></tr>";}
+}
+let _b3All=[];
+function b3ChFilterInit(chs){
+  const sel=$("#b3-ch-filter");const cur=sel.value;
+  const names={};(_discChans||[]).forEach(c=>{names[c.ch]=c.name;});
+  const seen={};const list=[];
+  chs.forEach(ch=>{ch=String(ch);if(seen[ch])return;seen[ch]=1;list.push(ch);});
+  let html='<option value="">همهٔ شبکه‌ها</option>';
+  list.forEach(ch=>{html+=`<option value="${ch}">${esc(names[ch]||("ch "+ch))}</option>`;});
+  sel.innerHTML=html;
+  if(cur&&seen[cur])sel.value=cur;
+}
+async function b3LoadScores(){
+  const tb=$("#b3-scores-table tbody");
+  const ch=$("#b3-ch-filter").value;
+  tb.innerHTML="<tr><td colspan='8' class='small'>در حال بارگذاری…</td></tr>";
+  try{
+    const r=await api("/api/discovery/scores"+(ch?`?ch=${encodeURIComponent(ch)}`:""));
+    if(!r.ok){tb.innerHTML="<tr><td colspan='8' class='small'>خطا: "+esc(r.detail||r.error||"")+"</td></tr>";return;}
+    _b3All=r.scores||[];
+    if(!ch&&_b3All.length)b3ChFilterInit(_b3All.map(s=>s.ch));
+    tb.innerHTML=_b3All.map((s,i)=>{
+      const score=s.score===null
+        ?`<span class="pill">—</span>`
+        :`<b class="mono" style="color:var(--ok)">${s.score.toFixed(1)}</b>`;
+      const status=s.status==="scored"
+        ?'<span class="pill ok">امتیازدهی‌شده</span>'
+        :`<span class="pill bad" title="${esc(s.error||'')}">pending</span>`;
+      return `<tr style="cursor:pointer" onclick="b3ShowRow(${i})">
+        <td>${esc(s.name||"—")}<br><span class="small">${esc(s.channel_name||("ch "+s.ch))}</span></td>
+        <td class="mono" dir="ltr">${s.ch}/${s.m}</td>
+        <td>${score}</td>
+        <td class="small">${s.confidence?esc(s.confidence):"—"}</td>
+        <td class="small mono" dir="ltr">${esc(s.model||"—")}</td>
+        <td>${status}</td>
+        <td class="small mono" style="font-size:11px" dir="ltr">${esc((s.scored_at||s.created_at||"").slice(0,16))}</td>
+        <td style="white-space:nowrap">
+          <button class="btn small" onclick="event.stopPropagation();b3Collect(${s.ch},'${esc(s.m)}')">📡 جمع‌آوری</button>
+          <button class="btn small" onclick="event.stopPropagation();b3Score(${s.ch},'${esc(s.m)}')">🤖 امتیاز</button>
+        </td>
+      </tr>`;
+    }).join("")||"<tr><td colspan='8' class='small'>هنوز کاندیدایی ثبت نشده — از بخش «کشف برنامه‌ها» یک برنامه انتخاب کنید و «🤖 امتیاز» بزنید.</td></tr>";
+  }catch(e){tb.innerHTML="<tr><td colspan='8' class='small'>خطا: "+esc(e.message)+"</td></tr>";}
+}
+function b3ShowRow(i){
+  const s=_b3All[i];if(!s)return;
+  const inp=s.inputs||{};const reasons=s.reasons||{};
+  const dims=["continuity","audio_quality","content_value","weekly_count","asr_duration","not_repeat"];
+  let out=`نام: ${s.name||"—"}  (ch ${s.ch} / m ${s.m})\n`;
+  out+=`وضعیت: ${s.status}${s.error?` — خطا: ${s.error}`:""}\n`;
+  if(reasons&&reasons.continuity!==undefined){
+    out+="\nدلایل (از LLM):\n";
+    dims.forEach(d=>{if(reasons[d])out+=`• ${d}: ${reasons[d]}\n`;});
+  }
+  if(inp.meta&&inp.meta.name){
+    const m=inp.meta;
+    out+="\nمشخصات سایت (واقعی):\n";
+    out+=`نام: ${m.name}\n`;
+    if(m.start)out+=`ساعت: ${m.start} — مدت: ${m.duration||"—"}\n`;
+    if(m.time_description)out+=`توضیح: ${m.time_description}\n`;
+  }
+  if(inp.broadcast_days_7d!==undefined)out+=`پخش ۷ روز: ${inp.broadcast_days_7d} — ۳۰ روز: ${inp.broadcast_days_30d??"—"}\n`;
+  if((inp.broadcast_weekdays_30d||[]).length)out+=`روزهای هفته (۳۰روز): ${inp.broadcast_weekdays_30d.map(d=>_B4_WEEKDAYS[d]).join("، ")}\n`;
+  if(inp.newest_broadcast)out+=`جدیدترین پخش: ${inp.newest_broadcast}\n`;
+  if(inp.audio)out+=`صدا: ${inp.audio_verified||0} از ${inp.audio.length} تأیید‌شده\n`;
+  const eps=inp.episodes_sample||[];
+  if(eps.length)out+="\nنمونهٔ قسمت‌ها (جدیدترین اول):\n"+eps.slice(0,5).map(x=>`  ${x.date_jalali||""} ${x.time||""} — ${x.title||""}`).join("\n")+"\n";
+  if((inp.errors||[]).length)out+=`خطاهای جمع‌آوری: ${inp.errors.join(" | ")}\n`;
+  $("#b3-detail").textContent=out;
+}
+async function b3Collect(ch,m){
+  $("#b3-detail").textContent=`⏳ در حال جمع‌آوری واقعیت‌های سایت برای ch ${ch}/m ${m}… (چند تا چند ده ثانیه — بدون LLM)`;
+  try{
+    const r=await api(`/api/discovery/channels/${ch}/programs/${m}/collect`);
+    if(!r.ok){$("#b3-detail").textContent="خطا: "+(r.detail||r.error||"");return;}
+    const inp=r.inputs||{};
+    let out=`📡 جمع‌آوری (بدون LLM) — ch ${ch}/m ${m}\n`;
+    if(inp.meta&&inp.meta.name)out+=`نام: ${inp.meta.name}\n`;
+    if(inp.broadcast_days_7d!==undefined)out+=`پخش ۷ روز: ${inp.broadcast_days_7d} — ۳۰ روز: ${inp.broadcast_days_30d??"—"}\n`;
+    if((inp.broadcast_weekdays_30d||[]).length)out+=`روزهای هفته: ${inp.broadcast_weekdays_30d.map(d=>_B4_WEEKDAYS[d]).join("، ")}\n`;
+    if(inp.newest_broadcast)out+=`جدیدترین پخش: ${inp.newest_broadcast}\n`;
+    if(inp.audio)out+=`صدا تأییدشده: ${inp.audio_verified||0}/${inp.audio.length}\n`;
+    if((inp.errors||[]).length)out+=`خطاها: ${inp.errors.join(" | ")}\n`;
+    $("#b3-detail").textContent=out;
+    await b3LoadScores();
+  }catch(e){$("#b3-detail").textContent="خطا: "+e.message;}
+}
+async function b3Score(ch,m){
+  if(!confirm(`امتیازدهی LLM به کاندیدای ch ${ch}/m ${m} اجرا شود؟\n(هرگز برنامه را فعال نمی‌کند — فقط امتیاز ثبت می‌شود)`))return;
+  $("#b3-detail").textContent=`⏳ در حال اجرای امتیازدهی LLM برای ch ${ch}/m ${m}…`;
+  try{
+    const r=await api(`/api/discovery/channels/${ch}/programs/${m}/score`,{method:"POST"});
+    if(!r.ok){$("#b3-detail").textContent="خطا: "+(r.detail||r.error||"");return;}
+    b3PollScore(r.handle);
+  }catch(e){$("#b3-detail").textContent="خطا: "+e.message;}
+}
+function b3PollScore(handle,ticks=0){
+  if(ticks>90){$("#b3-detail").textContent="⏰ مهلت انتظار امتیازدهی تمام شد — دوباره امتحان کنید.";return;}
+  api("/api/llm/runs").then(r=>{
+    const found=(r.runs||[]).find(([h])=>h===handle);
+    if(!found){b3PollScore(handle,ticks+1);return;}
+    const v=found[1];
+    if(v.status==="running"||v.status==="queued"){b3PollScore(handle,ticks+1);return;}
+    if(v.status==="done"){$("#b3-detail").textContent="✅ "+(v.detail||"امتیاز ثبت شد");flash("امتیازدهی کامل شد ✓",true);}
+    else{$("#b3-detail").textContent="⚠️ امتیازدهی کامل نشد (وضعیت: "+v.status+")\n"+(v.detail||"")+"\nردیف با وضعیت pending و خطای واقعی ثبت شد.";flash("LLM در دسترس نبود — ردیف pending ثبت شد",false);}
+    b3LoadScores();
+  }).catch(()=>b3PollScore(handle,ticks+1));
 }
 
 /* ===== 📈 Per-program report (STEP 13) ===== */
@@ -1416,8 +1584,11 @@ async function init(){
   loadLlmJobDefaults();
   // STEP 13: discovery + active programs + report
   discLoadChannels(); loadActivePrograms();
+  // B4: management list (B2) + LLM candidate scores (B3)
+  b2LoadMgmt(); b3LoadScores();
   setInterval(refresh,30000);
   setInterval(loadActivePrograms,120000);
+  setInterval(()=>{b2LoadMgmt();b3LoadScores();},300000);
 }
 init();
 </script>
