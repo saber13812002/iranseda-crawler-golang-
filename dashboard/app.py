@@ -777,6 +777,37 @@ def api_disc_management_list():
         raise HTTPException(500, detail=str(e)[:300])
 
 
+@app.get("/api/discovery/channels/{ch}/programs/{m}/collect")
+def api_disc_score_collect(ch: int, m: str):
+    """B3: collect REAL site facts for one candidate (LLM-independent).
+    Works even when the LLM server is down. Slow: several site fetches."""
+    try:
+        return logic.disc_score_collect(ch, m)
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(500, detail=str(e)[:300])
+
+
+@app.post("/api/discovery/channels/{ch}/programs/{m}/score")
+def api_disc_score_run(ch: int, m: str):
+    """B3: score one candidate program (LLM strict-JSON, 6 weighted
+    dimensions, total computed server-side). Returns a run handle; the
+    result lands in program_score. NEVER activates the program."""
+    try:
+        return logic.disc_score_run(ch, m)
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(500, detail=str(e)[:300])
+
+
+@app.get("/api/discovery/scores")
+def api_disc_score_list(ch: int = None):
+    """B3: stored candidate scores (scored first, then pending), highest
+    first. Optional ?ch= filter."""
+    try:
+        return logic.disc_score_list(ch)
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(500, detail=str(e)[:300])
+
+
 @app.post("/api/discovery/programs/{program_id}/start-point")
 async def api_disc_start_point(request: Request, program_id: int):
     body = await request.json()

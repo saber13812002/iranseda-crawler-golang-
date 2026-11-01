@@ -2330,6 +2330,471 @@ def disc_program_management_list():
             "count": len(programs), "programs": programs}
 
 
+# -- B3: LLM content scoring for candidate programs ---------------------------
+#
+# A candidate program is identified by its STABLE site identity (ch, m) —
+# not by a radio_programs row, because candidates predate activation.
+# Scoring is two phases:
+#   1. collect  — LLM-independent REAL site facts (declared schedule, newest
+#      archive episode cards with Jalali->Gregorian dates, 7d/30d broadcast
+#      counts, verified audio download links). Works even with LLM down.
+#   2. score    — the LLM returns a strict-JSON 6-dimension assessment of
+#      those facts only. The TOTAL is always computed server-side from
+#      clamped dimensions (the LLM's own total is never trusted). When the
+#      LLM is unreachable the row is stored with status='pending' + the
+#      error — never an invented score. Scoring NEVER activates a program.
+
+_B3_JALALI_BREAKS = (1, 5, 9, 13, 17, 22, 26, 30)  # jy % 33 in breaks -> leap
+_B3_JALALI_MONTHS = {
+    "فروردین": 1, "اردیبهشت": 2, "خرداد": 3, "تیر": 4, "مرداد": 5,
+    "شهریور": 6, "مهر": 7, "آبان": 8, "آذر": 9, "دی": 10,
+    "بهمن": 11, "اسفند": 12,
+}
+_B3_JALALI_MONTH_LEN = (31, 31, 31, 31, 31, 31, 30, 30, 30, 30, 30)
+# Anchor: 1 Farvardin 1403 == 2024-03-20 (verified against the site's own
+# weekday labels: 'چهارشنبه 29 مهر 1405' == Wednesday 2026-10-21, which
+# forces 1 Farvardin 1405 == 2026-03-21, and 1403 is a 366-day year).
+_B3_ANCHOR_JY = 1403
+_B3_ANCHOR_DATE = (2024, 3, 20)
+_B3_DIGITS = str.maketrans(
+    "۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩", "01234567890123456789")
+_B3_DIMS = (
+    ("continuity", 25),      # regular recent broadcasts (30d, stable weekdays)
+    ("audio_quality", 20),   # real, verified downloadable audio
+    ("content_value", 20),   # value of the program's topic/content
+    ("weekly_count", 15),    # broadcasts per week
+    ("asr_duration", 10),    # duration suitable for speech ASR
+    ("not_repeat", 10),      # distinct ongoing program, not a re-broadcast
+)
+
+
+def _b3_is_leap(jy):
+    """Jalali leap year (the civil 33-year cycle)."""
+    return int(jy) % 33 in _B3_JALALI_BREAKS
+
+
+def _b3_jalali_to_date(jy, jm, jd):
+    """(Jalali year, month 1-12, day) -> Gregorian datetime.date, or None
+    when the date is out of range. Exact within the 33-year astronomical
+    cycle; anchored at 1 Farvardin 1403 = 2024-03-20."""
+    from datetime import date, timedelta
+    try:
+        jy, jm, jd = int(jy), int(jm), int(jd)
+    except (TypeError, ValueError):
+        return None
+    if not (1 <= jm <= 12 and 1 <= jd <= 31):
+        return None
+    lengths = list(_B3_JALALI_MONTH_LEN)
+    lengths.append(30 if _b3_is_leap(jy) else 29)
+    if jd > lengths[jm - 1]:
+        return None
+    doy = jd + sum(lengths[:jm - 1])
+    d = date(*_B3_ANCHOR_DATE)
+    if jy >= _B3_ANCHOR_JY:
+        for y in range(_B3_ANCHOR_JY, jy):
+            d += timedelta(days=366 if _b3_is_leap(y) else 365)
+    else:
+        for y in range(jy, _B3_ANCHOR_JY):
+            d -= timedelta(days=366 if _b3_is_leap(y) else 365)
+    return d + timedelta(days=doy - 1)
+
+
+def _b3_parse_card_date(date_jalali):
+    """A site card label like '29 مهر 1405' (Arabic-Indic digits allowed)
+    -> Gregorian datetime.date, or None when unparseable."""
+    if not date_jalali:
+        return None
+    s = str(date_jalali).translate(_B3_DIGITS)
+    parts = s.split()
+    if len(parts) < 2:
+        return None
+    day, month = parts[0], parts[1]
+    year = parts[2] if len(parts) > 2 and parts[2].isdigit() else None
+    mi = _B3_JALALI_MONTHS.get(month)
+    if not day.isdigit() or mi is None or year is None:
+        return None
+    return _b3_jalali_to_date(year, mi, day)
+
+
+def _b3_extract_json(text):
+    """First balanced top-level JSON object in an LLM reply (may be wrapped
+    in markdown fences or labels). Returns (dict, None) on success or
+    (None, reason) on failure."""
+    if not text:
+        return None, "empty response"
+    t = str(text).strip()
+    t = re.sub(r"^```(?:json)?\s*", "", t)
+    t = re.sub(r"\s*```$", "", t)
+    start = t.find("{")
+    if start < 0:
+        return None, "no JSON object found"
+    depth = 0
+    in_str = False
+    esc = False
+    for i in range(start, len(t)):
+        c = t[i]
+        if in_str:
+            if esc:
+                esc = False
+            elif c == "\\":
+                esc = True
+            elif c == '"':
+                in_str = False
+            continue
+        if c == '"':
+            in_str = True
+        elif c == "{":
+            depth += 1
+        elif c == "}":
+            depth -= 1
+            if depth == 0:
+                try:
+                    data = json.loads(t[start:i + 1])
+                except ValueError as e:
+                    return None, "invalid JSON: %s" % str(e)[:120]
+                if not isinstance(data, dict):
+                    return None, "top-level JSON is not an object"
+                return data, None
+    return None, "unbalanced JSON"
+
+
+def _b3_clamp_dims(dims):
+    """Clamp each dimension value to [0, max]; missing/non-numeric -> 0.0.
+    Returns a dict with exactly the known dimension keys (floats)."""
+    out = {}
+    for key, mx in _B3_DIMS:
+        v = (dims or {}).get(key, 0)
+        try:
+            v = float(v)
+        except (TypeError, ValueError):
+            v = 0.0
+        out[key] = max(0.0, min(float(mx), round(v, 1)))
+    return out
+
+
+def _b3_total(dims):
+    """Server-side total of the clamped dimensions (0..100, 1 decimal).
+    The LLM's own total is never used."""
+    return max(0.0, min(100.0, round(sum(dims.values()), 1)))
+
+
+def _b3_confidence(score):
+    """Deterministic confidence band from the server-computed total."""
+    if score is None:
+        return None
+    if score >= 80:
+        return "high"
+    if score >= 60:
+        return "medium"
+    return "low"
+
+
+def _b3_audio_check(s, e, ch):
+    """Verify ONE episode's real audio: DLFile links present + a HEAD probe
+    on the mp3 (or mp4). Never raises; a dead link is reported, not hidden."""
+    out = {"e": int(e), "mp3": None, "mp4": None,
+           "verified": False, "content_length": None}
+    try:
+        dl = s.episode_download_link(int(e), ch)
+    except Exception as e2:  # noqa: BLE001
+        out["error"] = str(e2)[:200]
+        return out
+    out["mp3"], out["mp4"] = dl["mp3"], dl["mp4"]
+    url = dl["mp3"] or dl["mp4"]
+    if not url:
+        return out
+    try:
+        import urllib.request
+        req = urllib.request.Request(
+            url, method="HEAD", headers={"User-Agent": "iranseda-dashboard"})
+        with urllib.request.urlopen(req, timeout=20) as r:
+            out["verified"] = 200 <= r.status < 400
+            cl = r.headers.get("Content-Length")
+            out["content_length"] = int(cl) if cl and cl.isdigit() else None
+    except Exception:  # noqa: BLE001  (HEAD refused / dead link)
+        out["verified"] = False
+    return out
+
+
+def _ensure_score_schema(conn):
+    with conn.cursor() as cur:
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS program_score (
+               id INT NOT NULL AUTO_INCREMENT,
+               ch INT NOT NULL,
+               m VARCHAR(8) NOT NULL,
+               name VARCHAR(255) NOT NULL,
+               channel_name VARCHAR(120) DEFAULT NULL,
+               score DECIMAL(5,1) DEFAULT NULL,
+               confidence VARCHAR(10) DEFAULT NULL,
+               model VARCHAR(120) DEFAULT NULL,
+               reasons JSON,
+               inputs JSON,
+               status VARCHAR(16) NOT NULL DEFAULT 'pending',
+               error VARCHAR(500) DEFAULT NULL,
+               created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+               scored_at DATETIME DEFAULT NULL,
+               PRIMARY KEY (id), UNIQUE KEY uq_ch_m (ch, m),
+               KEY k_ch (ch), KEY k_score (score))""")
+    conn.commit()
+
+
+def _b3_store(ch, m, name, channel_name, score, confidence, model,
+              reasons, inputs, status, error=None):
+    conn = _disc_db()
+    try:
+        _ensure_score_schema(conn)
+        from datetime import datetime, timezone
+        scored_at = (datetime.now(timezone.utc).replace(tzinfo=None)
+                     if status == "scored" else None)
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO program_score "
+                "(ch, m, name, channel_name, score, confidence, model, "
+                " reasons, inputs, status, error, scored_at) "
+                "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s) "
+                "ON DUPLICATE KEY UPDATE "
+                "name=VALUES(name), channel_name=VALUES(channel_name), "
+                "score=VALUES(score), confidence=VALUES(confidence), "
+                "model=VALUES(model), reasons=VALUES(reasons), "
+                "inputs=VALUES(inputs), status=VALUES(status), "
+                "error=VALUES(error), scored_at=VALUES(scored_at)",
+                (int(ch), str(m).zfill(8), (name or "")[:255] or ("ch%s/m%s" % (ch, m)),
+                 channel_name, score, confidence, model,
+                 json.dumps(reasons, ensure_ascii=False) if reasons is not None else None,
+                 json.dumps(inputs, ensure_ascii=False) if inputs is not None else None,
+                 status, error, scored_at))
+            conn.commit()
+    finally:
+        conn.close()
+
+
+def disc_score_collect(ch, m):
+    """B3 phase 1 — LLM-independent collection of REAL site facts for one
+    candidate program (ch, m). No score is produced here; this works even
+    when the LLM server is down. Dates on the site are Jalali; they are
+    converted to Gregorian here so 7d/30d windows are real, not inferred."""
+    from datetime import datetime, timezone
+    s = _site()
+    ch, m = int(ch), str(m).zfill(8)
+    now = datetime.now(timezone.utc)
+    inputs = {"ch": ch, "m": m,
+              "collected_at_utc": now.isoformat(timespec="seconds"),
+              "episodes_sample": [], "errors": []}
+    try:
+        eps = s.list_episodes(int(m), ch, 1) or []
+    except Exception as e:  # noqa: BLE001
+        eps = []
+        inputs["errors"].append("episodes: %s" % str(e)[:200])
+    inputs["episodes_sample"] = [
+        {"e": it["e"], "title": it["title"],
+         "date_jalali": it["date_jalali"], "year": it["year"], "time": it["time"]}
+        for it in eps[:20]]
+    dates = []
+    for it in eps[:20]:
+        d = _b3_parse_card_date(it["date_jalali"])
+        if d:
+            dates.append(d)
+    in7 = [d for d in dates if (now.date() - d).days <= 7]
+    in30 = [d for d in dates if (now.date() - d).days <= 30]
+    inputs["broadcast_days_7d"] = len(in7)
+    inputs["broadcast_days_30d"] = len(in30)
+    inputs["broadcast_weekdays_30d"] = sorted({d.isoweekday() for d in in30})
+    inputs["newest_broadcast"] = max(dates).isoformat() if dates else None
+    inputs["archive_card_count"] = len(eps)
+    if eps:
+        try:
+            inputs["meta"] = s.episode_meta(eps[0]["e"], ch)
+        except Exception as e:  # noqa: BLE001
+            inputs["errors"].append("meta: %s" % str(e)[:200])
+        audio = [_b3_audio_check(s, it["e"], ch) for it in eps[:3]]
+        inputs["audio"] = audio
+        inputs["audio_verified"] = sum(1 for a in audio if a["verified"])
+    return {"ok": True, "inputs": inputs}
+
+
+_B3_SYSTEM_PROMPT = (
+    "You are a technical evaluator for IRANSEDA radio program discovery. "
+    "You will receive REAL collected facts about one candidate radio program "
+    "(declared schedule, its newest real archive episodes with dates and "
+    "titles, verified audio download links). Score it for activation into "
+    "the ASR/subtitle pipeline. Respond with ONLY one JSON object, no prose, "
+    "with exactly this shape: "
+    '{"continuity": <0-25>, "audio_quality": <0-20>, "content_value": <0-20>, '
+    '"weekly_count": <0-15>, "asr_duration": <0-10>, "not_repeat": <0-10>, '
+    '"reasons": {"continuity": "<= 20 words, Persian>", "audio_quality": "...", '
+    '"content_value": "...", "weekly_count": "...", "asr_duration": "...", '
+    '"not_repeat": "..."}}. '
+    "Rules: score ONLY from the provided facts — never invent facts. Missing "
+    "or unverified data for a dimension => a low score for that dimension. "
+    "Dimensions: continuity = regular recent broadcasts in the 30d window on "
+    "stable weekdays; audio_quality = real verified downloadable mp3/mp4 "
+    "(a link that failed verification scores low); content_value = the "
+    "program's topic/name/description value for a Persian radio archive; "
+    "weekly_count = broadcasts per week (3-5 per week is ideal); "
+    "asr_duration = duration in a good range for speech ASR (~30 min to 2h; "
+    "very short or very long scores lower); not_repeat = a distinct ongoing "
+    "program, not a repeat or clone of an older one. Do not output a total; "
+    "the server computes it.")
+
+
+def _b3_llm_user_message(inputs, channel_name):
+    meta = inputs.get("meta") or {}
+    facts = {
+        "channel": channel_name,
+        "ch": inputs["ch"], "m": inputs["m"],
+        "declared_schedule": {
+            "name": meta.get("name"), "start": meta.get("start"),
+            "duration": meta.get("duration"),
+            "time_description": meta.get("time_description")},
+        "broadcast_days_7d": inputs.get("broadcast_days_7d"),
+        "broadcast_days_30d": inputs.get("broadcast_days_30d"),
+        "broadcast_weekdays_30d": inputs.get("broadcast_weekdays_30d"),
+        "newest_broadcast": inputs.get("newest_broadcast"),
+        "episodes_newest_first": [
+            {"title": it["title"], "date_jalali": it["date_jalali"],
+             "time": it["time"]}
+            for it in (inputs.get("episodes_sample") or [])[:12]],
+        "audio": inputs.get("audio"),
+        "collect_errors": inputs.get("errors"),
+    }
+    return ("REAL collected facts (JSON) for the candidate program:\n" +
+            json.dumps(facts, ensure_ascii=False, indent=1))
+
+
+_B3_MODEL_CACHE = {"ts": 0.0, "model": None}
+
+
+def _b3_pick_model():
+    """First available chat model from the LiteLLM proxy (cached 1h); falls
+    back to dashboard.env LITELLM_MODEL, else 'gpt-4o-mini'."""
+    if _B3_MODEL_CACHE["model"] and time.time() - _B3_MODEL_CACHE["ts"] < 3600:
+        return _B3_MODEL_CACHE["model"]
+    env = {}
+    try:
+        env = _llm()._dashboard_env()
+    except Exception:  # noqa: BLE001
+        pass
+    model = env.get("LITELLM_MODEL")
+    try:
+        res = _llm().discover_models()
+        if res.get("ok") and res.get("chat"):
+            model = res["chat"][0]
+    except Exception:  # noqa: BLE001
+        pass
+    _B3_MODEL_CACHE["ts"] = time.time()
+    _B3_MODEL_CACHE["model"] = model or "gpt-4o-mini"
+    return _B3_MODEL_CACHE["model"]
+
+
+def disc_score_run(ch, m, model=None, collect=None):
+    """B3 — score one candidate program (ch, m). Returns a run handle; the
+    result lands in program_score (status 'scored', or 'pending' with the
+    error when the LLM is unavailable — never an invented score). This
+    endpoint NEVER activates a program."""
+    ch, m = int(ch), str(m).zfill(8)
+    handle = "score-%s-%s-%d" % (ch, m, int(time.time()))
+
+    def _work():
+        with _llm_run_lock:
+            _llm_run_state[handle] = {
+                "job_type": "program_score",
+                "label": "امتیازدهی %s/%s" % (ch, m),
+                "model": "—", "status": "running",
+                "started_at": _now_iso(),
+                "detail": "دریافت واقعی اطلاعات از سایت", "result": None}
+        try:
+            inputs = (collect or disc_score_collect(ch, m))["inputs"]
+            meta = inputs.get("meta") or {}
+            name = (meta.get("name") or "").strip()
+            channel_name = None
+            try:
+                for c in _cache_get("channels", lambda: _site().list_channels()):
+                    if c["ch"] == ch:
+                        channel_name = c["name"]
+                        break
+            except Exception:  # noqa: BLE001
+                pass
+            if not name:
+                name = "ch%s/m%s" % (ch, m)  # honest fallback, never invented
+            model_used = model or _b3_pick_model()
+            with _llm_run_lock:
+                _llm_run_state[handle]["model"] = model_used
+            content, _pt, _ct = _llm().call_llm(
+                model_used, _B3_SYSTEM_PROMPT,
+                _b3_llm_user_message(inputs, channel_name),
+                max_tokens=1500, temperature=0.1)
+            data, err = _b3_extract_json(content)
+            if err:
+                raise ValueError("LLM response not usable JSON: %s" % err)
+            dims = _b3_clamp_dims(data)
+            total = _b3_total(dims)
+            conf = _b3_confidence(total)
+            reasons_raw = data.get("reasons") or {}
+            reasons = {}
+            for k, _mx in _B3_DIMS:
+                v = reasons_raw.get(k)
+                reasons[k] = str(v)[:300] if v is not None else None
+            _b3_store(ch, m, name, channel_name, total, conf, model_used,
+                      reasons, inputs, "scored")
+            with _llm_run_lock:
+                _llm_run_state[handle].update(
+                    {"status": "done", "finished_at": _now_iso(),
+                     "detail": "امتیاز %s" % total,
+                     "result": {"score": total, "confidence": conf}})
+        except Exception as e:  # noqa: BLE001
+            # Honest degradation: store the row as 'pending' with the real
+            # collected inputs (when available) — no invented score.
+            try:
+                inputs = (collect or disc_score_collect(ch, m))["inputs"]
+                meta = inputs.get("meta") or {}
+                name = (meta.get("name") or "").strip() or ("ch%s/m%s" % (ch, m))
+            except Exception:  # noqa: BLE001
+                inputs, name = None, ("ch%s/m%s" % (ch, m))
+            try:
+                _b3_store(ch, m, name, None, None, None, model or "",
+                          None, inputs, "pending", str(e)[:500])
+            except Exception:  # noqa: BLE001
+                pass
+            with _llm_run_lock:
+                _llm_run_state[handle].update(
+                    {"status": "error", "finished_at": _now_iso(),
+                     "detail": str(e)[:300]})
+
+    run_in_thread(_work)
+    return {"ok": True, "handle": handle}
+
+
+def disc_score_list(ch=None):
+    """All stored candidate scores (scored first, then pending), highest
+    score first. Optionally filter by channel."""
+    conn = _disc_db()
+    try:
+        _ensure_score_schema(conn)
+        with conn.cursor() as cur:
+            sql = ("SELECT ch, m, name, channel_name, score, confidence, model, "
+                   "reasons, inputs, status, error, created_at, scored_at "
+                   "FROM program_score ")
+            if ch is None:
+                cur.execute(sql + "ORDER BY score IS NULL, score DESC, ch, m")
+            else:
+                cur.execute(
+                    sql + "WHERE ch=%s ORDER BY score IS NULL, score DESC, m",
+                    (int(ch),))
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+    for r in rows:
+        for key in ("reasons", "inputs"):
+            if isinstance(r.get(key), str):
+                try:
+                    r[key] = json.loads(r[key])
+                except ValueError:
+                    pass
+        r["score"] = float(r["score"]) if r.get("score") is not None else None
+    return {"ok": True, "count": len(rows), "scores": rows}
+
+
 def disc_set_start_point(program_id, start_mode, start_date=None):
     """Change the start point (and re-seed). Resets seeded=0 first."""
     if start_mode not in ("from_start", "from_date", "new_only"):
