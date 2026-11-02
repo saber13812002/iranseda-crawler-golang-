@@ -109,9 +109,21 @@ run(){
     if git push origin "$BRANCH" 2>&1 | tail -n 3; then
       echo "push: OK"
       PUSH_OK=1
+      # Fire the git_release reporter event (best-effort, never fatal). The
+      # dashboard worker publishes it when IRANSEDA_REPORTER_ENABLED=1 with a
+      # configured client; otherwise it drains to 'skipped' (honest). The
+      # commit sha makes each push a distinct, idempotent event.
+      local HEAD_SHA PAGES_LINE; HEAD_SHA=$(git rev-parse HEAD 2>/dev/null | cut -c1-40)
+      PAGES_LINE=$(verify_pages)
+      echo "$PAGES_LINE"
+      REP_EVENT_TYPE=git_release \
+      REP_TITLE="Site refresh pushed: $CHANGED paths ($SRT_NEW srt, $TXT_NEW txt)" \
+      REP_BODY="branch=$BRANCH commit=$HEAD_SHA push=ok pages=$PAGES_LINE" \
+      REP_COMMIT="$HEAD_SHA" \
+      REP_KEY="git_release:$HEAD_SHA" \
+      "$REC_PY" "$R/scripts/fire_report.py" >>"$LOG" 2>&1 || echo "report: FAILED (non-fatal)"
       # Pages rebuild lags a few minutes; the first check may be STALE by
       # design. The next cron run's check is the authoritative signal.
-      verify_pages
     else
       echo "push: FAILED"
       REC_STATUS="failed"

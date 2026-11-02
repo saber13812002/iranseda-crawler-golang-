@@ -57,6 +57,7 @@ import logic
 import boost
 import backfill
 import reporter
+import messenger_publisher
 
 app = FastAPI(title="iranseda dashboard")
 templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "templates"))
@@ -895,6 +896,13 @@ def _startup():
     logic.start_gate_loop()
     boost.ensure_started()
     backfill.ensure_started()
+    # Install the real Telegram/Bale transport BEFORE the worker starts, so
+    # the worker's first cycle already sees it. No-op (keeps the honest stub)
+    # when MESSENGER_*/TELEGRAM_* credentials are absent.
+    try:
+        messenger_publisher.install_if_configured()
+    except Exception:  # noqa: BLE001 — reporter must never break startup
+        pass
     reporter.ensure_started()
 
 

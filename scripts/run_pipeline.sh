@@ -96,6 +96,21 @@ run(){
 
   echo "===== $(date '+%Y-%m-%d %H:%M:%S') pipeline END ====="
   record "$START_TS" "$RUN_STATUS" "$SCAN_NEW" "$DISC_NEW" "$DISC_PROGRAMS" "$DL_OK" "$DL_FAIL" "$RUN_ERROR"
+
+  # Fire the download_batch reporter event (best-effort, never fatal). The
+  # dashboard worker publishes it to Telegram/Bale when
+  # IRANSEDA_REPORTER_ENABLED=1 and a real client is configured; otherwise it
+  # drains to 'skipped' (honest, no fake publish). Idempotent per logical
+  # event: the counts make each cron run a distinct event, while a duplicate
+  # call with identical inputs updates only title/body and never re-submits.
+  if [ "$RUN_STATUS" = "ok" ]; then
+    local HEAD_SHA; HEAD_SHA=$(git -C "$R" rev-parse HEAD 2>/dev/null | cut -c1-40)
+    REP_EVENT_TYPE=download_batch \
+    REP_TITLE="Pipeline: $SCAN_NEW new scan + $DISC_NEW discovered, $DL_OK downloaded" \
+    REP_BODY="run $START_TS: scan_new=$SCAN_NEW disc_new=$DISC_NEW (programs=$DISC_PROGRAMS) dl_ok=$DL_OK dl_fail=$DL_FAIL" \
+    REP_COMMIT="$HEAD_SHA" \
+    "$PY" "$R/scripts/fire_report.py" >>"$LOG" 2>&1 || echo "report: FAILED (non-fatal)"
+  fi
 }
 
 # skip if a previous run is still going (downloads take a few minutes)

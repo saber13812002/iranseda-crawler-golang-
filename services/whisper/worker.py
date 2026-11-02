@@ -189,6 +189,7 @@ def process_session(session: dict):
         _copy_to_52([srt_path] + ([media_path] if KEEP_MP4 else []))
         _finish(sid, True, srt_name, media_name)
         log.info("session %s: DONE", sid)
+        _fire_transcribe_report(sid, srt_name, link)
         return "subtitled"
 
     except Exception as exc:  # noqa: BLE001
@@ -226,6 +227,36 @@ def _recover_stale_transcribing():
             conn.close()
     except Exception as exc:  # noqa: BLE001
         log.error("startup recovery failed (continuing): %s", exc)
+
+
+def _fire_transcribe_report(sid: int, srt_name: str, link: str):
+    """Best-effort transcribe_batch report event (idempotent per session).
+
+    Drops a publication_task row that the dashboard reporter worker later
+    publishes (when IRANSEDA_REPORTER_ENABLED=1 + a real client). NEVER
+    raises into the transcription loop — a reporting hiccup must not block
+    or fail a transcription. The per-session idempotency key guarantees one
+    event even if a session is redone.
+    """
+    try:
+        import subprocess
+        repo = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        env = dict(os.environ)
+        env.update({
+            "REP_EVENT_TYPE": "transcribe_batch",
+            "REP_TITLE": f"Transcribed: {srt_name}",
+            "REP_BODY": f"session {sid} subtitled: {srt_name}",
+            "REP_KEY": f"transcribe:{sid}",
+        })
+        res = subprocess.run(
+            [sys.executable, os.path.join(repo, "scripts", "fire_report.py")],
+            env=env, capture_output=True, text=True, timeout=30,
+        )
+        if res.returncode != 0 or "FAILED" in (res.stdout or ""):
+            log.warning("transcribe report not recorded (non-fatal): %s",
+                        (res.stdout or res.stderr or "")[:200])
+    except Exception as exc:  # noqa: BLE001
+        log.warning("transcribe report error (non-fatal): %s", exc)
 
 
 def main():
