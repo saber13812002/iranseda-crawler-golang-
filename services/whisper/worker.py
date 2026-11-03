@@ -237,10 +237,22 @@ def _fire_transcribe_report(sid: int, srt_name: str, link: str):
     raises into the transcription loop — a reporting hiccup must not block
     or fail a transcription. The per-session idempotency key guarantees one
     event even if a session is redone.
+
+    Path resolution: inside the GPU container the crawler repo is NOT
+    mounted, so scripts/fire_report.py is only reachable via the
+    read-only ./scripts:/app/scripts compose mount; when the worker runs
+    from a real checkout (host/CI) the repo-relative path is used.
     """
     try:
         import subprocess
-        repo = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        here = os.path.abspath(__file__)
+        repo = os.path.dirname(os.path.dirname(os.path.dirname(here)))
+        candidates = [
+            "/app/scripts/fire_report.py",                       # container (compose mount, ro)
+            os.path.join(repo, "scripts", "fire_report.py"),     # host checkout
+            os.path.join(here, "fire_report.py"),                # flat co-located copy
+        ]
+        script = next((c for c in candidates if os.path.isfile(c)), candidates[0])
         env = dict(os.environ)
         env.update({
             "REP_EVENT_TYPE": "transcribe_batch",
@@ -249,7 +261,7 @@ def _fire_transcribe_report(sid: int, srt_name: str, link: str):
             "REP_KEY": f"transcribe:{sid}",
         })
         res = subprocess.run(
-            [sys.executable, os.path.join(repo, "scripts", "fire_report.py")],
+            [sys.executable, script],
             env=env, capture_output=True, text=True, timeout=30,
         )
         if res.returncode != 0 or "FAILED" in (res.stdout or ""):

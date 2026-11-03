@@ -34,6 +34,7 @@ services:
     volumes:
       - ./downloads:/home/saber/saberprojects/iranseda-crawler-golang-/downloads
       - ./services/whisper:/app/whisper
+      - ./scripts:/app/scripts:ro   # fire_report.py for the transcribe_batch report hook
       - /home/saber/whisper-models:/models:ro
     deploy:
       resources:
