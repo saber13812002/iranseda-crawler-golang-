@@ -1,0 +1,311 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/saber13812002/iranseda-crawler-golang-/corpus/schema/corpus.schema.json",
+  "title": "IranSeda Corpus Record v1.0",
+  "description": "One actual radio program session of the IranSeda archive, with all transcript artifacts. Identity policy (Stage 1, IRANSEDA-CORPUS-2026-01): radio_program_sessions.id (database_refs.session_id) is the authoritative session identity; episode_key (ch,e) is a source reference, never sole identity; records colliding on (ch,e) stay quarantined (quarantine.jsonl) until identity is proven. Original content is never replaced by corrected content; every version is preserved as a separate entry. Fields without a verified source are null + missing_reason, never guessed. Broadcast dates come from the canonical filename (Jalali, 5-token stem JJ-MM-DD-HH-MM, year prefix 14) and are converted to Gregorian with a pinned conversion; archive-insert time (created_at) is never used as broadcast date. Server-private paths and secrets are forbidden everywhere in the record.",
+  "x-corpus": {
+    "schema_version": "1.0",
+    "stage": "Stage 2 — versioned corpus schema (mission IRANSEDA-CORPUS-2026-01)",
+    "date": "2026-11-04",
+    "base": "schemas/iranseda-corpus-v1.schema.json (data-contract v1, unchanged)",
+    "identity_policy": "PERMANENT_UNTIL_IDENTITY_PROVEN",
+    "identity_policy_ref": "reports/corpus/STAGE_1_CLASS_B_IDENTITY_REPORT.md",
+    "record_granularity": "one record per actual session (radio_program_sessions.id); identical archive links are NEVER collapsed",
+    "field_mapping_ref": "corpus/schema/field_mapping.json",
+    "examples_ref": "corpus/schema/examples/"
+  },
+  "type": "object",
+  "required": [
+    "schema_version",
+    "record_id",
+    "episode_key",
+    "database_refs",
+    "program",
+    "audio",
+    "speakers",
+    "transcripts",
+    "provenance",
+    "quality"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0",
+      "description": "Corpus data-contract version."
+    },
+    "record_id": {
+      "type": "string",
+      "pattern": "^iranseda:(ch[0-9]+:e[0-9]+|db[0-9]+:s[0-9]+)$",
+      "description": "Stable, extraction-order-independent INDEX key (not identity). Preferred: iranseda:ch{ch}:e{e} from the canonical audio link. Fallback (no e= id): iranseda:db{program_id}:s{session_id} — always unique because it includes session_id. Sessions that share a (ch,e) with another session: only one keeps the ch:e id, the rest fall back and are quarantined until identity is proven (Stage 1 policy)."
+    },
+    "episode_key": {
+      "type": "object",
+      "description": "Canonical external episode SOURCE REFERENCE (EPG slot). Not session identity — several sessions may share the same (ch, e).",
+      "required": ["source"],
+      "properties": {
+        "ch": { "type": ["integer", "null"], "description": "Channel id from program/episode URL (e.g. 14 = Radio Maaref)." },
+        "e": { "type": ["string", "null"], "description": "Numeric EPG episode id from the audio link (?e=...), kept as string to preserve digits." },
+        "m": { "type": ["string", "null"], "description": "6-digit program id from the program page URL (?m=...)." },
+        "source": { "type": "string", "enum": ["link", "fallback_db"] }
+      }
+    },
+    "database_refs": {
+      "type": "object",
+      "description": "Traceability back to the live DB. database_refs.session_id (radio_program_sessions.id, PK) is the AUTHORITATIVE session identity per Stage 1.",
+      "required": ["session_id", "program_id", "tables"],
+      "properties": {
+        "session_id": { "type": "integer", "description": "radio_program_sessions.id — authoritative session identity." },
+        "program_id": { "type": ["integer", "null"], "description": "radio_program_sessions.program_id (the row actually referenced by the session)." },
+        "program_ids_all": { "type": "array", "items": { "type": "integer" }, "description": "All radio_programs rows sharing the same (ch,m) — legacy + current duplicates." },
+        "tables": {
+          "type": "object",
+          "required": ["radio_program_sessions", "radio_programs"],
+          "properties": {
+            "radio_program_sessions": { "type": ["integer", "null"] },
+            "radio_programs": { "type": ["array", "null"], "items": { "type": "integer" } },
+            "llm_output": { "type": "array", "items": { "type": "integer" }, "description": "All llm_output.id rows attached (all job_types, all models)." },
+            "crop_detection": { "type": ["integer", "null"] },
+            "asr_output": { "type": "array", "items": { "type": "integer" } }
+          }
+        }
+      }
+    },
+    "program": {
+      "type": "object",
+      "description": "Merged program info (legacy + current rows merged on (ch,m)).",
+      "required": ["name", "url"],
+      "properties": {
+        "name": { "type": "string", "description": "NFC-normalized, whitespace-collapsed program name." },
+        "name_raw": { "type": ["string", "null"], "description": "Original DB value (recoverable original, per normalization rule)." },
+        "url": { "type": "string", "description": "Canonical program page URL with ch and m." },
+        "ch": { "type": ["integer", "null"] },
+        "m": { "type": ["string", "null"] },
+        "radio": { "type": ["string", "null"], "description": "Radio name (legacy rows may be empty)." },
+        "description": { "type": ["string", "null"] },
+        "schedule": {
+          "type": ["object", "null"],
+          "description": "The program's BROADCAST SCHEDULE (when the program airs) — NOT the air time of this episode. Schedule and episode time are kept separate by design.",
+          "properties": {
+            "start_time": { "type": ["string", "null"], "description": "programs.time as HH:MM:SS." },
+            "description_raw": { "type": ["string", "null"], "description": "programs.time_description (Persian free text)." },
+            "description_normalized": { "type": ["string", "null"] },
+            "source": { "type": "string", "enum": ["programs.time", "programs.time_description", "none"] }
+          }
+        },
+        "crop": {
+          "type": ["object", "null"],
+          "description": "Program-level crop settings (radio_programs.crop_*).",
+          "properties": {
+            "offset_sec": { "type": ["integer", "null"] },
+            "enabled": { "type": ["boolean", "null"] },
+            "auto": { "type": ["boolean", "null"] }
+          }
+        }
+      }
+    },
+    "broadcast": {
+      "type": ["object", "null"],
+      "description": "WHEN THIS EPISODE AIREDS. Parsed from the canonical filename stem radio-<chan>-JJ-MM-DD-HH-MM (5 numeric tokens, seconds implicitly 00; year = 14JJ — erratum 2026-11-04), NEVER from created_at (crawl/insert time). null when no filename exists (342 such sessions) with quality.missing+=broadcast.date.",
+      "properties": {
+        "jalali": {
+          "type": ["object", "null"],
+          "required": ["date"],
+          "properties": {
+            "date": { "type": ["string", "null"], "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$", "description": "Jalali date YYYY-MM-DD (year completed from 2-digit stem, prefix 14; 2-digit values that parse to an impossible future year are flagged, never silently 'fixed')." },
+            "time": { "type": ["string", "null"], "pattern": "^[0-9]{2}:[0-9]{2}:[0-9]{2}$" },
+            "source": { "type": "string", "const": "filename" }
+          }
+        },
+        "gregorian": {
+          "type": ["object", "null"],
+          "properties": {
+            "date": { "type": ["string", "null"], "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$", "description": "Derived by Jalali→Gregorian conversion (must agree with the jalali date; validator recomputes)." },
+            "time": { "type": ["string", "null"] },
+            "source": { "type": "string", "const": "derived_from_jalali_filename" },
+            "conversion": { "type": ["string", "null"], "description": "Library + version used for the conversion." }
+          }
+        },
+        "filename_stem": { "type": ["string", "null"], "description": "The exact stem the broadcast date was parsed from (auditability)." }
+      }
+    },
+    "audio": {
+      "type": "object",
+      "required": ["url"],
+      "properties": {
+        "url": { "type": "string", "description": "Absolute audio URL (session.link resolved against https://radio.iranseda.ir/)." },
+        "link_raw": { "type": ["string", "null"], "description": "Original relative link value from the DB." },
+        "filename": { "type": ["string", "null"], "description": "DB session.filename (audio file name on the server)." },
+        "local_exists": { "type": "boolean", "description": "True if the audio file was found on the export host at build time (informational; paths are NOT embedded in the corpus)." }
+      }
+    },
+    "speakers": {
+      "type": "object",
+      "description": "ONLY from verified crawled sources. Currently: no source table exists in the DB — speakers is always an empty list with missing_reason. Never guessed from ASR text.",
+      "required": ["items", "missing_reason"],
+      "properties": {
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "source"],
+            "properties": {
+              "name": { "type": "string" },
+              "role": { "type": ["string", "null"], "description": "host / guest / reader / ..." },
+              "source_page": { "type": ["string", "null"] },
+              "extraction_method": { "type": ["string", "null"] },
+              "confidence": { "type": ["string", "null"], "enum": ["high", "medium", "low", null] }
+            }
+          }
+        },
+        "missing_reason": {
+          "type": "string",
+          "description": "e.g. 'no verified source table in database (stage-1 finding #9)'."
+        }
+      }
+    },
+    "transcripts": {
+      "type": "object",
+      "description": "ALL transcript artifacts. Originals and corrections are independent entries; an original is never replaced by a corrected version.",
+      "required": ["originals", "llm_outputs", "asr_outputs"],
+      "properties": {
+        "originals": {
+          "type": "object",
+          "description": "The ASR-produced (uncorrected) SRT and TXT.",
+          "required": ["srt", "txt"],
+          "properties": {
+            "srt": { "$ref": "#/$defs/artifact" },
+            "txt": { "$ref": "#/$defs/artifact" }
+          }
+        },
+        "llm_outputs": {
+          "type": "array",
+          "description": "One entry per llm_output row (per job_type per model). All versions preserved.",
+          "items": {
+            "type": "object",
+            "required": ["job_type", "model", "llm_output_id", "status"],
+            "properties": {
+              "llm_output_id": { "type": "integer" },
+              "job_type": { "type": "string", "enum": ["correct_subtitles", "correct_text", "summary", "full_text", "qa", "unknown"] },
+              "model": { "type": "string" },
+              "prompt_id": { "type": ["integer", "null"] },
+              "status": { "type": "string" },
+              "content": { "type": ["string", "null"], "description": "NFC-normalized. corrected text / bilingual summary / full text." },
+              "content_en": { "type": ["string", "null"] },
+              "srt_content": { "type": ["string", "null"], "description": "Corrected SRT (job_type=correct_subtitles); must parse as SRT." },
+              "file_relpath": { "type": ["string", "null"], "description": "Server-relative artifact path from the DB (not an absolute/private path)." },
+              "disk_exists": { "type": "boolean" },
+              "input_tokens": { "type": ["integer", "null"] },
+              "output_tokens": { "type": ["integer", "null"] },
+              "started_at": { "type": ["string", "null"], "format": "date-time" },
+              "finished_at": { "type": ["string", "null"], "format": "date-time" }
+            }
+          }
+        },
+        "asr_outputs": {
+          "type": "array",
+          "description": "Rows from asr_output (provider registry). Empty for the overwhelming majority — production Whisper outputs are NOT registered in that table; provenance is stated, not invented.",
+          "items": {
+            "type": "object",
+            "required": ["asr_output_id"],
+            "properties": {
+              "asr_output_id": { "type": "integer" },
+              "provider": { "type": ["string", "null"] },
+              "model_name": { "type": ["string", "null"] },
+              "model_version": { "type": ["string", "null"] },
+              "audio_sha256": { "type": ["string", "null"] },
+              "processing_status": { "type": ["string", "null"] },
+              "error_code": { "type": ["string", "null"] }
+            }
+          }
+        },
+        "whisper_provenance": {
+          "type": "object",
+          "description": "Honest statement about the unregistered Whisper path.",
+          "properties": {
+            "provider": { "type": ["string", "null"], "description": "e.g. 'whisper (local pipeline, output not registered in asr_output)'." },
+            "details_available": { "const": false }
+          }
+        }
+      }
+    },
+    "crop": {
+      "type": ["object", "null"],
+      "description": "Per-session program-boundary crop (crop_detection).",
+      "properties": {
+        "start_sec": { "type": ["integer", "null"] },
+        "end_sec": { "type": ["integer", "null"] },
+        "confidence": { "type": ["string", "null"], "enum": ["high", "medium", "low", null] },
+        "status": { "type": ["string", "null"], "enum": ["cropped", "needs_review", "none", null] },
+        "evidence": { "type": ["object", "null"], "description": "Parsed evidence JSON (dur_sec, candidates, reasons...)." }
+      }
+    },
+    "source_metadata": {
+      "type": "object",
+      "description": "How to find everything on the public web.",
+      "required": ["episode_url", "program_url"],
+      "properties": {
+        "episode_url": { "type": "string", "description": "Absolute audio/EPG URL." },
+        "program_url": { "type": "string" },
+        "site_base": { "const": "https://radio.iranseda.ir/" }
+      }
+    },
+    "pipeline_state": {
+      "type": "object",
+      "properties": {
+        "status": { "type": ["string", "null"], "enum": ["subtitled", "pending_download", "pending_transcribe", "transcribing", "failed_permanent", null] },
+        "is_downloaded": { "type": ["boolean", "null"] },
+        "attempts": { "type": ["integer", "null"] },
+        "last_error": { "type": ["string", "null"], "description": "NFC-normalized and server-private-path sanitized." }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["exported_at", "export_version", "sources"],
+      "properties": {
+        "exported_at": { "type": "string", "format": "date-time" },
+        "export_version": { "type": "string", "description": "Corpus build id (git SHA or timestamped run id)." },
+        "sources": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Which tables/files contributed: e.g. ['radio_program_sessions#123', 'radio_programs#11', 'llm_output#456', 'disk:downloads/cleaned/...srt']."
+        },
+        "session_created_at": { "type": ["string", "null"], "description": "DB crawl/insert time (NOT broadcast time). Kept for audit." },
+        "session_updated_at": { "type": ["string", "null"] }
+      }
+    },
+    "quality": {
+      "type": "object",
+      "description": "Explicit missing-data status — no silent gaps.",
+      "required": ["missing", "warnings"],
+      "properties": {
+        "missing": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Missing artifact fields, e.g. 'broadcast.date' (no filename), 'transcripts.originals.srt.content', 'program.schedule'."
+        },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "e.g. 'legacy_program_duplicate_merged', 'orphan_corrected_disk_file', 'time_description_malformed'."
+        },
+        "text_normalized": { "const": "NFC" }
+      }
+    }
+  },
+  "$defs": {
+    "artifact": {
+      "type": "object",
+      "required": ["exists"],
+      "properties": {
+        "exists": { "type": "boolean", "description": "Artifact present (DB reference or on-disk file at build time)." },
+        "db_filename": { "type": ["string", "null"], "description": "srt_filename column value (SRT only)." },
+        "relpath": { "type": ["string", "null"], "description": "Server-relative path (downloads/...), never an absolute private path." },
+        "content": { "type": ["string", "null"], "description": "NFC-normalized full content when inlined (see build config)." },
+        "sha256": { "type": ["string", "null"], "description": "SHA-256 of the inlined content (or file when hashed)." },
+        "char_count": { "type": ["integer", "null"] },
+        "segment_count": { "type": ["integer", "null"], "description": "SRT cue count." },
+        "duration_sec": { "type": ["number", "null"], "description": "Last SRT cue end time, in seconds." },
+        "missing_reason": { "type": ["string", "null"] }
+      }
+    }
+  }
+}
