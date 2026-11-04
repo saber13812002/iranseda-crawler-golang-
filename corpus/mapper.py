@@ -7,6 +7,7 @@ explicit (quality.missing / quality.warnings) — never silently dropped.
 import json
 import os
 import hashlib
+import datetime
 
 from . import normalizer
 from . import srt as srtmod
@@ -28,6 +29,29 @@ def _boolish(v):
     if v is None:
         return None
     return bool(int(v))
+
+
+def _time_of_day(t):
+    """Normalize a MySQL TIME value to 'HH:MM:SS'.
+
+    pymysql decodes a TIME column as datetime.timedelta (the live
+    radio_programs.time column is TIME; older repo dumps say varchar).
+    Tolerate timedelta / datetime.time / datetime / str without crashing.
+    """
+    if t is None:
+        return None
+    if isinstance(t, datetime.timedelta):
+        total = int(t.total_seconds())
+        if total < 0:
+            total += 24 * 3600  # MySQL TIME can be negative; wrap to 0..86399
+        if 0 <= total < 24 * 3600:
+            h, rem = divmod(total, 3600)
+            m, s = divmod(rem, 60)
+            return "%02d:%02d:%02d" % (h, m, s)
+        return str(t)
+    if hasattr(t, "strftime"):
+        return t.strftime("%H:%M:%S")
+    return str(t)
 
 
 def _sha256_text(text):
@@ -163,8 +187,7 @@ def _merge_program(prog_rows):
         radio = normalizer.nfc(radio)
     description = normalizer.normalize_text(primary.get("description"))
 
-    t = primary.get("time")
-    start_time = t.strftime("%H:%M:%S") if t else None
+    start_time = _time_of_day(primary.get("time"))
     td_raw = primary.get("time_description")
     td = normalizer.normalize_text(td_raw)
     if td_raw is not None and normalizer.has_control_chars(td_raw):

@@ -77,7 +77,9 @@ def _program():
         "id": 11,
         "name": "برنامهٔ\n\tصبح",
         "url": "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044116",
-        "time": datetime.time(9, 0, 0),
+        # pymysql returns the live TIME column as timedelta — keep the fake
+        # faithful to production (this is what crashed the 2026-11-04 pilot).
+        "time": datetime.timedelta(hours=9),
         "time_description": "هر روز صبح",
         "description": "desc",
         "created_at": datetime.datetime(2024, 11, 8, 0, 0, 0),
