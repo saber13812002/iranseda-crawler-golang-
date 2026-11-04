@@ -156,8 +156,9 @@ identity: 10873 sessions, 1147 (ch,e) groups with >1 session, 2294 sessions in g
 No service restart, no cron/systemd change (Stage 7 territory). `investigate`
 runs on demand. Auto-refresh site cron kept running unmodified throughout
 (new auto-refresh commits `7b1b4aa6a` etc. were absorbed by rebase, never clobbered).
-Report push: `download-db` pushed via the 53 relay (fast-forward from origin
-`4840b653e`), `ls-remote` verified — see commit SHA below this table at commit time.
+Report push: `download-db` commit **`3b5994a71af8e200817d7c96718c041ad4ef5964`**
+pushed via the 53 relay (fast-forward from `285581ebf`); `git ls-remote
+origin download-db` → `3b5994a71` (**verified**).
 
 ## 14. Output locations
 - Server 53: `data/corpus/class_b_investigation.jsonl` (2.8 MB, sha256 above).
