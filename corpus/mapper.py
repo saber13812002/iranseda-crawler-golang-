@@ -138,29 +138,43 @@ def _artifact_for_path(disk, relpath, abspath, inline, content_is_srt=False,
 def _resolve_original_srt(disk, session, warnings):
     """Find the original SRT. Returns (relpath, abspath, used_name).
 
-    Order: srt_filename (DB) in downloads/cleaned/ then downloads/;
-    else stem-of-filename in both dirs.
+    Order: top-level downloads/ FIRST, then downloads/cleaned/.
+
+    Ground truth (53, probe-14, 2026-11-04): of 4695 sessions with
+    srt_filename, 4483 have the SRT only at downloads/<srt_filename> and
+    212 have it in BOTH places — in those 212 the cleaned copy is a legacy
+    plain-text artifact (0/212 parse as SRT) while the top-level copy is
+    the real whisper SRT (212/212 parse). Zero sessions have a
+    cleaned-only copy. So top-level-first is always correct; among
+    existing candidates we additionally prefer one that parses as SRT.
     """
     from . import jalali as _j
     candidates = []
     srt_name = (session.get("srt_filename") or "").strip()
     if srt_name:
-        candidates.append(("downloads/cleaned/%s" % srt_name, srt_name))
         candidates.append(("downloads/%s" % srt_name, srt_name))
+        candidates.append(("downloads/cleaned/%s" % srt_name, srt_name))
     audio_name = (session.get("filename") or "").strip()
     stem = _j.stem_of(audio_name)
     if stem and not srt_name:
-        candidates.append(("downloads/cleaned/%s.srt" % stem, stem + ".srt"))
         candidates.append(("downloads/%s.srt" % stem, stem + ".srt"))
+        candidates.append(("downloads/cleaned/%s.srt" % stem, stem + ".srt"))
+    existing = []
     for relpath, used in candidates:
         abspath = _disk_file(disk, relpath, True) if disk is not None else None
         if abspath is not None:
-            return relpath, abspath, used
-    if srt_name and not candidates:
+            existing.append((relpath, abspath, used))
+    if not existing:
+        if srt_name:
+            return "downloads/%s" % srt_name, None, srt_name
         return None, None, None
-    if srt_name:
-        return "downloads/%s" % srt_name, None, srt_name
-    return None, None, None
+    # Prefer a candidate that actually parses as SRT (defends against a
+    # stray text artifact at a top-level path).
+    for relpath, abspath, used in existing:
+        content = _read_text(abspath)
+        if content is not None and srtmod.looks_like_srt(content):
+            return relpath, abspath, used
+    return existing[0]
 
 
 def _merge_program(prog_rows):

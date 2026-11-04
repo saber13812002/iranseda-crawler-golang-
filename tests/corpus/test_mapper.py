@@ -208,6 +208,42 @@ def test_original_and_corrected_both_kept():
     assert "سلام" in orig["srt"]["content"]
 
 
+def test_original_srt_top_level_wins_over_cleaned_text_artifact():
+    # Regression: 53 pilot (2026-11-04). For 212 sessions a legacy
+    # plain-text copy sits at downloads/cleaned/<stem>.srt while the real
+    # whisper SRT is at top-level downloads/<srt_filename> (probe-14:
+    # cleaned copies 0/212 parse as SRT, top-level 212/212 parse). The old
+    # cleaned-first precedence resolved the text artifact and made 100% of
+    # pilot records invalid.
+    text_artifact = "متن ساده بدون تایمینگ، به‌صورت پاراگراف آزاد.\n"
+    with tempfile.TemporaryDirectory() as tmp:
+        disk = _make_disk(tmp, {
+            "downloads/radio-maaref-04-01-01-09-00.srt": ORIGINAL_SRT,
+            "downloads/cleaned/radio-maaref-04-01-01-09-00.srt": text_artifact,
+        })
+        rec = _build(_session(), _program(), [_llm_row()], disk, tmp)
+    orig = rec["transcripts"]["originals"]
+    assert orig["srt"]["exists"] is True
+    assert orig["srt"]["relpath"] == "downloads/radio-maaref-04-01-01-09-00.srt"
+    assert orig["srt"]["segment_count"] == 2
+
+
+def test_original_srt_prefers_parsable_candidate():
+    # Defensive: even if a plain-text artifact lands at the top-level
+    # path, resolution prefers the existing candidate that parses as SRT.
+    text_artifact = "فقط متن، بدون سگمنت.\n"
+    with tempfile.TemporaryDirectory() as tmp:
+        disk = _make_disk(tmp, {
+            "downloads/radio-maaref-04-01-01-09-00.srt": text_artifact,
+            "downloads/cleaned/radio-maaref-04-01-01-09-00.srt": ORIGINAL_SRT,
+        })
+        rec = _build(_session(), _program(), [_llm_row()], disk, tmp)
+    orig = rec["transcripts"]["originals"]
+    assert orig["srt"]["exists"] is True
+    assert orig["srt"]["relpath"] == "downloads/cleaned/radio-maaref-04-01-01-09-00.srt"
+    assert orig["srt"]["segment_count"] == 2
+
+
 def test_schedule_is_program_not_episode():
     with tempfile.TemporaryDirectory() as tmp:
         disk = _make_disk(tmp, {})
