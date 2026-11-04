@@ -26,6 +26,8 @@ from . import validator as _validator
 from . import publisher as _publisher
 from . import metrics as _metrics
 from . import scheduler as _scheduler
+from . import identity as _identity
+from .extractor import DiskIndex
 
 
 def _make_db(cfg, log=print):
@@ -119,6 +121,26 @@ def cmd_publish(cfg):
     return 0
 
 
+def cmd_investigate(cfg):
+    """Stage 1: Class B identity investigation (read-only).
+
+    Writes data/corpus/class_b_investigation.jsonl (summary line + one
+    line per colliding (ch, e) group). Never modifies DB or corpus.
+    """
+    import os
+    with _database.Database(cfg) as db:
+        disk = DiskIndex(cfg.downloads_dir)
+        disk.scan()
+        result = _identity.investigate(db, disk=disk, log=print)
+    out = os.path.join(cfg.out_dir, "class_b_investigation.jsonl")
+    os.makedirs(cfg.out_dir, exist_ok=True)
+    _identity.write_jsonl(result, out)
+    print("investigation written to %s (%d groups)"
+          % (out, result["summary"]["groups_total"]))
+    print(json.dumps(result["summary"], indent=2, ensure_ascii=False))
+    return 0
+
+
 def cmd_metrics(cfg):
     p = _metrics.write_prometheus(cfg)
     print("metrics written to %s" % p)
@@ -161,6 +183,8 @@ def main(argv=None):
     if cmd == "schedule":
         return cmd_schedule(cfg, loop="--loop" in argv,
                             reconcile="--reconcile" in argv)
+    if cmd == "investigate":
+        return cmd_investigate(cfg)
     print(__doc__)
     return 1
 
