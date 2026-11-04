@@ -54,6 +54,32 @@ def _time_of_day(t):
     return str(t)
 
 
+def _time_to_seconds(t):
+    """Normalize a MySQL TIME value to integer seconds (or None).
+
+    radio_programs.crop_offset is a TIME column in the live DB (pymysql
+    decodes it as datetime.timedelta; the repo SQL dump says varchar —
+    stale). The v1 contract type for program.crop.offset_sec is
+    ["integer","null"], so seconds are the canonical representation.
+    The raw timedelta crashed json.dumps on 53 at record #418
+    (probe-18, 2026-11-04). Tolerate time/datetime/str defensively.
+    """
+    if t is None:
+        return None
+    if isinstance(t, datetime.timedelta):
+        return int(t.total_seconds())
+    if hasattr(t, "hour"):
+        return t.hour * 3600 + t.minute * 60 + t.second
+    s = str(t).strip()
+    try:
+        parts = [int(p) for p in s.split(":")]
+        parts = [0] * (3 - len(parts)) + parts
+        h, m, sec = parts
+        return h * 3600 + m * 60 + sec
+    except (ValueError, AttributeError):
+        return None
+
+
 def _sha256_text(text):
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
@@ -216,7 +242,7 @@ def _merge_program(prog_rows):
     crop = None
     if primary.get("crop_offset") is not None or primary.get("crop_enabled") is not None:
         crop = {
-            "offset_sec": primary.get("crop_offset"),
+            "offset_sec": _time_to_seconds(primary.get("crop_offset")),
             "enabled": _boolish(primary.get("crop_enabled")),
             "auto": _boolish(primary.get("crop_auto")),
         }

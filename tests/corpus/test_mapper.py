@@ -7,6 +7,7 @@ speakers empty-with-reason.
 """
 
 import datetime
+import json
 import os
 import tempfile
 
@@ -242,6 +243,26 @@ def test_original_srt_prefers_parsable_candidate():
     assert orig["srt"]["exists"] is True
     assert orig["srt"]["relpath"] == "downloads/cleaned/radio-maaref-04-01-01-09-00.srt"
     assert orig["srt"]["segment_count"] == 2
+
+
+def test_crop_offset_timedelta_is_int_seconds():
+    # Live DB: radio_programs.crop_offset is a TIME column; pymysql returns
+    # datetime.timedelta. It must be normalized to int seconds — the raw
+    # timedelta crashed json.dumps on 53 at record #418 (probe-18,
+    # 2026-11-04: path $.program.crop.offset_sec, value timedelta(0)).
+    with tempfile.TemporaryDirectory() as tmp:
+        disk = _make_disk(tmp, {
+            "downloads/radio-maaref-04-01-01-09-00.srt": ORIGINAL_SRT,
+        })
+        prog = _program()
+        prog["crop_offset"] = datetime.timedelta(0)
+        prog["crop_enabled"] = 0
+        rec = _build(_session(), prog, [_llm_row()], disk, tmp)
+        crop = rec["program"]["crop"]
+        assert crop["offset_sec"] == 0
+        assert isinstance(crop["offset_sec"], int)
+        # the whole record must be JSON-serializable (the live crash site)
+        json.dumps(rec, ensure_ascii=False)
 
 
 def test_schedule_is_program_not_episode():
