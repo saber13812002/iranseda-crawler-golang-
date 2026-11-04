@@ -206,6 +206,36 @@ def test_export_invalid_goes_to_invalid_jsonl():
         assert any("record_id" in p for p in row["problems"])
 
 
+def test_new_run_removes_stale_previous_outputs():
+    # 2026-11-04 pilot: a 100-invalid run left invalid.jsonl + (when sharded)
+    # stale corpus-NNNN.jsonl shards behind; a fresh run must remove them so
+    # the next run's results cannot be misread.
+    with tempfile.TemporaryDirectory() as tmp:
+        db, cfg, _ = _setup(tmp)
+        os.makedirs(cfg.out_dir, exist_ok=True)
+        stale_invalid = os.path.join(cfg.out_dir, "invalid.jsonl")
+        stale_shard = os.path.join(cfg.out_dir, "corpus-0001.jsonl")
+        with open(stale_invalid, "w", encoding="utf-8") as f:
+            f.write('{"stale": true}\n')
+        with open(stale_shard, "w", encoding="utf-8") as f:
+            f.write('{"stale": true}\n')
+        cfg.shard_lines = 2
+        ex = E.Exporter(db, cfg, log=lambda m: None)
+        manifest = ex.run()
+        assert manifest["records_invalid"] == 0
+        assert not os.path.exists(stale_invalid), "stale invalid.jsonl must be removed"
+        shards = [p for p in os.listdir(cfg.out_dir)
+                  if p.startswith("corpus-") and p.endswith(".jsonl")]
+        total = 0
+        for name in shards:
+            with open(os.path.join(cfg.out_dir, name), encoding="utf-8") as f:
+                for line in f:
+                    if line.strip():
+                        total += 1
+                        assert '"stale"' not in line
+        assert total == manifest["records_written"]
+
+
 def test_export_idempotent_fingerprints():
     with tempfile.TemporaryDirectory() as tmp:
         db, cfg, _ = _setup(tmp)

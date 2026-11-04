@@ -75,7 +75,6 @@ def cmd_reconcile(cfg):
 
 
 def cmd_validate(cfg):
-    records = []
     import os
     paths = []
     sp = os.path.join(cfg.out_dir, "corpus.jsonl")
@@ -85,14 +84,27 @@ def cmd_validate(cfg):
         for p in sorted(os.listdir(cfg.out_dir)) if os.path.isdir(cfg.out_dir) else []:
             if p.startswith("corpus-") and p.endswith(".jsonl"):
                 paths.append(os.path.join(cfg.out_dir, p))
+    # Stream line-by-line (a full export can be several GB; never materialize
+    # all records in memory). validate_record is per-record + a shared seen set.
+    seen = set()
+    problems = {}
+    checked = 0
+    ok = 0
     for p in paths:
         with open(p, encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
-                if line:
-                    records.append(json.loads(line))
-    problems, ok = _validator.validate_batch(records)
-    summary = {"records_checked": len(records), "ok": ok,
+                if not line:
+                    continue
+                rec = json.loads(line)
+                checked += 1
+                probs = _validator.validate_record(rec, seen_ids=seen)
+                if probs:
+                    rid = rec.get("record_id") if isinstance(rec, dict) else None
+                    problems[rid or "<unknown>"] = probs
+                else:
+                    ok += 1
+    summary = {"records_checked": checked, "ok": ok,
                "invalid": len(problems), "problems": problems}
     print(json.dumps(summary, indent=2, ensure_ascii=False))
     return 0 if not problems else 2
