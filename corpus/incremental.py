@@ -61,13 +61,13 @@ class IncrementalExporter(object):
         state = self._load_state()
         overlap_sec = int(self.cfg.overlap_hours * 3600)
         if force_full or state is None or not state.get("watermark"):
-            self.ex.ex.log("incremental: no prior watermark — running FULL export")
+            self.ex.log("incremental: no prior watermark — running FULL export")
             wm_before = self.db.high_watermark()
             manifest = self.ex.run()
         else:
             wm = state["watermark"]
             clause, params = self.db.watermark_clause(wm, overlap_sec)
-            self.ex.ex.log("incremental: WHERE %s params=%s" % (clause, params))
+            self.ex.log("incremental: WHERE %s params=%s" % (clause, params))
             manifest = self.ex.run(where=clause, params=params)
         wm_after = self.db.high_watermark()
         self._save_state(wm_after, manifest)
@@ -110,7 +110,7 @@ class IncrementalExporter(object):
         }
         _atomic_write(os.path.join(self.cfg.out_dir, "reconcile_report.json"),
                       json.dumps(report, indent=2, ensure_ascii=False))
-        self.ex.ex.log("reconcile: +%d -%d ~%d =%d in %ss"
+        self.ex.log("reconcile: +%d -%d ~%d =%d in %ss"
                        % (len(added), len(removed), len(changed), unchanged,
                           report["duration_sec"]))
         return report

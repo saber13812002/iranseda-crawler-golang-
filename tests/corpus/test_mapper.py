@@ -377,6 +377,30 @@ def test_record_passes_validator():
     assert probs == [], probs
 
 
+def test_last_error_server_path_masked():
+    # probe19 Class A: production last_error values embed ffmpeg
+    # invocations with absolute server paths and were quarantined
+    # (53 records) by the validator's private-path scan. The mapper must
+    # mask the path, keep the message, and pass validation.
+    raw_error = (
+        "ffmpeg failed: [Errno 1094995529] Invalid data found when "
+        "processing input: '/home/saber/saberprojects/iranseda-crawler-"
+        "golang-/downloads/radio-maaref-04-01-01-09-00.mp3'"
+    )
+    with tempfile.TemporaryDirectory() as tmp:
+        disk = _make_disk(tmp, {})
+        rec = _build(_session(last_error=raw_error), _program(),
+                     [_llm_row()], disk, tmp)
+    le = rec["pipeline_state"]["last_error"]
+    assert "/home/" not in le
+    assert "saber" not in le
+    assert "<server-path>" in le
+    assert "Invalid data found when processing input" in le
+    # and the whole record must pass the validator (was Class A invalid)
+    probs = V.validate_record(rec, seen_ids=set())
+    assert not [p for p in probs if "path" in p.lower()], probs
+
+
 def test_deterministic_fingerprint():
     with tempfile.TemporaryDirectory() as tmp:
         disk = _make_disk(tmp, {})

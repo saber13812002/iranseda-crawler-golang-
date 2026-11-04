@@ -498,7 +498,10 @@ def build_record(session, prog_by_id, prog_by_chm, llm_rows, asr_rows, crop_row,
         "status": session.get("status"),
         "is_downloaded": _boolish(session.get("is_downloaded")),
         "attempts": session.get("attempts"),
-        "last_error": normalizer.normalize_text(session.get("last_error")),
+        # Sanitize last_error: production values embed ffmpeg invocations
+        # with absolute server paths (probe19: 53 quarantined records).
+        "last_error": normalizer.sanitize_private_paths(
+            normalizer.normalize_text(session.get("last_error"))),
     }
 
     # ---- provenance ---------------------------------------------------

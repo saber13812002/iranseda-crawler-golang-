@@ -41,3 +41,32 @@ def test_is_blank():
     assert N.is_blank(None)
     assert N.is_blank("   ")
     assert not N.is_blank("x")
+
+
+def test_sanitize_private_paths_masks_server_paths():
+    # The exact production shape (probe19, 2026-11-04): an ffmpeg error with
+    # a quoted absolute path. The message must survive, the path must not.
+    raw = ("ffmpeg failed: [Errno 1094995529] Invalid data found when "
+           "processing input: '/home/saber/saberprojects/iranseda/"
+           "downloads/radio-maaref-04-01-01-09-00.mp3'")
+    out = N.sanitize_private_paths(raw)
+    assert "/home/" not in out
+    assert "saber" not in out
+    assert "Invalid data found when processing input" in out
+    assert "<server-path>" in out
+
+
+def test_sanitize_private_paths_all_validator_prefixes():
+    # Must neutralize every prefix validator.PRIVATE_PATH_RE rejects.
+    for bad in ("/home/x/a.mp3", "/root/a.mp3", "/var/www/site/index.php",
+                r"C:\Users\me\file.txt", "C:/Users/me/file.txt"):
+        out = N.sanitize_private_paths("x " + bad + " y")
+        assert bad not in out, (bad, out)
+        assert "<server-path>" in out, (bad, out)
+
+
+def test_sanitize_private_paths_noop_and_none():
+    assert N.sanitize_private_paths(None) is None
+    assert N.sanitize_private_paths("plain text no path") == "plain text no path"
+    # non-absolute /home-like mentions are NOT paths — leave them alone
+    assert N.sanitize_private_paths("see /homework/notes") == "see /homework/notes"

@@ -9,9 +9,17 @@ Rules (data model §6):
   * The raw DB value is always kept in a *_raw field by the mapper.
 """
 
+import re
 import unicodedata
 
 _CTRL = [c for c in map(chr, range(0x20)) if c not in "\t\n\r"]
+
+# Server-private absolute-path prefixes (mirrors validator.PRIVATE_PATH_RE)
+# plus the rest of the path token (stops at whitespace/quotes/angle brackets).
+_PRIVATE_PATH_RE = re.compile(
+    r"(?:/home/|/root/|/var/www/|C:\\|C:/Users)"
+    r"[^\s'\"<>|]*"
+)
 
 
 def nfc(text):
@@ -69,3 +77,21 @@ def normalize_for_db(text):
         return None
     t = collapse_ws(nfc(text))
     return t
+
+
+def sanitize_private_paths(text):
+    """Mask server-private absolute paths in free-text fields.
+
+    validator.PRIVATE_PATH_RE rejects any record string containing
+    /home/, /root/, /var/www/, C:\\ or C:/Users. Production last_error
+    values embed ffmpeg invocations such as
+    "Invalid data found when processing input: '/home/saber/...'",
+    which quarantined 53 records (probe19, 2026-11-04). Masking the
+    path (keeping the surrounding message) preserves the error
+    semantics without leaking the server layout.
+    """
+    if text is None:
+        return None
+    if not isinstance(text, str):
+        text = str(text)
+    return _PRIVATE_PATH_RE.sub("<server-path>", text)
