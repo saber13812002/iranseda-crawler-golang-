@@ -13,6 +13,7 @@ kept out of the fingerprint). Writes are atomic (tmp file + os.replace).
 """
 
 import os
+import glob
 import time
 import json
 import datetime
@@ -54,6 +55,21 @@ class Exporter(object):
             run_id = "corpus-%s" % datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
         os.makedirs(self.cfg.out_dir, exist_ok=True)
+
+        # A new run fully regenerates its outputs: remove artifacts of a
+        # previous run so a stale invalid.jsonl / old shards can never be
+        # mistaken for this run's result.
+        for stale in glob.glob(os.path.join(self.cfg.out_dir, "corpus-*.jsonl")):
+            try:
+                os.remove(stale)
+            except OSError:
+                pass
+        stale_invalid = os.path.join(self.cfg.out_dir, "invalid.jsonl")
+        if os.path.exists(stale_invalid):
+            try:
+                os.remove(stale_invalid)
+            except OSError:
+                pass
 
         # ---- load lookup tables (small) -----------------------------
         prog_by_id, prog_by_chm = self.ex.load_programs()
