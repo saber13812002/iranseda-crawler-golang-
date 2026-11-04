@@ -128,12 +128,16 @@ mp3 **799**, wav 6, `.failed` 16, lock 2, `mp4_redownload` 1.
      (relative, `e` = numeric EPG episode id) — from `radio_program_sessions.link`.
    - DB-level dedupe key: `uq_session_program_link(program_id, link)`.
 2. **Broadcast date/time is NOT a column** — it is embedded in the canonical
-   filename `radio-<channel>-<jj>-<mm>-<dd>-<hh>-<mm>-<ss>.{mp3|mp4}` where
-   `jj-mm-dd` is a **Jalali** date and `hh:mm:ss` the start time
-   (e.g. `radio-maaref-05-08-12-14-30.mp4` = 1405/08/12 12:14:30). Gregorian
-   conversion must be computed and stored as a separate derived field with
-   `source: filename`. **Never** use `created_at` as broadcast date
-   (range proves it is crawl time: 2024-11-08 → 2026-11-03).
+   filename `radio-<channel>-<jj>-<mm>-<dd>-<hh>-<mm>.{mp3|mp4}` where
+   `jj-mm-dd` is a **Jalali** date and `hh:mm` the start time (seconds
+   implicitly `00`) (e.g. `radio-maaref-05-08-12-14-30.mp4` = 1405/08/12
+   14:30:00). **Erratum 2026-11-04 (probes 7-8 on 53):** the earlier
+   `hh:mm:ss` (6-token) reading was wrong — 100% of all DB audio filenames
+   and all on-disk audio files carry exactly 5 numeric tokens with 0
+   exceptions. Gregorian conversion must be computed and stored as a
+   separate derived field with `source: filename`. **Never** use
+   `created_at` as broadcast date (range proves it is crawl time:
+   2024-11-08 → 2026-11-03).
 3. **Schedule ≠ episode time** — `radio_programs.time` (TIME) + `time_description`
    (Persian free text, e.g. `شنبه و یكشنبه از ساعت 17:40 به مدت 30`) is the
    program's broadcast *schedule*; the episode's actual air time is in the

@@ -52,8 +52,8 @@ warning `legacy_program_duplicate_merged`.
 | Corpus field | Source | Rule / notes |
 |--------------|--------|--------------|
 | `broadcast` | CMP from `sessions.filename` | null + `quality.missing+=broadcast.date` when filename empty (342 rows) |
-| `broadcast.jalali.date` | CMP | stem `radio-<chan>-JJ-MM-DD-HH-MM-SS` → `14JJ-MM-DD` |
-| `broadcast.jalali.time` | CMP | `HH:MM:SS` from stem |
+| `broadcast.jalali.date` | CMP | stem `radio-<chan>-JJ-MM-DD-HH-MM` → `14JJ-MM-DD` (erratum 2026-11-04: live stems have exactly 5 numeric tokens, no seconds) |
+| `broadcast.jalali.time` | CMP | `HH:MM:00` from stem (seconds implicitly 00) |
 | `broadcast.jalali.source` | const | `"filename"` |
 | `broadcast.gregorian.date` | CMP | Jalali→Gregorian (library pinned in `conversion`) |
 | `broadcast.gregorian.source` | const | `"derived_from_jalali_filename"` |

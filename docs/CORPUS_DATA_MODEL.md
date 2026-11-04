@@ -39,7 +39,7 @@ record_id  =  iranseda:ch{ch}:e{e}            preferred  (from session.link  ?e=
 
 | Axis | Meaning | Source | Where in record |
 |------|---------|--------|-----------------|
-| **Broadcast (Jalali)** | when the episode aired | parsed from `filename` stem `jj-mm-dd-hh-mm-ss` (year ← 2 digits → `14jj`) | `broadcast.jalali` |
+| **Broadcast (Jalali)** | when the episode aired | parsed from `filename` stem `jj-mm-dd-hh-mm` (year ← 2 digits → `14jj`; seconds implicitly `00` — see Erratum 2026-11-04) | `broadcast.jalali` |
 | **Broadcast (Gregorian)** | same, converted | Jalali→Gregorian conversion (library pinned in `gregorian.conversion`) | `broadcast.gregorian` |
 | **Schedule** | when the *program* airs (weekly slot) | `radio_programs.time` + `time_description` (Persian free text) | `program.schedule` |
 | **Crawl/ingest** | when the DB row was created/updated | `sessions.created_at/updated_at` | `provenance.*` |
