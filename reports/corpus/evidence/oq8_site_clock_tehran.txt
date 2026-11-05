@@ -1,0 +1,27 @@
+OQ-8 — Site wall clock is Asia/Tehran local.
+================================================================
+Site: https://radio.iranseda.ir. Probed 2026-11-05 ~17:12–17:26 UTC.
+
+[1] Time-slot URL with a Gregorian d= and a ti=:
+        https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=12:30&d=11/5/2026
+    -> 200, 40,892 bytes
+       title: "آرشیو رادیو   - پنجشنبه 14 آبان 1405 - ساعت 12:30"
+
+    d=11/5/2026 is Gregorian 5 Nov 2026. The page title renders it as
+    Jalali "پنجشنبه 14 آبان 1405" (Thursday 14 Aban 1405) and echoes the
+    exact requested time "ساعت 12:30". The body carries the episodes that
+    aired in that 30-minute slot (e.g. e=154148408, the 12:30 session).
+
+[2] Control time-slot 13:30 on the same day:
+        https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=13:30&d=11/5/2026
+    -> 200, 40,937 bytes
+       title: "آرشیو رادیو   - پنجشنبه 14 آبان 1405 - ساعت 13:30"
+
+    (An earlier 12:30 probe that used a Jalali d= returned the 15-byte
+    empty page, consistent with OQ-1.)
+
+Conclusion: the site converts the Gregorian d= to a Jalali day and
+renders the exact requested slot time. The title is the canonical
+time-slot signature:
+    "آرشیو رادیو   - {weekday} {d} {month} {year} - ساعت {HH:MM}"
+used by the validator's strict check.

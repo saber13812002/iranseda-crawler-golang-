@@ -1,0 +1,26 @@
+OQ-2 — Episode page: title format and e-id presence.
+================================================================
+Site: https://radio.iranseda.ir. Probed 2026-11-05 ~17:12 UTC.
+
+[1] Episode URL (DB session):
+        https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=154148408
+    -> 200, 46,575 bytes
+       title: "آرشیو رادیو - برنامه رهنمود -"
+       e-id "154148408" appears 2x:
+         (a) <meta androidAddress="https://player.iranseda.ir/epg-player/?VALID=TRUE&e=154148408">
+         (b) in the visible body (player markup).
+    => Title pattern:  "آرشیو رادیو - برنامه {program_name} -"
+       (leading/trailing spaces and the dash are part of the live title).
+
+[2] Mission-synthetic episode whose e= is ABSENT from the DB:
+        https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=154148409
+    -> 200, 46,348 bytes
+       title: "آرشیو رادیو - برنامه به امید دیدار  -"
+       e-id "154148409" appears 2x.
+    => A valid episode page exists for an e= not present in
+       radio_program_sessions; episode identity (ch, e) is honored by the
+       site independent of the DB.
+
+Conclusion: episode links validate by (a) HTTP 200, (b) the e-id being
+present (digit-boundary match, expected 2x), (c) program name in title
+(soft check when a program is supplied).

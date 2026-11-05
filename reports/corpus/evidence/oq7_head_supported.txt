@@ -1,0 +1,21 @@
+OQ-7 — Is HEAD supported?  (Yes; Content-Length == GET body size.)
+================================================================
+Site: https://radio.iranseda.ir. Probed 2026-11-05 ~17:25 UTC.
+
+[1] Episode:
+    HEAD https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=154148408
+        -> 200, Content-Length: 46575
+    GET  (same URL)
+        -> 200, body 46575 bytes
+    Content-Length(HEAD) == body-size(GET): 46575 == 46575
+
+[2] Day archive:
+    HEAD https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=11/5/2026
+        -> 200, Content-Length: 65019
+    GET  (same URL)
+        -> 200, body 65019 bytes
+    65019 == 65019
+
+Conclusion: HEAD is honored with correct Content-Length on both archive
+shapes. The validator still defaults to GET (spec §6.5) so it can run the
+content checks; HEAD is available for future budget-light re-checks.

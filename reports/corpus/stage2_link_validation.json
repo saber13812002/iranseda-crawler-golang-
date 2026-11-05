@@ -1,0 +1,3128 @@
+{
+  "run": {
+    "module": "corpus.validate_links",
+    "corpus_version": "1.0.0",
+    "site_base": "https://radio.iranseda.ir/",
+    "started_at_utc": "2026-11-05T18:31:40Z",
+    "finished_at_utc": "2026-11-05T18:31:55Z",
+    "duration_s": 15.2,
+    "timeout_s": 15.0,
+    "delay_s": 1.0,
+    "max_requests": 400,
+    "new_requests": 3,
+    "skipped_budget": 0,
+    "reused_from_prior": 98,
+    "sample_file": "..\\..\\_work\\stage2_db_sample.json",
+    "note": "Bounded Stage 2 validation over a stratified sample of 35 real sessions + synthetic mission links. No secrets. Results are per-URL; do NOT extrapolate to the full 10,886-session corpus."
+  },
+  "coverage_by_link_type": {
+    "episode": {
+      "planned": 36,
+      "verified": 36,
+      "valid": 28,
+      "invalid": 8,
+      "unverified": 0,
+      "reasons": {
+        "title_mismatch": 7,
+        "id_mismatch": 1
+      },
+      "warnings": {}
+    },
+    "day_archive": {
+      "planned": 23,
+      "verified": 23,
+      "valid": 23,
+      "invalid": 0,
+      "unverified": 0,
+      "reasons": {},
+      "warnings": {
+        "program_name_not_on_page": 23,
+        "m_id_not_in_body": 23
+      }
+    },
+    "time_slot": {
+      "planned": 29,
+      "verified": 29,
+      "valid": 29,
+      "invalid": 0,
+      "unverified": 0,
+      "reasons": {},
+      "warnings": {
+        "program_name_not_on_page": 4
+      }
+    },
+    "program_page": {
+      "planned": 13,
+      "verified": 13,
+      "valid": 13,
+      "invalid": 0,
+      "unverified": 0,
+      "reasons": {},
+      "warnings": {}
+    }
+  },
+  "plan": [
+    {
+      "link_type": "episode",
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=154148409",
+      "source": "synthetic:mission-episode-e154148409",
+      "session_id": null,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "episode",
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=146649527",
+      "source": "session:238",
+      "session_id": 238,
+      "validated": true,
+      "status": "invalid",
+      "reason": "title_mismatch"
+    },
+    {
+      "link_type": "program_page",
+      "url": "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=047506",
+      "source": "session:238",
+      "session_id": 238,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "episode",
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=145189232",
+      "source": "session:239",
+      "session_id": 239,
+      "validated": true,
+      "status": "invalid",
+      "reason": "title_mismatch"
+    },
+    {
+      "link_type": "episode",
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=139510046",
+      "source": "session:240",
+      "session_id": 240,
+      "validated": true,
+      "status": "invalid",
+      "reason": "title_mismatch"
+    },
+    {
+      "link_type": "episode",
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=145189198",
+      "source": "session:877",
+      "session_id": 877,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "program_page",
+      "url": "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044103",
+      "source": "session:877",
+      "session_id": 877,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "episode",
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=153642040",
+      "source": "session:5290",
+      "session_id": 5290,
+      "validated": true,
+      "status": "invalid",
+      "reason": "title_mismatch"
+    },
+    {
+      "link_type": "day_archive",
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=5/31/2026",
+      "source": "session:5290",
+      "session_id": 5290,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "time_slot",
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=05:30&d=5/31/2026",
+      "source": "session:5290",
+      "session_id": 5290,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "program_page",
+      "url": "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=045504",
+      "source": "session:5290",
+      "session_id": 5290,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "episode",
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=154067181",
+      "source": "session:5793",
+      "session_id": 5793,
+      "validated": true,
+      "status": "invalid",
+      "reason": "id_mismatch"
+    },
+    {
+      "link_type": "day_archive",
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=10/11/2026",
+      "source": "session:5793",
+      "session_id": 5793,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "time_slot",
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=13:30&d=10/11/2026",
+      "source": "session:5793",
+      "session_id": 5793,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "program_page",
+      "url": "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044125",
+      "source": "session:5793",
+      "session_id": 5793,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "episode",
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=153642041",
+      "source": "session:7040",
+      "session_id": 7040,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "program_page",
+      "url": "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=045122",
+      "source": "session:7040",
+      "session_id": 7040,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "episode",
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=18&e=153144369",
+      "source": "session:8911",
+      "session_id": 8911,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "day_archive",
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=18&d=10/3/2025",
+      "source": "session:8911",
+      "session_id": 8911,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "time_slot",
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=18&ti=13:30&d=10/3/2025",
+      "source": "session:8911",
+      "session_id": 8911,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "program_page",
+      "url": "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=18&m=081100",
+      "source": "session:8911",
+      "session_id": 8911,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "episode",
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=18&e=153144382",
+      "source": "session:8912",
+      "session_id": 8912,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "time_slot",
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=18&ti=03:00&d=10/3/2025",
+      "source": "session:8912",
+      "session_id": 8912,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "episode",
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=18&e=153144394",
+      "source": "session:8913",
+      "session_id": 8913,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "day_archive",
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=18&d=10/2/2025",
+      "source": "session:8913",
+      "session_id": 8913,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "time_slot",
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=18&ti=22:30&d=10/2/2025",
+      "source": "session:8913",
+      "session_id": 8913,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "episode",
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=149625684",
+      "source": "session:9426",
+      "session_id": 9426,
+      "validated": true,
+      "status": "invalid",
+      "reason": "title_mismatch"
+    },
+    {
+      "link_type": "day_archive",
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=2/18/2022",
+      "source": "session:9426",
+      "session_id": 9426,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "time_slot",
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=20:00&d=2/18/2022",
+      "source": "session:9426",
+      "session_id": 9426,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "program_page",
+      "url": "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=045102",
+      "source": "session:9426",
+      "session_id": 9426,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "episode",
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=149616218",
+      "source": "session:9427",
+      "session_id": 9427,
+      "validated": true,
+      "status": "invalid",
+      "reason": "title_mismatch"
+    },
+    {
+      "link_type": "day_archive",
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=2/11/2022",
+      "source": "session:9427",
+      "session_id": 9427,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "time_slot",
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=20:00&d=2/11/2022",
+      "source": "session:9427",
+      "session_id": 9427,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "episode",
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=149603226",
+      "source": "session:9428",
+      "session_id": 9428,
+      "validated": true,
+      "status": "invalid",
+      "reason": "title_mismatch"
+    },
+    {
+      "link_type": "day_archive",
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=2/4/2022",
+      "source": "session:9428",
+      "session_id": 9428,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "time_slot",
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=20:00&d=2/4/2022",
+      "source": "session:9428",
+      "session_id": 9428,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "episode",
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=151371839",
+      "source": "session:9660",
+      "session_id": 9660,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "day_archive",
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=4/7/2023",
+      "source": "session:9660",
+      "session_id": 9660,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "time_slot",
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=02:00&d=4/7/2023",
+      "source": "session:9660",
+      "session_id": 9660,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "program_page",
+      "url": "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044115",
+      "source": "session:9660",
+      "session_id": 9660,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "episode",
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=151369275",
+      "source": "session:9661",
+      "session_id": 9661,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "day_archive",
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=3/31/2023",
+      "source": "session:9661",
+      "session_id": 9661,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "time_slot",
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=02:00&d=3/31/2023",
+      "source": "session:9661",
+      "session_id": 9661,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "episode",
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=151367829",
+      "source": "session:9662",
+      "session_id": 9662,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "day_archive",
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=3/24/2023",
+      "source": "session:9662",
+      "session_id": 9662,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "time_slot",
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=02:00&d=3/24/2023",
+      "source": "session:9662",
+      "session_id": 9662,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "episode",
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=150951984",
+      "source": "session:9684",
+      "session_id": 9684,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "day_archive",
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=10/28/2022",
+      "source": "session:9684",
+      "session_id": 9684,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "time_slot",
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=00:30&d=10/28/2022",
+      "source": "session:9684",
+      "session_id": 9684,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "episode",
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=150952235",
+      "source": "session:9685",
+      "session_id": 9685,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "day_archive",
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=10/21/2022",
+      "source": "session:9685",
+      "session_id": 9685,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "time_slot",
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=00:30&d=10/21/2022",
+      "source": "session:9685",
+      "session_id": 9685,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "episode",
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=150875152",
+      "source": "session:9686",
+      "session_id": 9686,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "day_archive",
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=10/14/2022",
+      "source": "session:9686",
+      "session_id": 9686,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "time_slot",
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=00:30&d=10/14/2022",
+      "source": "session:9686",
+      "session_id": 9686,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "episode",
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=152775346",
+      "source": "session:10052",
+      "session_id": 10052,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "day_archive",
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=3/24/2025",
+      "source": "session:10052",
+      "session_id": 10052,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "time_slot",
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=16:30&d=3/24/2025",
+      "source": "session:10052",
+      "session_id": 10052,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "program_page",
+      "url": "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=045103",
+      "source": "session:10052",
+      "session_id": 10052,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "episode",
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=152773987",
+      "source": "session:10053",
+      "session_id": 10053,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "day_archive",
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=3/23/2025",
+      "source": "session:10053",
+      "session_id": 10053,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "time_slot",
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=16:30&d=3/23/2025",
+      "source": "session:10053",
+      "session_id": 10053,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "episode",
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=152772317",
+      "source": "session:10054",
+      "session_id": 10054,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "day_archive",
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=3/22/2025",
+      "source": "session:10054",
+      "session_id": 10054,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "time_slot",
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=16:30&d=3/22/2025",
+      "source": "session:10054",
+      "session_id": 10054,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "episode",
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=152514685",
+      "source": "session:10076",
+      "session_id": 10076,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "day_archive",
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=11/9/2024",
+      "source": "session:10076",
+      "session_id": 10076,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "time_slot",
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=16:30&d=11/9/2024",
+      "source": "session:10076",
+      "session_id": 10076,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "episode",
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=152496839",
+      "source": "session:10077",
+      "session_id": 10077,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "day_archive",
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=11/2/2024",
+      "source": "session:10077",
+      "session_id": 10077,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "time_slot",
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=16:30&d=11/2/2024",
+      "source": "session:10077",
+      "session_id": 10077,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "episode",
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=152493867",
+      "source": "session:10078",
+      "session_id": 10078,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "day_archive",
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=10/26/2024",
+      "source": "session:10078",
+      "session_id": 10078,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "time_slot",
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=16:30&d=10/26/2024",
+      "source": "session:10078",
+      "session_id": 10078,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "episode",
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=18&e=154114160",
+      "source": "session:10103",
+      "session_id": 10103,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "day_archive",
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=18&d=10/26/2026",
+      "source": "session:10103",
+      "session_id": 10103,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "time_slot",
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=18&ti=23:30&d=10/26/2026",
+      "source": "session:10103",
+      "session_id": 10103,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "episode",
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=18&e=154120205",
+      "source": "session:10220",
+      "session_id": 10220,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "day_archive",
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=18&d=10/29/2026",
+      "source": "session:10220",
+      "session_id": 10220,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "time_slot",
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=18&ti=23:30&d=10/29/2026",
+      "source": "session:10220",
+      "session_id": 10220,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "episode",
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=18&e=154120181",
+      "source": "session:10228",
+      "session_id": 10228,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "day_archive",
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=18&d=10/30/2026",
+      "source": "session:10228",
+      "session_id": 10228,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "time_slot",
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=18&ti=07:30&d=10/30/2026",
+      "source": "session:10228",
+      "session_id": 10228,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "episode",
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=18&e=154120147",
+      "source": "session:10234",
+      "session_id": 10234,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "time_slot",
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=18&ti=23:30&d=10/30/2026",
+      "source": "session:10234",
+      "session_id": 10234,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "episode",
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=154133207",
+      "source": "session:10569",
+      "session_id": 10569,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "episode",
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=154148408",
+      "source": "session:10884",
+      "session_id": 10884,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "day_archive",
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=11/5/2026",
+      "source": "session:10884",
+      "session_id": 10884,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "time_slot",
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=12:30&d=11/5/2026",
+      "source": "session:10884",
+      "session_id": 10884,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "program_page",
+      "url": "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=043100",
+      "source": "session:10884",
+      "session_id": 10884,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "episode",
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=154148402",
+      "source": "session:10885",
+      "session_id": 10885,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "time_slot",
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=13:30&d=11/5/2026",
+      "source": "session:10885",
+      "session_id": 10885,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "episode",
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=154148398",
+      "source": "session:10886",
+      "session_id": 10886,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "time_slot",
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=15:30&d=11/5/2026",
+      "source": "session:10886",
+      "session_id": 10886,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "program_page",
+      "url": "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044210",
+      "source": "session:10886",
+      "session_id": 10886,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "episode",
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=154148399",
+      "source": "session:10887",
+      "session_id": 10887,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "time_slot",
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=14:30&d=11/5/2026",
+      "source": "session:10887",
+      "session_id": 10887,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "program_page",
+      "url": "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044168",
+      "source": "session:10887",
+      "session_id": 10887,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "episode",
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=154148395",
+      "source": "session:10888",
+      "session_id": 10888,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "time_slot",
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=16:30&d=11/5/2026",
+      "source": "session:10888",
+      "session_id": 10888,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    },
+    {
+      "link_type": "program_page",
+      "url": "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=047545",
+      "source": "session:10888",
+      "session_id": 10888,
+      "validated": true,
+      "status": "valid",
+      "reason": null
+    }
+  ],
+  "results": [
+    {
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=154148409",
+      "link_type": "episode",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=154148409",
+      "title": "آرشیو رادیو - برنامه به امید دیدار  -",
+      "warnings": [],
+      "evidence": {
+        "e_id": "154148409",
+        "e_id_occurrences": 2,
+        "e_id_context": "ddress=\"https://player.iranseda.ir/epg-player/?VALID=TRUE&e=154148409\" /> <meta stationid=\"1\" /> </head> <body cl",
+        "elapsed_ms": 5479
+      },
+      "last_verified_at": "2026-11-05T18:10:37+00:00",
+      "source": "synthetic:mission-episode-e154148409",
+      "session_id": null
+    },
+    {
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=146649527",
+      "link_type": "episode",
+      "status": "invalid",
+      "reason": "title_mismatch",
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=146649527",
+      "title": "آرشیو رادیو - برنامه امیرمؤمنان -",
+      "warnings": [],
+      "evidence": {
+        "e_id": "146649527",
+        "e_id_occurrences": 2,
+        "e_id_context": "ddress=\"https://player.iranseda.ir/epg-player/?VALID=TRUE&e=146649527\" /> <meta stationid=\"1\" /> </head> <body cl",
+        "title_has_program_name": false,
+        "elapsed_ms": 2516
+      },
+      "last_verified_at": "2026-11-05T18:10:41+00:00",
+      "source": "session:238",
+      "session_id": 238
+    },
+    {
+      "url": "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=047506",
+      "link_type": "program_page",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=047506",
+      "title": "برنامه امیر مؤمنان",
+      "warnings": [],
+      "evidence": {
+        "program_name": "امیر مؤمنان",
+        "title_has_program_name": true,
+        "m_id": "047506",
+        "m_id_occurrences": 12,
+        "elapsed_ms": 2489
+      },
+      "last_verified_at": "2026-11-05T18:10:44+00:00",
+      "source": "session:238",
+      "session_id": 238
+    },
+    {
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=145189232",
+      "link_type": "episode",
+      "status": "invalid",
+      "reason": "title_mismatch",
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=145189232",
+      "title": "آرشیو رادیو - برنامه امیر مومنان  -",
+      "warnings": [],
+      "evidence": {
+        "e_id": "145189232",
+        "e_id_occurrences": 2,
+        "e_id_context": "ddress=\"https://player.iranseda.ir/epg-player/?VALID=TRUE&e=145189232\" /> <meta stationid=\"1\" /> </head> <body cl",
+        "title_has_program_name": false,
+        "elapsed_ms": 2202
+      },
+      "last_verified_at": "2026-11-05T18:10:47+00:00",
+      "source": "session:239",
+      "session_id": 239
+    },
+    {
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=139510046",
+      "link_type": "episode",
+      "status": "invalid",
+      "reason": "title_mismatch",
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=139510046",
+      "title": "آرشیو رادیو - برنامه امیر مومنان  -",
+      "warnings": [],
+      "evidence": {
+        "e_id": "139510046",
+        "e_id_occurrences": 2,
+        "e_id_context": "ddress=\"https://player.iranseda.ir/epg-player/?VALID=TRUE&e=139510046\" /> <meta stationid=\"1\" /> </head> <body cl",
+        "title_has_program_name": false,
+        "elapsed_ms": 1979
+      },
+      "last_verified_at": "2026-11-05T18:10:50+00:00",
+      "source": "session:240",
+      "session_id": 240
+    },
+    {
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=145189198",
+      "link_type": "episode",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=145189198",
+      "title": "آرشیو رادیو - برنامه اندیشه های ماندگار  -",
+      "warnings": [],
+      "evidence": {
+        "e_id": "145189198",
+        "e_id_occurrences": 2,
+        "e_id_context": "ddress=\"https://player.iranseda.ir/epg-player/?VALID=TRUE&e=145189198\" /> <meta stationid=\"1\" /> </head> <body cl",
+        "title_has_program_name": true,
+        "m_in_body": true,
+        "elapsed_ms": 4649
+      },
+      "last_verified_at": "2026-11-05T18:10:56+00:00",
+      "source": "session:877",
+      "session_id": 877
+    },
+    {
+      "url": "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044103",
+      "link_type": "program_page",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044103",
+      "title": "برنامه اندیشه های ماندگار",
+      "warnings": [],
+      "evidence": {
+        "program_name": "اندیشه های ماندگار",
+        "title_has_program_name": true,
+        "m_id": "044103",
+        "m_id_occurrences": 29,
+        "elapsed_ms": 3279
+      },
+      "last_verified_at": "2026-11-05T18:11:00+00:00",
+      "source": "session:877",
+      "session_id": 877
+    },
+    {
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=153642040",
+      "link_type": "episode",
+      "status": "invalid",
+      "reason": "title_mismatch",
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=153642040",
+      "title": "آرشیو رادیو - برنامه امیر جانها -",
+      "warnings": [],
+      "evidence": {
+        "e_id": "153642040",
+        "e_id_occurrences": 2,
+        "e_id_context": "ddress=\"https://player.iranseda.ir/epg-player/?VALID=TRUE&e=153642040\" /> <meta stationid=\"1\" /> </head> <body cl",
+        "title_has_program_name": false,
+        "elapsed_ms": 4130
+      },
+      "last_verified_at": "2026-11-05T18:11:06+00:00",
+      "source": "session:5290",
+      "session_id": 5290
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=5/31/2026",
+      "link_type": "day_archive",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=5/31/2026",
+      "title": "رادیو  معارف  - آرشیو زمانی",
+      "warnings": [
+        "program_name_not_on_page",
+        "m_id_not_in_body"
+      ],
+      "evidence": {
+        "d_target": "2026-05-31",
+        "d_window_prev_days": 3,
+        "d_window_next_days": 3,
+        "d_window_days_observed": 7,
+        "elapsed_ms": 4661
+      },
+      "last_verified_at": "2026-11-05T18:11:11+00:00",
+      "source": "session:5290",
+      "session_id": 5290
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=05:30&d=5/31/2026",
+      "link_type": "time_slot",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=05:30&d=5/31/2026",
+      "title": "آرشیو رادیو   - یکشنبه 10 خرداد 1405 - ساعت 05:30",
+      "warnings": [
+        "program_name_not_on_page"
+      ],
+      "evidence": {
+        "ti": "05:30",
+        "d_target": "2026-05-31",
+        "title_has_time": true,
+        "expected_title_date": "10 خرداد 1405",
+        "title_has_date": true,
+        "elapsed_ms": 1873
+      },
+      "last_verified_at": "2026-11-05T18:11:14+00:00",
+      "source": "session:5290",
+      "session_id": 5290
+    },
+    {
+      "url": "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=045504",
+      "link_type": "program_page",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=045504",
+      "title": "برنامه امیر جان ها",
+      "warnings": [],
+      "evidence": {
+        "program_name": "امیر جان ها",
+        "title_has_program_name": true,
+        "m_id": "045504",
+        "m_id_occurrences": 29,
+        "elapsed_ms": 1667
+      },
+      "last_verified_at": "2026-11-05T18:11:17+00:00",
+      "source": "session:5290",
+      "session_id": 5290
+    },
+    {
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=154067181",
+      "link_type": "episode",
+      "status": "invalid",
+      "reason": "id_mismatch",
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=154067181",
+      "title": null,
+      "warnings": [],
+      "evidence": {
+        "e_id": "154067181",
+        "e_id_occurrences": 0,
+        "elapsed_ms": 658
+      },
+      "last_verified_at": "2026-11-05T18:11:19+00:00",
+      "source": "session:5793",
+      "session_id": 5793
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=10/11/2026",
+      "link_type": "day_archive",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=10/11/2026",
+      "title": "رادیو  معارف  - آرشیو زمانی",
+      "warnings": [
+        "program_name_not_on_page",
+        "m_id_not_in_body"
+      ],
+      "evidence": {
+        "d_target": "2026-10-11",
+        "d_window_prev_days": 3,
+        "d_window_next_days": 3,
+        "d_window_days_observed": 7,
+        "elapsed_ms": 3402
+      },
+      "last_verified_at": "2026-11-05T18:11:23+00:00",
+      "source": "session:5793",
+      "session_id": 5793
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=13:30&d=10/11/2026",
+      "link_type": "time_slot",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=13:30&d=10/11/2026",
+      "title": "آرشیو رادیو   - یکشنبه 19 مهر 1405 - ساعت 13:30",
+      "warnings": [],
+      "evidence": {
+        "ti": "13:30",
+        "d_target": "2026-10-11",
+        "title_has_time": true,
+        "expected_title_date": "19 مهر 1405",
+        "title_has_date": true,
+        "elapsed_ms": 2267
+      },
+      "last_verified_at": "2026-11-05T18:11:26+00:00",
+      "source": "session:5793",
+      "session_id": 5793
+    },
+    {
+      "url": "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044125",
+      "link_type": "program_page",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044125",
+      "title": "برنامه پیام ولایت",
+      "warnings": [],
+      "evidence": {
+        "program_name": "پیام ولایت",
+        "title_has_program_name": true,
+        "m_id": "044125",
+        "m_id_occurrences": 29,
+        "elapsed_ms": 2828
+      },
+      "last_verified_at": "2026-11-05T18:11:30+00:00",
+      "source": "session:5793",
+      "session_id": 5793
+    },
+    {
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=153642041",
+      "link_type": "episode",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=153642041",
+      "title": "آرشیو رادیو - برنامه مكارم خوبان  -",
+      "warnings": [],
+      "evidence": {
+        "e_id": "153642041",
+        "e_id_occurrences": 2,
+        "e_id_context": "ddress=\"https://player.iranseda.ir/epg-player/?VALID=TRUE&e=153642041\" /> <meta stationid=\"1\" /> </head> <body cl",
+        "title_has_program_name": true,
+        "m_in_body": true,
+        "elapsed_ms": 1684
+      },
+      "last_verified_at": "2026-11-05T18:11:33+00:00",
+      "source": "session:7040",
+      "session_id": 7040
+    },
+    {
+      "url": "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=045122",
+      "link_type": "program_page",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=045122",
+      "title": "برنامه مكارم خوبان",
+      "warnings": [],
+      "evidence": {
+        "program_name": "مكارم خوبان",
+        "title_has_program_name": true,
+        "m_id": "045122",
+        "m_id_occurrences": 29,
+        "elapsed_ms": 1789
+      },
+      "last_verified_at": "2026-11-05T18:11:36+00:00",
+      "source": "session:7040",
+      "session_id": 7040
+    },
+    {
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=18&e=153144369",
+      "link_type": "episode",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=18&e=153144369",
+      "title": "آرشیو رادیو - برنامه محوطه گفتگو -",
+      "warnings": [],
+      "evidence": {
+        "e_id": "153144369",
+        "e_id_occurrences": 2,
+        "e_id_context": "ddress=\"https://player.iranseda.ir/epg-player/?VALID=TRUE&e=153144369\" /> <meta stationid=\"1\" /> </head> <body cl",
+        "title_has_program_name": true,
+        "m_in_body": true,
+        "elapsed_ms": 2207
+      },
+      "last_verified_at": "2026-11-05T18:11:39+00:00",
+      "source": "session:8911",
+      "session_id": 8911
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=18&d=10/3/2025",
+      "link_type": "day_archive",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=18&d=10/3/2025",
+      "title": "رادیو  ورزش  - آرشیو زمانی",
+      "warnings": [
+        "program_name_not_on_page",
+        "m_id_not_in_body"
+      ],
+      "evidence": {
+        "d_target": "2025-10-03",
+        "d_window_prev_days": 3,
+        "d_window_next_days": 3,
+        "d_window_days_observed": 7,
+        "elapsed_ms": 3618
+      },
+      "last_verified_at": "2026-11-05T18:11:44+00:00",
+      "source": "session:8911",
+      "session_id": 8911
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=18&ti=13:30&d=10/3/2025",
+      "link_type": "time_slot",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=18&ti=13:30&d=10/3/2025",
+      "title": "آرشیو رادیو   - جمعه 11 مهر 1404 - ساعت 13:30",
+      "warnings": [],
+      "evidence": {
+        "ti": "13:30",
+        "d_target": "2025-10-03",
+        "title_has_time": true,
+        "expected_title_date": "11 مهر 1404",
+        "title_has_date": true,
+        "elapsed_ms": 2253
+      },
+      "last_verified_at": "2026-11-05T18:11:47+00:00",
+      "source": "session:8911",
+      "session_id": 8911
+    },
+    {
+      "url": "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=18&m=081100",
+      "link_type": "program_page",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=18&m=081100",
+      "title": "برنامه محوطه گفتگو",
+      "warnings": [],
+      "evidence": {
+        "program_name": "محوطه گفتگو",
+        "title_has_program_name": true,
+        "m_id": "081100",
+        "m_id_occurrences": 29,
+        "elapsed_ms": 2064
+      },
+      "last_verified_at": "2026-11-05T18:11:50+00:00",
+      "source": "session:8911",
+      "session_id": 8911
+    },
+    {
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=18&e=153144382",
+      "link_type": "episode",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=18&e=153144382",
+      "title": "آرشیو رادیو - برنامه محوطه گفتگو -",
+      "warnings": [],
+      "evidence": {
+        "e_id": "153144382",
+        "e_id_occurrences": 2,
+        "e_id_context": "ddress=\"https://player.iranseda.ir/epg-player/?VALID=TRUE&e=153144382\" /> <meta stationid=\"1\" /> </head> <body cl",
+        "title_has_program_name": true,
+        "m_in_body": true,
+        "elapsed_ms": 2052
+      },
+      "last_verified_at": "2026-11-05T18:11:53+00:00",
+      "source": "session:8912",
+      "session_id": 8912
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=18&ti=03:00&d=10/3/2025",
+      "link_type": "time_slot",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=18&ti=03:00&d=10/3/2025",
+      "title": "آرشیو رادیو   - جمعه 11 مهر 1404 - ساعت 03:00",
+      "warnings": [],
+      "evidence": {
+        "ti": "03:00",
+        "d_target": "2025-10-03",
+        "title_has_time": true,
+        "expected_title_date": "11 مهر 1404",
+        "title_has_date": true,
+        "elapsed_ms": 2502
+      },
+      "last_verified_at": "2026-11-05T18:11:57+00:00",
+      "source": "session:8912",
+      "session_id": 8912
+    },
+    {
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=18&e=153144394",
+      "link_type": "episode",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=18&e=153144394",
+      "title": "آرشیو رادیو - برنامه محوطه گفتگو  -",
+      "warnings": [],
+      "evidence": {
+        "e_id": "153144394",
+        "e_id_occurrences": 2,
+        "e_id_context": "ddress=\"https://player.iranseda.ir/epg-player/?VALID=TRUE&e=153144394\" /> <meta stationid=\"1\" /> </head> <body cl",
+        "title_has_program_name": true,
+        "m_in_body": true,
+        "elapsed_ms": 1519
+      },
+      "last_verified_at": "2026-11-05T18:11:59+00:00",
+      "source": "session:8913",
+      "session_id": 8913
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=18&d=10/2/2025",
+      "link_type": "day_archive",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=18&d=10/2/2025",
+      "title": "رادیو  ورزش  - آرشیو زمانی",
+      "warnings": [
+        "program_name_not_on_page",
+        "m_id_not_in_body"
+      ],
+      "evidence": {
+        "d_target": "2025-10-02",
+        "d_window_prev_days": 3,
+        "d_window_next_days": 3,
+        "d_window_days_observed": 7,
+        "elapsed_ms": 2921
+      },
+      "last_verified_at": "2026-11-05T18:12:03+00:00",
+      "source": "session:8913",
+      "session_id": 8913
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=18&ti=22:30&d=10/2/2025",
+      "link_type": "time_slot",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=18&ti=22:30&d=10/2/2025",
+      "title": "آرشیو رادیو   - پنجشنبه 10 مهر 1404 - ساعت 22:30",
+      "warnings": [],
+      "evidence": {
+        "ti": "22:30",
+        "d_target": "2025-10-02",
+        "title_has_time": true,
+        "expected_title_date": "10 مهر 1404",
+        "title_has_date": true,
+        "elapsed_ms": 2263
+      },
+      "last_verified_at": "2026-11-05T18:12:07+00:00",
+      "source": "session:8913",
+      "session_id": 8913
+    },
+    {
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=149625684",
+      "link_type": "episode",
+      "status": "invalid",
+      "reason": "title_mismatch",
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=149625684",
+      "title": "آرشیو رادیو - برنامه پرسمان- تاریخی -",
+      "warnings": [],
+      "evidence": {
+        "e_id": "149625684",
+        "e_id_occurrences": 2,
+        "e_id_context": "ddress=\"https://player.iranseda.ir/epg-player/?VALID=TRUE&e=149625684\" /> <meta stationid=\"1\" /> </head> <body cl",
+        "title_has_program_name": false,
+        "elapsed_ms": 3480
+      },
+      "last_verified_at": "2026-11-05T18:12:11+00:00",
+      "source": "session:9426",
+      "session_id": 9426
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=2/18/2022",
+      "link_type": "day_archive",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=2/18/2022",
+      "title": "رادیو  معارف  - آرشیو زمانی",
+      "warnings": [
+        "program_name_not_on_page",
+        "m_id_not_in_body"
+      ],
+      "evidence": {
+        "d_target": "2022-02-18",
+        "d_window_prev_days": 3,
+        "d_window_next_days": 3,
+        "d_window_days_observed": 7,
+        "elapsed_ms": 4557
+      },
+      "last_verified_at": "2026-11-05T18:12:17+00:00",
+      "source": "session:9426",
+      "session_id": 9426
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=20:00&d=2/18/2022",
+      "link_type": "time_slot",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=20:00&d=2/18/2022",
+      "title": "آرشیو رادیو   - جمعه 29 بهمن 1400 - ساعت 20:00",
+      "warnings": [
+        "program_name_not_on_page"
+      ],
+      "evidence": {
+        "ti": "20:00",
+        "d_target": "2022-02-18",
+        "title_has_time": true,
+        "expected_title_date": "29 بهمن 1400",
+        "title_has_date": true,
+        "elapsed_ms": 1748
+      },
+      "last_verified_at": "2026-11-05T18:12:20+00:00",
+      "source": "session:9426",
+      "session_id": 9426
+    },
+    {
+      "url": "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=045102",
+      "link_type": "program_page",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=045102",
+      "title": "برنامه پرسمان تاریخی",
+      "warnings": [],
+      "evidence": {
+        "program_name": "پرسمان تاریخی",
+        "title_has_program_name": true,
+        "m_id": "045102",
+        "m_id_occurrences": 29,
+        "elapsed_ms": 1607
+      },
+      "last_verified_at": "2026-11-05T18:12:22+00:00",
+      "source": "session:9426",
+      "session_id": 9426
+    },
+    {
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=149616218",
+      "link_type": "episode",
+      "status": "invalid",
+      "reason": "title_mismatch",
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=149616218",
+      "title": "آرشیو رادیو - برنامه پرسمان- تاریخی -",
+      "warnings": [],
+      "evidence": {
+        "e_id": "149616218",
+        "e_id_occurrences": 2,
+        "e_id_context": "ddress=\"https://player.iranseda.ir/epg-player/?VALID=TRUE&e=149616218\" /> <meta stationid=\"1\" /> </head> <body cl",
+        "title_has_program_name": false,
+        "elapsed_ms": 1942
+      },
+      "last_verified_at": "2026-11-05T18:12:25+00:00",
+      "source": "session:9427",
+      "session_id": 9427
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=2/11/2022",
+      "link_type": "day_archive",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=2/11/2022",
+      "title": "رادیو  معارف  - آرشیو زمانی",
+      "warnings": [
+        "program_name_not_on_page",
+        "m_id_not_in_body"
+      ],
+      "evidence": {
+        "d_target": "2022-02-11",
+        "d_window_prev_days": 3,
+        "d_window_next_days": 3,
+        "d_window_days_observed": 7,
+        "elapsed_ms": 5341
+      },
+      "last_verified_at": "2026-11-05T18:12:32+00:00",
+      "source": "session:9427",
+      "session_id": 9427
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=20:00&d=2/11/2022",
+      "link_type": "time_slot",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=20:00&d=2/11/2022",
+      "title": "آرشیو رادیو   - جمعه 22 بهمن 1400 - ساعت 20:00",
+      "warnings": [
+        "program_name_not_on_page"
+      ],
+      "evidence": {
+        "ti": "20:00",
+        "d_target": "2022-02-11",
+        "title_has_time": true,
+        "expected_title_date": "22 بهمن 1400",
+        "title_has_date": true,
+        "elapsed_ms": 1792
+      },
+      "last_verified_at": "2026-11-05T18:12:35+00:00",
+      "source": "session:9427",
+      "session_id": 9427
+    },
+    {
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=149603226",
+      "link_type": "episode",
+      "status": "invalid",
+      "reason": "title_mismatch",
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=149603226",
+      "title": "آرشیو رادیو - برنامه پرسمان- تاریخی -",
+      "warnings": [],
+      "evidence": {
+        "e_id": "149603226",
+        "e_id_occurrences": 2,
+        "e_id_context": "ddress=\"https://player.iranseda.ir/epg-player/?VALID=TRUE&e=149603226\" /> <meta stationid=\"1\" /> </head> <body cl",
+        "title_has_program_name": false,
+        "elapsed_ms": 1821
+      },
+      "last_verified_at": "2026-11-05T18:12:37+00:00",
+      "source": "session:9428",
+      "session_id": 9428
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=2/4/2022",
+      "link_type": "day_archive",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=2/4/2022",
+      "title": "رادیو  معارف  - آرشیو زمانی",
+      "warnings": [
+        "program_name_not_on_page",
+        "m_id_not_in_body"
+      ],
+      "evidence": {
+        "d_target": "2022-02-04",
+        "d_window_prev_days": 3,
+        "d_window_next_days": 3,
+        "d_window_days_observed": 7,
+        "elapsed_ms": 3947
+      },
+      "last_verified_at": "2026-11-05T18:12:42+00:00",
+      "source": "session:9428",
+      "session_id": 9428
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=20:00&d=2/4/2022",
+      "link_type": "time_slot",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=20:00&d=2/4/2022",
+      "title": "آرشیو رادیو   - جمعه 15 بهمن 1400 - ساعت 20:00",
+      "warnings": [
+        "program_name_not_on_page"
+      ],
+      "evidence": {
+        "ti": "20:00",
+        "d_target": "2022-02-04",
+        "title_has_time": true,
+        "expected_title_date": "15 بهمن 1400",
+        "title_has_date": true,
+        "elapsed_ms": 1994
+      },
+      "last_verified_at": "2026-11-05T18:12:45+00:00",
+      "source": "session:9428",
+      "session_id": 9428
+    },
+    {
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=151371839",
+      "link_type": "episode",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=151371839",
+      "title": "آرشیو رادیو - برنامه برای بیداری -",
+      "warnings": [],
+      "evidence": {
+        "e_id": "151371839",
+        "e_id_occurrences": 2,
+        "e_id_context": "ddress=\"https://player.iranseda.ir/epg-player/?VALID=TRUE&e=151371839\" /> <meta stationid=\"1\" /> </head> <body cl",
+        "title_has_program_name": true,
+        "m_in_body": true,
+        "elapsed_ms": 2722
+      },
+      "last_verified_at": "2026-11-05T18:12:49+00:00",
+      "source": "session:9660",
+      "session_id": 9660
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=4/7/2023",
+      "link_type": "day_archive",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=4/7/2023",
+      "title": "رادیو  معارف  - آرشیو زمانی",
+      "warnings": [
+        "program_name_not_on_page",
+        "m_id_not_in_body"
+      ],
+      "evidence": {
+        "d_target": "2023-04-07",
+        "d_window_prev_days": 3,
+        "d_window_next_days": 3,
+        "d_window_days_observed": 7,
+        "elapsed_ms": 3414
+      },
+      "last_verified_at": "2026-11-05T18:12:54+00:00",
+      "source": "session:9660",
+      "session_id": 9660
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=02:00&d=4/7/2023",
+      "link_type": "time_slot",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=02:00&d=4/7/2023",
+      "title": "آرشیو رادیو   - جمعه 18 فروردین 1402 - ساعت 02:00",
+      "warnings": [],
+      "evidence": {
+        "ti": "02:00",
+        "d_target": "2023-04-07",
+        "title_has_time": true,
+        "expected_title_date": "18 فروردین 1402",
+        "title_has_date": true,
+        "elapsed_ms": 2052
+      },
+      "last_verified_at": "2026-11-05T18:12:57+00:00",
+      "source": "session:9660",
+      "session_id": 9660
+    },
+    {
+      "url": "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044115",
+      "link_type": "program_page",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044115",
+      "title": "برنامه برای بیداری",
+      "warnings": [],
+      "evidence": {
+        "program_name": "برای بیداری",
+        "title_has_program_name": true,
+        "m_id": "044115",
+        "m_id_occurrences": 29,
+        "elapsed_ms": 2229
+      },
+      "last_verified_at": "2026-11-05T18:13:00+00:00",
+      "source": "session:9660",
+      "session_id": 9660
+    },
+    {
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=151369275",
+      "link_type": "episode",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=151369275",
+      "title": "آرشیو رادیو - برنامه برای بیداری -",
+      "warnings": [],
+      "evidence": {
+        "e_id": "151369275",
+        "e_id_occurrences": 2,
+        "e_id_context": "ddress=\"https://player.iranseda.ir/epg-player/?VALID=TRUE&e=151369275\" /> <meta stationid=\"1\" /> </head> <body cl",
+        "title_has_program_name": true,
+        "m_in_body": true,
+        "elapsed_ms": 2617
+      },
+      "last_verified_at": "2026-11-05T18:13:04+00:00",
+      "source": "session:9661",
+      "session_id": 9661
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=3/31/2023",
+      "link_type": "day_archive",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=3/31/2023",
+      "title": "رادیو  معارف  - آرشیو زمانی",
+      "warnings": [
+        "program_name_not_on_page",
+        "m_id_not_in_body"
+      ],
+      "evidence": {
+        "d_target": "2023-03-31",
+        "d_window_prev_days": 3,
+        "d_window_next_days": 3,
+        "d_window_days_observed": 7,
+        "elapsed_ms": 2743
+      },
+      "last_verified_at": "2026-11-05T18:13:08+00:00",
+      "source": "session:9661",
+      "session_id": 9661
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=02:00&d=3/31/2023",
+      "link_type": "time_slot",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=02:00&d=3/31/2023",
+      "title": "آرشیو رادیو   - جمعه 11 فروردین 1402 - ساعت 02:00",
+      "warnings": [],
+      "evidence": {
+        "ti": "02:00",
+        "d_target": "2023-03-31",
+        "title_has_time": true,
+        "expected_title_date": "11 فروردین 1402",
+        "title_has_date": true,
+        "elapsed_ms": 2406
+      },
+      "last_verified_at": "2026-11-05T18:13:11+00:00",
+      "source": "session:9661",
+      "session_id": 9661
+    },
+    {
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=151367829",
+      "link_type": "episode",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=151367829",
+      "title": "آرشیو رادیو - برنامه برای بیداری -",
+      "warnings": [],
+      "evidence": {
+        "e_id": "151367829",
+        "e_id_occurrences": 2,
+        "e_id_context": "ddress=\"https://player.iranseda.ir/epg-player/?VALID=TRUE&e=151367829\" /> <meta stationid=\"1\" /> </head> <body cl",
+        "title_has_program_name": true,
+        "m_in_body": true,
+        "elapsed_ms": 2144
+      },
+      "last_verified_at": "2026-11-05T18:13:14+00:00",
+      "source": "session:9662",
+      "session_id": 9662
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=3/24/2023",
+      "link_type": "day_archive",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=3/24/2023",
+      "title": "رادیو  معارف  - آرشیو زمانی",
+      "warnings": [
+        "program_name_not_on_page",
+        "m_id_not_in_body"
+      ],
+      "evidence": {
+        "d_target": "2023-03-24",
+        "d_window_prev_days": 3,
+        "d_window_next_days": 3,
+        "d_window_days_observed": 7,
+        "elapsed_ms": 4340
+      },
+      "last_verified_at": "2026-11-05T18:13:20+00:00",
+      "source": "session:9662",
+      "session_id": 9662
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=02:00&d=3/24/2023",
+      "link_type": "time_slot",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=02:00&d=3/24/2023",
+      "title": "آرشیو رادیو   - جمعه 4 فروردین 1402 - ساعت 02:00",
+      "warnings": [],
+      "evidence": {
+        "ti": "02:00",
+        "d_target": "2023-03-24",
+        "title_has_time": true,
+        "expected_title_date": "4 فروردین 1402",
+        "title_has_date": true,
+        "elapsed_ms": 2932
+      },
+      "last_verified_at": "2026-11-05T18:13:24+00:00",
+      "source": "session:9662",
+      "session_id": 9662
+    },
+    {
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=150951984",
+      "link_type": "episode",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=150951984",
+      "title": "آرشیو رادیو - برنامه برای بیداری -",
+      "warnings": [],
+      "evidence": {
+        "e_id": "150951984",
+        "e_id_occurrences": 2,
+        "e_id_context": "ddress=\"https://player.iranseda.ir/epg-player/?VALID=TRUE&e=150951984\" /> <meta stationid=\"1\" /> </head> <body cl",
+        "title_has_program_name": true,
+        "m_in_body": true,
+        "elapsed_ms": 1960
+      },
+      "last_verified_at": "2026-11-05T18:13:27+00:00",
+      "source": "session:9684",
+      "session_id": 9684
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=10/28/2022",
+      "link_type": "day_archive",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=10/28/2022",
+      "title": "رادیو  معارف  - آرشیو زمانی",
+      "warnings": [
+        "program_name_not_on_page",
+        "m_id_not_in_body"
+      ],
+      "evidence": {
+        "d_target": "2022-10-28",
+        "d_window_prev_days": 3,
+        "d_window_next_days": 3,
+        "d_window_days_observed": 7,
+        "elapsed_ms": 4234
+      },
+      "last_verified_at": "2026-11-05T18:13:32+00:00",
+      "source": "session:9684",
+      "session_id": 9684
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=00:30&d=10/28/2022",
+      "link_type": "time_slot",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=00:30&d=10/28/2022",
+      "title": "آرشیو رادیو   - جمعه 6 آبان 1401 - ساعت 00:30",
+      "warnings": [],
+      "evidence": {
+        "ti": "00:30",
+        "d_target": "2022-10-28",
+        "title_has_time": true,
+        "expected_title_date": "6 آبان 1401",
+        "title_has_date": true,
+        "elapsed_ms": 2247
+      },
+      "last_verified_at": "2026-11-05T18:13:35+00:00",
+      "source": "session:9684",
+      "session_id": 9684
+    },
+    {
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=150952235",
+      "link_type": "episode",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=150952235",
+      "title": "آرشیو رادیو - برنامه برای بیداری -",
+      "warnings": [],
+      "evidence": {
+        "e_id": "150952235",
+        "e_id_occurrences": 2,
+        "e_id_context": "ddress=\"https://player.iranseda.ir/epg-player/?VALID=TRUE&e=150952235\" /> <meta stationid=\"1\" /> </head> <body cl",
+        "title_has_program_name": true,
+        "m_in_body": true,
+        "elapsed_ms": 1627
+      },
+      "last_verified_at": "2026-11-05T18:13:38+00:00",
+      "source": "session:9685",
+      "session_id": 9685
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=10/21/2022",
+      "link_type": "day_archive",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=10/21/2022",
+      "title": "رادیو  معارف  - آرشیو زمانی",
+      "warnings": [
+        "program_name_not_on_page",
+        "m_id_not_in_body"
+      ],
+      "evidence": {
+        "d_target": "2022-10-21",
+        "d_window_prev_days": 3,
+        "d_window_next_days": 3,
+        "d_window_days_observed": 7,
+        "elapsed_ms": 3197
+      },
+      "last_verified_at": "2026-11-05T18:13:42+00:00",
+      "source": "session:9685",
+      "session_id": 9685
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=00:30&d=10/21/2022",
+      "link_type": "time_slot",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=00:30&d=10/21/2022",
+      "title": "آرشیو رادیو   - جمعه 29 مهر 1401 - ساعت 00:30",
+      "warnings": [],
+      "evidence": {
+        "ti": "00:30",
+        "d_target": "2022-10-21",
+        "title_has_time": true,
+        "expected_title_date": "29 مهر 1401",
+        "title_has_date": true,
+        "elapsed_ms": 2044
+      },
+      "last_verified_at": "2026-11-05T18:13:45+00:00",
+      "source": "session:9685",
+      "session_id": 9685
+    },
+    {
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=150875152",
+      "link_type": "episode",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=150875152",
+      "title": "آرشیو رادیو - برنامه برای بیداری -",
+      "warnings": [],
+      "evidence": {
+        "e_id": "150875152",
+        "e_id_occurrences": 2,
+        "e_id_context": "ddress=\"https://player.iranseda.ir/epg-player/?VALID=TRUE&e=150875152\" /> <meta stationid=\"1\" /> </head> <body cl",
+        "title_has_program_name": true,
+        "m_in_body": true,
+        "elapsed_ms": 1427
+      },
+      "last_verified_at": "2026-11-05T18:13:48+00:00",
+      "source": "session:9686",
+      "session_id": 9686
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=10/14/2022",
+      "link_type": "day_archive",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=10/14/2022",
+      "title": "رادیو  معارف  - آرشیو زمانی",
+      "warnings": [
+        "program_name_not_on_page",
+        "m_id_not_in_body"
+      ],
+      "evidence": {
+        "d_target": "2022-10-14",
+        "d_window_prev_days": 3,
+        "d_window_next_days": 3,
+        "d_window_days_observed": 7,
+        "elapsed_ms": 3712
+      },
+      "last_verified_at": "2026-11-05T18:13:52+00:00",
+      "source": "session:9686",
+      "session_id": 9686
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=00:30&d=10/14/2022",
+      "link_type": "time_slot",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=00:30&d=10/14/2022",
+      "title": "آرشیو رادیو   - جمعه 22 مهر 1401 - ساعت 00:30",
+      "warnings": [],
+      "evidence": {
+        "ti": "00:30",
+        "d_target": "2022-10-14",
+        "title_has_time": true,
+        "expected_title_date": "22 مهر 1401",
+        "title_has_date": true,
+        "elapsed_ms": 2021
+      },
+      "last_verified_at": "2026-11-05T18:13:56+00:00",
+      "source": "session:9686",
+      "session_id": 9686
+    },
+    {
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=152775346",
+      "link_type": "episode",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=152775346",
+      "title": "آرشیو رادیو - برنامه پرسمان قرآنی -",
+      "warnings": [],
+      "evidence": {
+        "e_id": "152775346",
+        "e_id_occurrences": 2,
+        "e_id_context": "ddress=\"https://player.iranseda.ir/epg-player/?VALID=TRUE&e=152775346\" /> <meta stationid=\"1\" /> </head> <body cl",
+        "title_has_program_name": true,
+        "m_in_body": true,
+        "elapsed_ms": 2782
+      },
+      "last_verified_at": "2026-11-05T18:13:59+00:00",
+      "source": "session:10052",
+      "session_id": 10052
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=3/24/2025",
+      "link_type": "day_archive",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=3/24/2025",
+      "title": "رادیو  معارف  - آرشیو زمانی",
+      "warnings": [
+        "program_name_not_on_page",
+        "m_id_not_in_body"
+      ],
+      "evidence": {
+        "d_target": "2025-03-24",
+        "d_window_prev_days": 3,
+        "d_window_next_days": 3,
+        "d_window_days_observed": 7,
+        "elapsed_ms": 3016
+      },
+      "last_verified_at": "2026-11-05T18:14:03+00:00",
+      "source": "session:10052",
+      "session_id": 10052
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=16:30&d=3/24/2025",
+      "link_type": "time_slot",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=16:30&d=3/24/2025",
+      "title": "آرشیو رادیو   - دوشنبه 4 فروردین 1404 - ساعت 16:30",
+      "warnings": [],
+      "evidence": {
+        "ti": "16:30",
+        "d_target": "2025-03-24",
+        "title_has_time": true,
+        "expected_title_date": "4 فروردین 1404",
+        "title_has_date": true,
+        "elapsed_ms": 1515
+      },
+      "last_verified_at": "2026-11-05T18:14:06+00:00",
+      "source": "session:10052",
+      "session_id": 10052
+    },
+    {
+      "url": "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=045103",
+      "link_type": "program_page",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=045103",
+      "title": "برنامه پرسمان قرآنی",
+      "warnings": [],
+      "evidence": {
+        "program_name": "پرسمان قرآنی",
+        "title_has_program_name": true,
+        "m_id": "045103",
+        "m_id_occurrences": 29,
+        "elapsed_ms": 1687
+      },
+      "last_verified_at": "2026-11-05T18:14:09+00:00",
+      "source": "session:10052",
+      "session_id": 10052
+    },
+    {
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=152773987",
+      "link_type": "episode",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=152773987",
+      "title": "آرشیو رادیو - برنامه پرسمان قرآنی -",
+      "warnings": [],
+      "evidence": {
+        "e_id": "152773987",
+        "e_id_occurrences": 2,
+        "e_id_context": "ddress=\"https://player.iranseda.ir/epg-player/?VALID=TRUE&e=152773987\" /> <meta stationid=\"1\" /> </head> <body cl",
+        "title_has_program_name": true,
+        "m_in_body": true,
+        "elapsed_ms": 1655
+      },
+      "last_verified_at": "2026-11-05T18:14:11+00:00",
+      "source": "session:10053",
+      "session_id": 10053
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=3/23/2025",
+      "link_type": "day_archive",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=3/23/2025",
+      "title": "رادیو  معارف  - آرشیو زمانی",
+      "warnings": [
+        "program_name_not_on_page",
+        "m_id_not_in_body"
+      ],
+      "evidence": {
+        "d_target": "2025-03-23",
+        "d_window_prev_days": 3,
+        "d_window_next_days": 3,
+        "d_window_days_observed": 7,
+        "elapsed_ms": 3049
+      },
+      "last_verified_at": "2026-11-05T18:14:16+00:00",
+      "source": "session:10053",
+      "session_id": 10053
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=16:30&d=3/23/2025",
+      "link_type": "time_slot",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=16:30&d=3/23/2025",
+      "title": "آرشیو رادیو   - یکشنبه 3 فروردین 1404 - ساعت 16:30",
+      "warnings": [],
+      "evidence": {
+        "ti": "16:30",
+        "d_target": "2025-03-23",
+        "title_has_time": true,
+        "expected_title_date": "3 فروردین 1404",
+        "title_has_date": true,
+        "elapsed_ms": 1538
+      },
+      "last_verified_at": "2026-11-05T18:14:18+00:00",
+      "source": "session:10053",
+      "session_id": 10053
+    },
+    {
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=152772317",
+      "link_type": "episode",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=152772317",
+      "title": "آرشیو رادیو - برنامه پرسمان قرآنی -",
+      "warnings": [],
+      "evidence": {
+        "e_id": "152772317",
+        "e_id_occurrences": 2,
+        "e_id_context": "ddress=\"https://player.iranseda.ir/epg-player/?VALID=TRUE&e=152772317\" /> <meta stationid=\"1\" /> </head> <body cl",
+        "title_has_program_name": true,
+        "m_in_body": true,
+        "elapsed_ms": 1571
+      },
+      "last_verified_at": "2026-11-05T18:14:21+00:00",
+      "source": "session:10054",
+      "session_id": 10054
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=3/22/2025",
+      "link_type": "day_archive",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=3/22/2025",
+      "title": "رادیو  معارف  - آرشیو زمانی",
+      "warnings": [
+        "program_name_not_on_page",
+        "m_id_not_in_body"
+      ],
+      "evidence": {
+        "d_target": "2025-03-22",
+        "d_window_prev_days": 3,
+        "d_window_next_days": 3,
+        "d_window_days_observed": 7,
+        "elapsed_ms": 3847
+      },
+      "last_verified_at": "2026-11-05T18:14:26+00:00",
+      "source": "session:10054",
+      "session_id": 10054
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=16:30&d=3/22/2025",
+      "link_type": "time_slot",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=16:30&d=3/22/2025",
+      "title": "آرشیو رادیو   - شنبه 2 فروردین 1404 - ساعت 16:30",
+      "warnings": [],
+      "evidence": {
+        "ti": "16:30",
+        "d_target": "2025-03-22",
+        "title_has_time": true,
+        "expected_title_date": "2 فروردین 1404",
+        "title_has_date": true,
+        "elapsed_ms": 1625
+      },
+      "last_verified_at": "2026-11-05T18:14:28+00:00",
+      "source": "session:10054",
+      "session_id": 10054
+    },
+    {
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=152514685",
+      "link_type": "episode",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=152514685",
+      "title": "آرشیو رادیو - برنامه پرسمان قرآنی -",
+      "warnings": [],
+      "evidence": {
+        "e_id": "152514685",
+        "e_id_occurrences": 2,
+        "e_id_context": "ddress=\"https://player.iranseda.ir/epg-player/?VALID=TRUE&e=152514685\" /> <meta stationid=\"1\" /> </head> <body cl",
+        "title_has_program_name": true,
+        "m_in_body": true,
+        "elapsed_ms": 1324
+      },
+      "last_verified_at": "2026-11-05T18:14:31+00:00",
+      "source": "session:10076",
+      "session_id": 10076
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=11/9/2024",
+      "link_type": "day_archive",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=11/9/2024",
+      "title": "رادیو  معارف  - آرشیو زمانی",
+      "warnings": [
+        "program_name_not_on_page",
+        "m_id_not_in_body"
+      ],
+      "evidence": {
+        "d_target": "2024-11-09",
+        "d_window_prev_days": 3,
+        "d_window_next_days": 3,
+        "d_window_days_observed": 7,
+        "elapsed_ms": 3839
+      },
+      "last_verified_at": "2026-11-05T18:14:36+00:00",
+      "source": "session:10076",
+      "session_id": 10076
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=16:30&d=11/9/2024",
+      "link_type": "time_slot",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=16:30&d=11/9/2024",
+      "title": "آرشیو رادیو   - شنبه 19 آبان 1403 - ساعت 16:30",
+      "warnings": [],
+      "evidence": {
+        "ti": "16:30",
+        "d_target": "2024-11-09",
+        "title_has_time": true,
+        "expected_title_date": "19 آبان 1403",
+        "title_has_date": true,
+        "elapsed_ms": 2025
+      },
+      "last_verified_at": "2026-11-05T18:14:39+00:00",
+      "source": "session:10076",
+      "session_id": 10076
+    },
+    {
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=152496839",
+      "link_type": "episode",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=152496839",
+      "title": "آرشیو رادیو - برنامه پرسمان قرآنی -",
+      "warnings": [],
+      "evidence": {
+        "e_id": "152496839",
+        "e_id_occurrences": 2,
+        "e_id_context": "ddress=\"https://player.iranseda.ir/epg-player/?VALID=TRUE&e=152496839\" /> <meta stationid=\"1\" /> </head> <body cl",
+        "title_has_program_name": true,
+        "m_in_body": true,
+        "elapsed_ms": 1700
+      },
+      "last_verified_at": "2026-11-05T18:14:41+00:00",
+      "source": "session:10077",
+      "session_id": 10077
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=11/2/2024",
+      "link_type": "day_archive",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=11/2/2024",
+      "title": "رادیو  معارف  - آرشیو زمانی",
+      "warnings": [
+        "program_name_not_on_page",
+        "m_id_not_in_body"
+      ],
+      "evidence": {
+        "d_target": "2024-11-02",
+        "d_window_prev_days": 3,
+        "d_window_next_days": 3,
+        "d_window_days_observed": 7,
+        "elapsed_ms": 5390
+      },
+      "last_verified_at": "2026-11-05T18:31:46+00:00",
+      "source": "session:10077",
+      "session_id": 10077
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=16:30&d=11/2/2024",
+      "link_type": "time_slot",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=16:30&d=11/2/2024",
+      "title": "آرشیو رادیو   - شنبه 12 آبان 1403 - ساعت 16:30",
+      "warnings": [],
+      "evidence": {
+        "ti": "16:30",
+        "d_target": "2024-11-02",
+        "title_has_time": true,
+        "expected_title_date": "12 آبان 1403",
+        "title_has_date": true,
+        "elapsed_ms": 1649
+      },
+      "last_verified_at": "2026-11-05T18:14:46+00:00",
+      "source": "session:10077",
+      "session_id": 10077
+    },
+    {
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=152493867",
+      "link_type": "episode",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=152493867",
+      "title": "آرشیو رادیو - برنامه پرسمان قرآنی -",
+      "warnings": [],
+      "evidence": {
+        "e_id": "152493867",
+        "e_id_occurrences": 2,
+        "e_id_context": "ddress=\"https://player.iranseda.ir/epg-player/?VALID=TRUE&e=152493867\" /> <meta stationid=\"1\" /> </head> <body cl",
+        "title_has_program_name": true,
+        "m_in_body": true,
+        "elapsed_ms": 1953
+      },
+      "last_verified_at": "2026-11-05T18:14:49+00:00",
+      "source": "session:10078",
+      "session_id": 10078
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=10/26/2024",
+      "link_type": "day_archive",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=10/26/2024",
+      "title": "رادیو  معارف  - آرشیو زمانی",
+      "warnings": [
+        "program_name_not_on_page",
+        "m_id_not_in_body"
+      ],
+      "evidence": {
+        "d_target": "2024-10-26",
+        "d_window_prev_days": 3,
+        "d_window_next_days": 3,
+        "d_window_days_observed": 7,
+        "elapsed_ms": 4762
+      },
+      "last_verified_at": "2026-11-05T18:14:55+00:00",
+      "source": "session:10078",
+      "session_id": 10078
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=16:30&d=10/26/2024",
+      "link_type": "time_slot",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=16:30&d=10/26/2024",
+      "title": "آرشیو رادیو   - شنبه 5 آبان 1403 - ساعت 16:30",
+      "warnings": [],
+      "evidence": {
+        "ti": "16:30",
+        "d_target": "2024-10-26",
+        "title_has_time": true,
+        "expected_title_date": "5 آبان 1403",
+        "title_has_date": true,
+        "elapsed_ms": 2408
+      },
+      "last_verified_at": "2026-11-05T18:14:58+00:00",
+      "source": "session:10078",
+      "session_id": 10078
+    },
+    {
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=18&e=154114160",
+      "link_type": "episode",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=18&e=154114160",
+      "title": "آرشیو رادیو - برنامه محوطه گفتگو  -",
+      "warnings": [],
+      "evidence": {
+        "e_id": "154114160",
+        "e_id_occurrences": 2,
+        "e_id_context": "ddress=\"https://player.iranseda.ir/epg-player/?VALID=TRUE&e=154114160\" /> <meta stationid=\"1\" /> </head> <body cl",
+        "title_has_program_name": true,
+        "m_in_body": true,
+        "elapsed_ms": 1690
+      },
+      "last_verified_at": "2026-11-05T18:15:01+00:00",
+      "source": "session:10103",
+      "session_id": 10103
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=18&d=10/26/2026",
+      "link_type": "day_archive",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=18&d=10/26/2026",
+      "title": "رادیو  ورزش  - آرشیو زمانی",
+      "warnings": [
+        "program_name_not_on_page",
+        "m_id_not_in_body"
+      ],
+      "evidence": {
+        "d_target": "2026-10-26",
+        "d_window_prev_days": 3,
+        "d_window_next_days": 3,
+        "d_window_days_observed": 7,
+        "elapsed_ms": 4617
+      },
+      "last_verified_at": "2026-11-05T18:15:07+00:00",
+      "source": "session:10103",
+      "session_id": 10103
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=18&ti=23:30&d=10/26/2026",
+      "link_type": "time_slot",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=18&ti=23:30&d=10/26/2026",
+      "title": "آرشیو رادیو   - دوشنبه 4 آبان 1405 - ساعت 23:30",
+      "warnings": [],
+      "evidence": {
+        "ti": "23:30",
+        "d_target": "2026-10-26",
+        "title_has_time": true,
+        "expected_title_date": "4 آبان 1405",
+        "title_has_date": true,
+        "elapsed_ms": 2306
+      },
+      "last_verified_at": "2026-11-05T18:15:10+00:00",
+      "source": "session:10103",
+      "session_id": 10103
+    },
+    {
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=18&e=154120205",
+      "link_type": "episode",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=18&e=154120205",
+      "title": "آرشیو رادیو - برنامه محوطه گفتگو  -",
+      "warnings": [],
+      "evidence": {
+        "e_id": "154120205",
+        "e_id_occurrences": 2,
+        "e_id_context": "ddress=\"https://player.iranseda.ir/epg-player/?VALID=TRUE&e=154120205\" /> <meta stationid=\"1\" /> </head> <body cl",
+        "title_has_program_name": true,
+        "m_in_body": true,
+        "elapsed_ms": 2455
+      },
+      "last_verified_at": "2026-11-05T18:15:13+00:00",
+      "source": "session:10220",
+      "session_id": 10220
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=18&d=10/29/2026",
+      "link_type": "day_archive",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=18&d=10/29/2026",
+      "title": "رادیو  ورزش  - آرشیو زمانی",
+      "warnings": [
+        "program_name_not_on_page",
+        "m_id_not_in_body"
+      ],
+      "evidence": {
+        "d_target": "2026-10-29",
+        "d_window_prev_days": 3,
+        "d_window_next_days": 3,
+        "d_window_days_observed": 7,
+        "elapsed_ms": 3782
+      },
+      "last_verified_at": "2026-11-05T18:15:18+00:00",
+      "source": "session:10220",
+      "session_id": 10220
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=18&ti=23:30&d=10/29/2026",
+      "link_type": "time_slot",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=18&ti=23:30&d=10/29/2026",
+      "title": "آرشیو رادیو   - پنجشنبه 7 آبان 1405 - ساعت 23:30",
+      "warnings": [],
+      "evidence": {
+        "ti": "23:30",
+        "d_target": "2026-10-29",
+        "title_has_time": true,
+        "expected_title_date": "7 آبان 1405",
+        "title_has_date": true,
+        "elapsed_ms": 2393
+      },
+      "last_verified_at": "2026-11-05T18:15:22+00:00",
+      "source": "session:10220",
+      "session_id": 10220
+    },
+    {
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=18&e=154120181",
+      "link_type": "episode",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=18&e=154120181",
+      "title": "آرشیو رادیو - برنامه محوطه گفتگو  -",
+      "warnings": [],
+      "evidence": {
+        "e_id": "154120181",
+        "e_id_occurrences": 2,
+        "e_id_context": "ddress=\"https://player.iranseda.ir/epg-player/?VALID=TRUE&e=154120181\" /> <meta stationid=\"1\" /> </head> <body cl",
+        "title_has_program_name": true,
+        "m_in_body": true,
+        "elapsed_ms": 2265
+      },
+      "last_verified_at": "2026-11-05T18:15:25+00:00",
+      "source": "session:10228",
+      "session_id": 10228
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=18&d=10/30/2026",
+      "link_type": "day_archive",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=18&d=10/30/2026",
+      "title": "رادیو  ورزش  - آرشیو زمانی",
+      "warnings": [
+        "program_name_not_on_page",
+        "m_id_not_in_body"
+      ],
+      "evidence": {
+        "d_target": "2026-10-30",
+        "d_window_prev_days": 3,
+        "d_window_next_days": 3,
+        "d_window_days_observed": 7,
+        "elapsed_ms": 4283
+      },
+      "last_verified_at": "2026-11-05T18:15:30+00:00",
+      "source": "session:10228",
+      "session_id": 10228
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=18&ti=07:30&d=10/30/2026",
+      "link_type": "time_slot",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=18&ti=07:30&d=10/30/2026",
+      "title": "آرشیو رادیو   - جمعه 8 آبان 1405 - ساعت 07:30",
+      "warnings": [],
+      "evidence": {
+        "ti": "07:30",
+        "d_target": "2026-10-30",
+        "title_has_time": true,
+        "expected_title_date": "8 آبان 1405",
+        "title_has_date": true,
+        "elapsed_ms": 3010
+      },
+      "last_verified_at": "2026-11-05T18:31:50+00:00",
+      "source": "session:10228",
+      "session_id": 10228
+    },
+    {
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=18&e=154120147",
+      "link_type": "episode",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=18&e=154120147",
+      "title": "آرشیو رادیو - برنامه محوطه گفتگو  -",
+      "warnings": [],
+      "evidence": {
+        "e_id": "154120147",
+        "e_id_occurrences": 2,
+        "e_id_context": "ddress=\"https://player.iranseda.ir/epg-player/?VALID=TRUE&e=154120147\" /> <meta stationid=\"1\" /> </head> <body cl",
+        "title_has_program_name": true,
+        "m_in_body": true,
+        "elapsed_ms": 1823
+      },
+      "last_verified_at": "2026-11-05T18:15:35+00:00",
+      "source": "session:10234",
+      "session_id": 10234
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=18&ti=23:30&d=10/30/2026",
+      "link_type": "time_slot",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=18&ti=23:30&d=10/30/2026",
+      "title": "آرشیو رادیو   - جمعه 8 آبان 1405 - ساعت 23:30",
+      "warnings": [],
+      "evidence": {
+        "ti": "23:30",
+        "d_target": "2026-10-30",
+        "title_has_time": true,
+        "expected_title_date": "8 آبان 1405",
+        "title_has_date": true,
+        "elapsed_ms": 2649
+      },
+      "last_verified_at": "2026-11-05T18:15:39+00:00",
+      "source": "session:10234",
+      "session_id": 10234
+    },
+    {
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=154133207",
+      "link_type": "episode",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=154133207",
+      "title": "آرشیو رادیو - برنامه پیام ولایت  -",
+      "warnings": [],
+      "evidence": {
+        "e_id": "154133207",
+        "e_id_occurrences": 2,
+        "e_id_context": "ddress=\"https://player.iranseda.ir/epg-player/?VALID=TRUE&e=154133207\" /> <meta stationid=\"1\" /> </head> <body cl",
+        "title_has_program_name": true,
+        "m_in_body": true,
+        "elapsed_ms": 2649
+      },
+      "last_verified_at": "2026-11-05T18:15:42+00:00",
+      "source": "session:10569",
+      "session_id": 10569
+    },
+    {
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=154148408",
+      "link_type": "episode",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=154148408",
+      "title": "آرشیو رادیو - برنامه رهنمود -",
+      "warnings": [],
+      "evidence": {
+        "e_id": "154148408",
+        "e_id_occurrences": 2,
+        "e_id_context": "ddress=\"https://player.iranseda.ir/epg-player/?VALID=TRUE&e=154148408\" /> <meta stationid=\"1\" /> </head> <body cl",
+        "title_has_program_name": true,
+        "m_in_body": true,
+        "elapsed_ms": 2966
+      },
+      "last_verified_at": "2026-11-05T18:15:46+00:00",
+      "source": "session:10884",
+      "session_id": 10884
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=11/5/2026",
+      "link_type": "day_archive",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=11/5/2026",
+      "title": "رادیو  معارف  - آرشیو زمانی",
+      "warnings": [
+        "program_name_not_on_page",
+        "m_id_not_in_body"
+      ],
+      "evidence": {
+        "d_target": "2026-11-05",
+        "d_window_prev_days": 3,
+        "d_window_next_days": 3,
+        "d_window_days_observed": 7,
+        "elapsed_ms": 3319
+      },
+      "last_verified_at": "2026-11-05T18:15:51+00:00",
+      "source": "session:10884",
+      "session_id": 10884
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=12:30&d=11/5/2026",
+      "link_type": "time_slot",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=12:30&d=11/5/2026",
+      "title": "آرشیو رادیو   - پنجشنبه 14 آبان 1405 - ساعت 12:30",
+      "warnings": [],
+      "evidence": {
+        "ti": "12:30",
+        "d_target": "2026-11-05",
+        "title_has_time": true,
+        "expected_title_date": "14 آبان 1405",
+        "title_has_date": true,
+        "elapsed_ms": 1943
+      },
+      "last_verified_at": "2026-11-05T18:15:54+00:00",
+      "source": "session:10884",
+      "session_id": 10884
+    },
+    {
+      "url": "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=043100",
+      "link_type": "program_page",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=043100",
+      "title": "برنامه رهنمود",
+      "warnings": [],
+      "evidence": {
+        "program_name": "رهنمود",
+        "title_has_program_name": true,
+        "m_id": "043100",
+        "m_id_occurrences": 29,
+        "elapsed_ms": 2496
+      },
+      "last_verified_at": "2026-11-05T18:15:57+00:00",
+      "source": "session:10884",
+      "session_id": 10884
+    },
+    {
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=154148402",
+      "link_type": "episode",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=154148402",
+      "title": "آرشیو رادیو - برنامه پیام ولایت  -",
+      "warnings": [],
+      "evidence": {
+        "e_id": "154148402",
+        "e_id_occurrences": 2,
+        "e_id_context": "ddress=\"https://player.iranseda.ir/epg-player/?VALID=TRUE&e=154148402\" /> <meta stationid=\"1\" /> </head> <body cl",
+        "title_has_program_name": true,
+        "m_in_body": true,
+        "elapsed_ms": 4089
+      },
+      "last_verified_at": "2026-11-05T18:16:02+00:00",
+      "source": "session:10885",
+      "session_id": 10885
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=13:30&d=11/5/2026",
+      "link_type": "time_slot",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=13:30&d=11/5/2026",
+      "title": "آرشیو رادیو   - پنجشنبه 14 آبان 1405 - ساعت 13:30",
+      "warnings": [],
+      "evidence": {
+        "ti": "13:30",
+        "d_target": "2026-11-05",
+        "title_has_time": true,
+        "expected_title_date": "14 آبان 1405",
+        "title_has_date": true,
+        "elapsed_ms": 2302
+      },
+      "last_verified_at": "2026-11-05T18:16:06+00:00",
+      "source": "session:10885",
+      "session_id": 10885
+    },
+    {
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=154148398",
+      "link_type": "episode",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=154148398",
+      "title": "آرشیو رادیو - برنامه راهبرد -",
+      "warnings": [],
+      "evidence": {
+        "e_id": "154148398",
+        "e_id_occurrences": 2,
+        "e_id_context": "ddress=\"https://player.iranseda.ir/epg-player/?VALID=TRUE&e=154148398\" /> <meta stationid=\"1\" /> </head> <body cl",
+        "title_has_program_name": true,
+        "m_in_body": true,
+        "elapsed_ms": 2359
+      },
+      "last_verified_at": "2026-11-05T18:16:09+00:00",
+      "source": "session:10886",
+      "session_id": 10886
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=15:30&d=11/5/2026",
+      "link_type": "time_slot",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=15:30&d=11/5/2026",
+      "title": "آرشیو رادیو   - پنجشنبه 14 آبان 1405 - ساعت 15:30",
+      "warnings": [],
+      "evidence": {
+        "ti": "15:30",
+        "d_target": "2026-11-05",
+        "title_has_time": true,
+        "expected_title_date": "14 آبان 1405",
+        "title_has_date": true,
+        "elapsed_ms": 3598
+      },
+      "last_verified_at": "2026-11-05T18:31:54+00:00",
+      "source": "session:10886",
+      "session_id": 10886
+    },
+    {
+      "url": "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044210",
+      "link_type": "program_page",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044210",
+      "title": "برنامه راهبرد",
+      "warnings": [],
+      "evidence": {
+        "program_name": "راهبرد",
+        "title_has_program_name": true,
+        "m_id": "044210",
+        "m_id_occurrences": 29,
+        "elapsed_ms": 1730
+      },
+      "last_verified_at": "2026-11-05T18:16:14+00:00",
+      "source": "session:10886",
+      "session_id": 10886
+    },
+    {
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=154148399",
+      "link_type": "episode",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=154148399",
+      "title": "آرشیو رادیو - برنامه شفا  -",
+      "warnings": [],
+      "evidence": {
+        "e_id": "154148399",
+        "e_id_occurrences": 2,
+        "e_id_context": "ddress=\"https://player.iranseda.ir/epg-player/?VALID=TRUE&e=154148399\" /> <meta stationid=\"1\" /> </head> <body cl",
+        "title_has_program_name": true,
+        "m_in_body": true,
+        "elapsed_ms": 2623
+      },
+      "last_verified_at": "2026-11-05T18:16:17+00:00",
+      "source": "session:10887",
+      "session_id": 10887
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=14:30&d=11/5/2026",
+      "link_type": "time_slot",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=14:30&d=11/5/2026",
+      "title": "آرشیو رادیو   - پنجشنبه 14 آبان 1405 - ساعت 14:30",
+      "warnings": [],
+      "evidence": {
+        "ti": "14:30",
+        "d_target": "2026-11-05",
+        "title_has_time": true,
+        "expected_title_date": "14 آبان 1405",
+        "title_has_date": true,
+        "elapsed_ms": 2349
+      },
+      "last_verified_at": "2026-11-05T18:16:21+00:00",
+      "source": "session:10887",
+      "session_id": 10887
+    },
+    {
+      "url": "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044168",
+      "link_type": "program_page",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044168",
+      "title": "برنامه شفا",
+      "warnings": [],
+      "evidence": {
+        "program_name": "شفا",
+        "title_has_program_name": true,
+        "m_id": "044168",
+        "m_id_occurrences": 29,
+        "elapsed_ms": 1793
+      },
+      "last_verified_at": "2026-11-05T18:16:23+00:00",
+      "source": "session:10887",
+      "session_id": 10887
+    },
+    {
+      "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=154148395",
+      "link_type": "episode",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=154148395",
+      "title": "آرشیو رادیو - برنامه پرسمان انقلاب -",
+      "warnings": [],
+      "evidence": {
+        "e_id": "154148395",
+        "e_id_occurrences": 2,
+        "e_id_context": "ddress=\"https://player.iranseda.ir/epg-player/?VALID=TRUE&e=154148395\" /> <meta stationid=\"1\" /> </head> <body cl",
+        "title_has_program_name": true,
+        "m_in_body": true,
+        "elapsed_ms": 3871
+      },
+      "last_verified_at": "2026-11-05T18:16:28+00:00",
+      "source": "session:10888",
+      "session_id": 10888
+    },
+    {
+      "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=16:30&d=11/5/2026",
+      "link_type": "time_slot",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=16:30&d=11/5/2026",
+      "title": "آرشیو رادیو   - پنجشنبه 14 آبان 1405 - ساعت 16:30",
+      "warnings": [],
+      "evidence": {
+        "ti": "16:30",
+        "d_target": "2026-11-05",
+        "title_has_time": true,
+        "expected_title_date": "14 آبان 1405",
+        "title_has_date": true,
+        "elapsed_ms": 1681
+      },
+      "last_verified_at": "2026-11-05T18:16:31+00:00",
+      "source": "session:10888",
+      "session_id": 10888
+    },
+    {
+      "url": "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=047545",
+      "link_type": "program_page",
+      "status": "valid",
+      "reason": null,
+      "http_status": 200,
+      "final_url": "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=047545",
+      "title": "برنامه  پرسمان انقلاب",
+      "warnings": [],
+      "evidence": {
+        "program_name": "پرسمان انقلاب",
+        "title_has_program_name": true,
+        "m_id": "047545",
+        "m_id_occurrences": 29,
+        "elapsed_ms": 1556
+      },
+      "last_verified_at": "2026-11-05T18:16:34+00:00",
+      "source": "session:10888",
+      "session_id": 10888
+    }
+  ],
+  "skipped_plan": []
+}

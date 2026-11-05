@@ -1,0 +1,34 @@
+OQ-1 — `d=` parameter format: Gregorian, month-first M/D/YYYY, UNPADDED.
+=======================================================================
+Site: https://radio.iranseda.ir (IIS/ASP.NET). Probed 2026-11-05 ~17:12 UTC.
+
+[1] A Jalali date used where the code expects d= triggers an ASP.NET
+    date-conversion exception. 88-byte body, verbatim:
+
+        <!DOCTYPE html>Conversion failed when converting date and/or time from character string.
+
+    URL that produced it:
+        https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=14/8/1405
+        (14/8/1405 is today in Jalali: 14 Aban 1405.)
+
+[2] The same URL with a Gregorian month-first unpadded date returns a
+    full 70,107-byte archive page. The page's d= hrefs form a 7-day
+    window CENTERED on the requested date:
+
+        d=10/30/2026  d=10/31/2026  d=11/1/2026  d=11/2/2026
+        d=11/3/2026   d=11/4/2026   d=11/5/2026
+
+    Requested: d=5/11/2026  (Gregorian 5 Nov 2026 = 14 Aban 1405).
+    Window: 30 Oct 2026 .. 5 Nov 2026, centered on 5 Nov 2026.
+    => d= is Gregorian month-first, and the window is centered on the
+       requested date (3 preceding days + target + 3 following days).
+
+[3] A Jalali d= in a time-slot URL returns the site's 15-byte empty page
+    (see evidence/empty_15b_page.txt):
+
+        https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=12:30&d=8/14/1405
+        -> 200, 15 bytes, title: none
+
+Conclusion: d= must be built as "%d/%d/%d" % (month, day, year) in
+Gregorian, unpadded, month-first. The spec's day-first/zero-padded
+assumption is superseded (documented spec discrepancy).

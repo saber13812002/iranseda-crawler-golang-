@@ -1,0 +1,23 @@
+The site's "no content" response: a 200 with a 15-byte empty page.
+================================================================
+Body, verbatim (15 bytes, UTF-8):
+
+    <!DOCTYPE html>
+
+Observed 2026-11-05:
+  * e=154067181 episode (DB session 5793, program "پیام ولایت"):
+        https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=154067181
+    -> 200, 15 bytes, no title, no e-id in body.
+    Re-fetched twice (during the run and in the invalid-4 re-probe):
+    CONSISTENTLY 15 bytes. Genuine finding: the episode page exists as a
+    URL but has no archive content (id_mismatch — e-id absent).
+
+  * Any Jalali d= in a time-slot URL, e.g.:
+        https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=12:30&d=8/14/1405
+    -> 200, 15 bytes (see oq1_d_mdy_month_first_unpadded.txt [3]).
+
+  * NOTE — flaky variant: 3 URLs in the Task C run also returned a
+    title-less 200 (incomplete render) on the first fetch but returned
+    their full valid page on re-fetch 20 minutes later (see the report,
+    section "Flaky title-less 200 responses"). A 15-byte body is the
+    consistent empty state; a larger title-less body was transient.

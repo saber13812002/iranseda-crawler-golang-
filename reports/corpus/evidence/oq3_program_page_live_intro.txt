@@ -1,0 +1,22 @@
+OQ-3 — Program page: `radio_programs.url` is a live intro page.
+================================================================
+Site: https://radio.iranseda.ir. Probed 2026-11-05 ~17:12 UTC.
+
+[1] Program intro page (ch=14, m=044125):
+        https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=044125
+    -> 200, 79,043 bytes
+       title: "برنامه پیام ولایت"
+       m-id "044125" present in body (~29 occurrences, incl. canonical
+       params and player links).
+
+[2] Second program (ch=18, m=081100):
+        https://radio.iranseda.ir/Program/?VALID=TRUE&ch=18&m=081100
+    -> 200, 77,609 bytes
+       title: "برنامه محوطه گفتگو"
+       m-id "081100" present in body.
+
+Conclusion: radio_programs.url (verbatim) resolves to the live program
+intro page. The program name appears in the title (prefixed with
+"برنامه "), and the m= id appears in the body. No separate "listing"
+page is verified, so the spec's A8 listing assumption stays null by
+policy.

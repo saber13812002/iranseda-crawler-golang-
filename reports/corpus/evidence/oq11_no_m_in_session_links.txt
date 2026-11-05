@@ -1,0 +1,14 @@
+OQ-11 — Do any session `link` values contain an m= (program) parameter?
+================================================================
+Source: MySQL db `radio` @ 172.20.1.53:3308 (read-only probe, 2026-11-05).
+
+    SELECT COUNT(*) FROM radio_program_sessions;                     -> 10886
+    SELECT COUNT(*) FROM radio_program_sessions
+      WHERE link LIKE '%m=%';                                        -> 0
+    SELECT COUNT(*) FROM radio_program_sessions
+      WHERE link LIKE '%ch=%' AND link LIKE '%e=%';                  -> 10886
+
+All 10,886 session links carry exactly ch= and e=; zero carry m=.
+Program identity (ch, m) lives only in radio_programs (59 rows) and is
+reached via the sessions' program_id -> radio_programs.id FK, which the
+validator resolves to the program intro page (OQ-3).
