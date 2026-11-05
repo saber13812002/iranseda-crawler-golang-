@@ -3,7 +3,7 @@
 **Date:** 2026-11-05 (UTC) · **Status:** COMPLETE (no BLOCKED items)
 **Owning repo:** `git@github.com:saber13812002/iranseda-crawler-golang-.git`
 **Branch:** `stage2-corpus-linkage` (cut from `phase3-radio-rag-service` @ `2ddc114dabb0d850f6f3a5a4f30af497c61764f8`)
-**Commits:** `69e3cecc4bef675c9003b1f753321630caac1b9d` (module+CLI) · `05521e11193f4465a38f7b9bd972c28413b069fb` (tests) · `4e7dfc625922a533a3bb11e8106bc78366d416b0` (report+data) · +1 metadata commit (SHA/push backfill = branch HEAD)
+**Commits:** `69e3cecc4bef675c9003b1f753321630caac1b9d` (module+CLI) · `05521e11193f4465a38f7b9bd972c28413b069fb` (tests) · `4e7dfc625922a533a3bb11e8106bc78366d416b0` (report+data) · `369d11aea2834d1cded3e861d54e7ac8edea9eba` (metadata backfill) · +1 commit (branch HEAD: records the backfill SHA)
 **Push:** `origin stage2-corpus-linkage` → pushed, no force (output in §8)
 
 > Companion spec: [`CORPUS_LINKAGE_SPEC.md`](../../docs/corpus/CORPUS_LINKAGE_SPEC.md)
@@ -233,13 +233,14 @@ Sequential, ≥1 s delay, 15 s timeout cap, on-host redirects only.
   "auto: refresh site + subtitles" commit at branch time) via `git
   worktree` — the main worktree was left untouched so the refresh loop
   never raced the commits.
-- Commits (4, independent, in the owning repo only):
+- Commits (5, in the owning repo only — the last two are metadata backfills):
   1. `69e3cecc4bef675c9003b1f753321630caac1b9d` — `corpus/linkage.py` + `corpus/validate_links.py`
   2. `05521e11193f4465a38f7b9bd972c28413b069fb` — `tests/corpus/test_linkage.py`
   3. `4e7dfc625922a533a3bb11e8106bc78366d416b0` — `reports/corpus/CORPUS_LINKAGE_STAGE2.md` +
      `reports/corpus/stage2_link_validation.json` + `reports/corpus/evidence/*`
-  4. `SHA4` — backfill of the commit SHAs and push output into this report
-     (a report cannot contain its own commit SHA; `SHA4` = this commit)
+  4. `369d11aea2834d1cded3e861d54e7ac8edea9eba` — backfill of the commit
+     SHAs and push output into this report
+  5. branch HEAD (this commit) — records the backfill commit SHA above
 - Push: `git push origin stage2-corpus-linkage` (first push of a new
   branch; **no force**). Output below.
 
