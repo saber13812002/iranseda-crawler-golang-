@@ -3,7 +3,7 @@
 **Date:** 2026-11-05 (UTC) · **Status:** COMPLETE (no BLOCKED items)
 **Owning repo:** `git@github.com:saber13812002/iranseda-crawler-golang-.git`
 **Branch:** `stage2-corpus-linkage` — Stage 3 commits stacked on the Stage 2 tip `61f7970e8ed32c7b8fdf1eee8398bd584cee908f` (no new branch)
-**Commits:** `f24ad75fc0cef9994144111154ab5e5dfa4ec1bb` (module+CLI) · `063aa7a5cdb8fcd7130b0b8323c54ef167e0df88` (tests) · `4b421e689d5d78c7022f35ea8676559be3e087c5` (report+data) · `@@SHA4@@` (metadata backfill) · +1 commit (branch HEAD: records the backfill SHA)
+**Commits:** `f24ad75fc0cef9994144111154ab5e5dfa4ec1bb` (module+CLI) · `063aa7a5cdb8fcd7130b0b8323c54ef167e0df88` (tests) · `4b421e689d5d78c7022f35ea8676559be3e087c5` (report+data) · `ab61e71155fd120ff75c8de7dd847f97d96152c4` (metadata backfill) · +1 commit (branch HEAD: records the backfill SHA)
 **Push:** `origin stage2-corpus-linkage` → pushed, fast-forward, no force (output in §8)
 
 > Companion spec: [`CORPUS_LINKAGE_SPEC.md`](../../docs/corpus/CORPUS_LINKAGE_SPEC.md)
@@ -255,7 +255,7 @@ asset host (`raw.githubusercontent.com`) only.
   2. `063aa7a5cdb8fcd7130b0b8323c54ef167e0df88` — `tests/corpus/test_assets.py`
   3. `4b421e689d5d78c7022f35ea8676559be3e087c5` — `reports/corpus/CORPUS_LINKAGE_STAGE3.md` +
      `reports/corpus/stage3_asset_verification.json`
-  4. `@@SHA4@@` — backfill of the commit SHAs and push output into
+  4. `ab61e71155fd120ff75c8de7dd847f97d96152c4` — backfill of the commit SHAs and push output into
      this report
   5. branch HEAD (this commit) — records the backfill commit SHA above
 - Push #1 (after commit 3): `git push origin
