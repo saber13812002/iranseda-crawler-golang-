@@ -3,7 +3,7 @@
 **Date:** 2026-11-05 (UTC) · **Status:** COMPLETE (no BLOCKED items)
 **Owning repo:** `git@github.com:saber13812002/iranseda-crawler-golang-.git`
 **Branch:** `stage2-corpus-linkage` — Stage 3 commits stacked on the Stage 2 tip `61f7970e8ed32c7b8fdf1eee8398bd584cee908f` (no new branch)
-**Commits:** `@@SHA1@@` (module+CLI) · `@@SHA2@@` (tests) · `@@SHA3@@` (report+data) · `@@SHA4@@` (metadata backfill) · +1 commit (branch HEAD: records the backfill SHA)
+**Commits:** `f24ad75fc0cef9994144111154ab5e5dfa4ec1bb` (module+CLI) · `063aa7a5cdb8fcd7130b0b8323c54ef167e0df88` (tests) · `4b421e689d5d78c7022f35ea8676559be3e087c5` (report+data) · `@@SHA4@@` (metadata backfill) · +1 commit (branch HEAD: records the backfill SHA)
 **Push:** `origin stage2-corpus-linkage` → pushed, fast-forward, no force (output in §8)
 
 > Companion spec: [`CORPUS_LINKAGE_SPEC.md`](../../docs/corpus/CORPUS_LINKAGE_SPEC.md)
@@ -41,8 +41,8 @@ Not closed (deliberately): OQ-9 (out of scope), OQ-12 (Stage 4 sizing).
 
 ## 3. Deliverable module (Task B)
 
-New files in the owning repo (module+CLI in commit `@@SHA1@@`, tests in
-`@@SHA2@@`):
+New files in the owning repo (module+CLI in commit `f24ad75fc0cef9994144111154ab5e5dfa4ec1bb`, tests in
+`063aa7a5cdb8fcd7130b0b8323c54ef167e0df88`):
 
 | File | Purpose |
 |------|---------|
@@ -251,9 +251,9 @@ asset host (`raw.githubusercontent.com`) only.
   `c855312cfa5c2845a23def1f9e661c6ac30442a7`.
 - Commits (5, Stage 2 convention — the last two are metadata
   backfills):
-  1. `@@SHA1@@` — `corpus/assets.py` + `corpus/scan_assets.py`
-  2. `@@SHA2@@` — `tests/corpus/test_assets.py`
-  3. `@@SHA3@@` — `reports/corpus/CORPUS_LINKAGE_STAGE3.md` +
+  1. `f24ad75fc0cef9994144111154ab5e5dfa4ec1bb` — `corpus/assets.py` + `corpus/scan_assets.py`
+  2. `063aa7a5cdb8fcd7130b0b8323c54ef167e0df88` — `tests/corpus/test_assets.py`
+  3. `4b421e689d5d78c7022f35ea8676559be3e087c5` — `reports/corpus/CORPUS_LINKAGE_STAGE3.md` +
      `reports/corpus/stage3_asset_verification.json`
   4. `@@SHA4@@` — backfill of the commit SHAs and push output into
      this report
@@ -265,7 +265,8 @@ asset host (`raw.githubusercontent.com`) only.
   `git ls-remote`.
 
 ```
-@@PUSH1@@
+To github.com:saber13812002/iranseda-crawler-golang-.git
+   61f7970e8..4b421e689  stage2-corpus-linkage -> stage2-corpus-linkage
 ```
 
 ### What did NOT change in production
