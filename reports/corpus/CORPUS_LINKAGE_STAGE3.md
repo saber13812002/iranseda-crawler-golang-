@@ -3,7 +3,7 @@
 **Date:** 2026-11-05 (UTC) · **Status:** COMPLETE (no BLOCKED items)
 **Owning repo:** `git@github.com:saber13812002/iranseda-crawler-golang-.git`
 **Branch:** `stage2-corpus-linkage` — Stage 3 commits stacked on the Stage 2 tip `61f7970e8ed32c7b8fdf1eee8398bd584cee908f` (no new branch)
-**Commits:** `f24ad75fc0cef9994144111154ab5e5dfa4ec1bb` (module+CLI) · `063aa7a5cdb8fcd7130b0b8323c54ef167e0df88` (tests) · `4b421e689d5d78c7022f35ea8676559be3e087c5` (report+data) · `ab61e71155fd120ff75c8de7dd847f97d96152c4` (metadata backfill) · +1 commit (branch HEAD: records the backfill SHA)
+**Commits:** `f24ad75fc0cef9994144111154ab5e5dfa4ec1bb` (module+CLI) · `063aa7a5cdb8fcd7130b0b8323c54ef167e0df88` (tests) · `4b421e689d5d78c7022f35ea8676559be3e087c5` (report+data) · `ab61e71155fd120ff75c8de7dd847f97d96152c4` (metadata backfill) · `0be5909f2bdfd8591248d0c9768f8d8f8155272e` (records the backfill SHA) · +1 commit (branch HEAD: post-note, see §9)
 **Push:** `origin stage2-corpus-linkage` → pushed, fast-forward, no force (output in §8)
 
 > Companion spec: [`CORPUS_LINKAGE_SPEC.md`](../../docs/corpus/CORPUS_LINKAGE_SPEC.md)
@@ -19,7 +19,7 @@
 - All work inside the git worktree `/tmp/saber_stage3_wt` attached to the
   existing branch `stage2-corpus-linkage`; the main worktree was touched
   **read-only** (pre/post HEAD identical:
-  `c855312cfa5c2845a23def1f9e661c6ac30442a7`).
+  `c855312cfa5c2845a23def1f9e661c6ac30442a7` at the Task C window; see §9).
 - Bounded HTTP to the asset host only: **≤ 2 workers, hard budget 300,
   15 s per-request cap, URL dedup, resumable per-URL cache** (§7).
 - **R7:** GitHub user/repo parsed at runtime from the real `git remote`;
@@ -248,7 +248,8 @@ asset host (`raw.githubusercontent.com`) only.
 - Worked in the git worktree `/tmp/saber_stage3_wt` attached to the
   **existing** branch `stage2-corpus-linkage` (no `-b`); the main
   worktree was read-only: pre/post HEAD both
-  `c855312cfa5c2845a23def1f9e661c6ac30442a7`.
+  `1585c1aa29f88f51903f5e6dc955c7397928a7` (a production
+  refresh-loop commit landed during the day; see §9).
 - Commits (5, Stage 2 convention — the last two are metadata
   backfills):
   1. `f24ad75fc0cef9994144111154ab5e5dfa4ec1bb` — `corpus/assets.py` + `corpus/scan_assets.py`
@@ -282,3 +283,15 @@ To github.com:saber13812002/iranseda-crawler-golang-.git
 - No secrets/`.env`/tokens in any committed path; the per-URL HTTP
   cache (`stage3_asset_verification.json.http_cache.json`) was left
   untracked in the worktree.
+
+## 9. Post-note — production auto-refresh drift (recorded post-commit)
+
+Between the Task C run (22:15Z; main worktree at
+`c855312cfa5c2845a23def1f9e661c6ac30442a7`) and the Task D commit run
+(22:38Z), the production hourly refresh loop committed `1585c1aa29f88f51903f5e6dc955c7397928a77a`
+(`auto: refresh site + subtitles (2026-11-05_22:30)`, 2026-11-05 22:30:04 +0000) to `phase3-radio-rag-service`. The Task D run itself was
+pre/post identical (`1585c1aa29f88f51903f5e6dc955c7397928a7` → same):
+the refresh commit landed **before** the run started, not during it.
+No statement in §1/§8 changes in substance: the main worktree was
+read-only throughout, and the Stage 3 commits live solely on
+`stage2-corpus-linkage`.
