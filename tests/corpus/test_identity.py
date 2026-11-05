@@ -219,19 +219,25 @@ def test_record_ids_unique_in_valid_corpus():
         ex = E.Exporter(db, Cfg(), disk=disk, log=lambda *a: None)
         manifest = ex.run()
         assert manifest["records_written"] == 1
-        assert manifest["records_invalid"] == 1
+        # Stage 3: identity collisions are QUARANTINE, not "invalid"
+        assert manifest["records_quarantined"] == 1
+        assert manifest["records_invalid"] == 0
+        assert manifest["quarantine_policy"] == \
+            "PERMANENT_UNTIL_IDENTITY_PROVEN"
         with open(os.path.join(tmp, "out", "corpus.jsonl"),
                   encoding="utf-8") as f:
             rids = [json.loads(l)["record_id"] for l in f if l.strip()]
         assert len(rids) == len(set(rids)) == 1
-        # invalid.jsonl kept the quarantined record with its DB id
+        # quarantine.jsonl keeps the quarantined record with its DB id
         # (session identity lives in database_refs, not provenance)
-        with open(os.path.join(tmp, "out", "invalid.jsonl"),
+        with open(os.path.join(tmp, "out", "quarantine.jsonl"),
                   encoding="utf-8") as f:
             inv = [json.loads(l) for l in f if l.strip()]
         assert len(inv) == 1
         assert inv[0]["record"]["database_refs"]["session_id"] == 2
         assert any("duplicate record_id" in p for p in inv[0]["problems"])
+        assert inv[0]["quarantine"]["class"] == "B"
+        assert not os.path.exists(os.path.join(tmp, "out", "invalid.jsonl"))
 
 
 # ----------------------------------------------------------------------

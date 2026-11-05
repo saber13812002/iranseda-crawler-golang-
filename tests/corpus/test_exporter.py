@@ -278,3 +278,218 @@ def test_stats_counters():
         assert stats["records_with_summary"] == 1
         assert stats["episode_key_link"] == len(sessions)
         assert stats["by_status"]["subtitled"] == len(sessions)
+
+
+# ----------------------------------------------------------------------
+# Stage 3: quarantine split, checksums, determinism, retention, atomicity
+# ----------------------------------------------------------------------
+
+def _dup_sessions():
+    """Two sessions that parse to the SAME record_id (Class B collision)."""
+    a = _session(6217, pid=31,
+                 link="../epgarchivePart/?VALID=TRUE&ch=14&e=10000001")
+    b = _session(5038, pid=31,
+                 link="../epgarchivePart/?VALID=TRUE&ch=14&e=10000001")
+    return [a, b]
+
+
+def test_identity_collision_goes_to_quarantine_not_invalid():
+    with tempfile.TemporaryDirectory() as tmp:
+        db, cfg, sessions = _setup(tmp)
+        # session 1 has the same (ch=14, e=10000001) as BOTH 6217 and 5038,
+        # so both colliding sessions must be quarantined (first wins, kept).
+        db.sessions = sessions + _dup_sessions()
+        ex = E.Exporter(db, cfg, log=lambda m: None)
+        manifest = ex.run(run_id="det-q", exported_at="2026-01-06 12:00:00")
+        assert manifest["records_quarantined"] == 2
+        assert manifest["records_invalid"] == 0
+        assert manifest["records_written"] == len(sessions)
+        assert manifest["quarantine_policy"] == "PERMANENT_UNTIL_IDENTITY_PROVEN"
+        assert manifest["quarantine_file"] == "quarantine.jsonl"
+        qpath = os.path.join(cfg.out_dir, "quarantine.jsonl")
+        assert os.path.exists(qpath)
+        with open(qpath, encoding="utf-8") as f:
+            lines = [json.loads(l) for l in f if l.strip()]
+        assert len(lines) == 2
+        assert {r["quarantine"]["session_id"] for r in lines} == {6217, 5038}
+        for row in lines:
+            assert row["record"]["record_id"] == "iranseda:ch14:e10000001"
+            assert any("duplicate record_id" in p for p in row["problems"])
+            q = row["quarantine"]
+            assert q["policy"] == "PERMANENT_UNTIL_IDENTITY_PROVEN"
+            assert q["class"] == "B"
+            assert q["record_id"] == "iranseda:ch14:e10000001"
+            assert "STAGE_1" in q["investigation_ref"]
+        # the colliding record_id must appear exactly once, from session 1
+        recs = ex.read_output()
+        assert [r["record_id"] for r in recs].count(
+            "iranseda:ch14:e10000001") == 1
+        sess_ids = [r["database_refs"]["session_id"] for r in recs]
+        assert 6217 not in sess_ids
+        assert 5038 not in sess_ids
+        # and not in invalid.jsonl either
+        assert not os.path.exists(
+            os.path.join(cfg.out_dir, "invalid.jsonl"))
+
+
+def test_structural_problem_still_goes_to_invalid():
+    with tempfile.TemporaryDirectory() as tmp:
+        db, cfg, sessions = _setup(tmp)
+        bad = _session(500, pid=None, link="weird-link-no-params")
+        db.sessions = sessions + [bad]
+        ex = E.Exporter(db, cfg, log=lambda m: None)
+        manifest = ex.run(run_id="det-i", exported_at="2026-01-06 12:00:00")
+        assert manifest["records_invalid"] == 1
+        assert manifest["records_quarantined"] == 0
+        inv = os.path.join(cfg.out_dir, "invalid.jsonl")
+        assert os.path.exists(inv)
+        with open(inv, encoding="utf-8") as f:
+            row = json.loads(f.readline())
+        assert any("record_id" in p for p in row["problems"])
+        assert "quarantine" not in row
+        assert not os.path.exists(
+            os.path.join(cfg.out_dir, "quarantine.jsonl"))
+
+
+def test_checksums_match_live_files():
+    with tempfile.TemporaryDirectory() as tmp:
+        db, cfg, sessions = _setup(tmp)
+        db.sessions = sessions + _dup_sessions()
+        ex = E.Exporter(db, cfg, log=lambda m: None)
+        manifest = ex.run(run_id="det-c", exported_at="2026-01-06 12:00:00")
+        cp = os.path.join(cfg.out_dir, "checksums.sha256")
+        assert os.path.exists(cp)
+        with open(cp, encoding="utf-8") as f:
+            content = f.read()
+        entries = [l.split(None, 1) for l in content.strip().splitlines()]
+        names = [n for _, n in entries]
+        assert "corpus.jsonl" in names
+        assert "quarantine.jsonl" in names
+        assert "stats.json" in names
+        assert "manifest.json" not in names  # run record, excluded
+        import hashlib
+        for digest, name in entries:
+            with open(os.path.join(cfg.out_dir, name), "rb") as fh:
+                actual = hashlib.sha256(fh.read()).hexdigest()
+            assert actual == digest, name
+        by_name = dict((n, d) for d, n in entries)
+        assert ex.read_checksums()["corpus.jsonl"] == \
+            by_name["corpus.jsonl"]
+        assert set(manifest["checksums_files"]) == set(names)
+
+
+def test_deterministic_two_runs_byte_identical():
+    # FakeDB returns constant rows/watermark — two pinned runs over it are
+    # two exports from unchanged data and must be byte-identical.
+    with tempfile.TemporaryDirectory() as tmp:
+        db, cfg, sessions = _setup(tmp)
+        db.sessions = sessions + _dup_sessions()
+        pin = "2026-01-06 12:00:00"
+
+        # default run_id is derived from the pinned exported_at, so
+        # unchanged data -> identical run_id -> byte-identical data files
+        ex1 = E.Exporter(db, cfg, log=lambda m: None)
+        m1 = ex1.run(exported_at=pin)
+        ex2 = E.Exporter(db, cfg, log=lambda m: None)
+        m2 = ex2.run(exported_at=pin)
+
+        assert m1["deterministic"] is True
+        assert m2["deterministic"] is True
+        assert m1["run_id"] == m2["run_id"] == "corpus-det-2026-01-06T12-00-00"
+        for name in ("corpus.jsonl", "quarantine.jsonl", "stats.json"):
+            p = os.path.join(cfg.out_dir, name)
+            assert os.path.exists(p), name
+        with open(os.path.join(cfg.out_dir, "checksums.sha256"),
+                  encoding="utf-8") as f:
+            checksums = f.read()
+        c1 = {n: d for d, n in [l.split(None, 1) for l in
+                                checksums.strip().splitlines()]}
+        # re-run to regenerate and compare (second run already promoted);
+        # no explicit run_id — same pin -> same derived run_id -> identical
+        # export_version embedded in each record -> identical bytes
+        ex3 = E.Exporter(db, cfg, log=lambda m: None)
+        m3 = ex3.run(exported_at=pin)
+        c3 = {n: d for d, n in [l.split(None, 1) for l in
+                                open(os.path.join(cfg.out_dir,
+                                                  "checksums.sha256"),
+                                     encoding="utf-8").read().strip().splitlines()]}
+        assert c1 == c3, "checksums differ across deterministic runs"
+        for name, digest in c1.items():
+            with open(os.path.join(cfg.out_dir, name), "rb") as fh:
+                import hashlib
+                assert hashlib.sha256(fh.read()).hexdigest() == digest
+        # records written are identical sets
+        assert (m1["records_written"], m1["records_quarantined"]) == \
+               (m3["records_written"], m3["records_quarantined"])
+        # manifest deterministic marker + previous retention
+        # (same run_id each time -> archived slot name collides -> -2 suffix)
+        slot = "corpus-det-2026-01-06T12-00-00"
+        assert m1["previous_export"] is None
+        assert m2["previous_export"] == "previous/" + slot
+        assert m3["previous_export"] == "previous/" + slot + "-2"
+
+
+def test_previous_export_retained_after_run():
+    with tempfile.TemporaryDirectory() as tmp:
+        db, cfg, sessions = _setup(tmp)
+        ex1 = E.Exporter(db, cfg, log=lambda m: None)
+        m1 = ex1.run(run_id="keep-1", exported_at="2026-01-06 12:00:00")
+        assert m1["previous_export"] is None  # first run: nothing to keep
+        n1 = ex1.read_output()[0]["record_id"]
+        ex2 = E.Exporter(db, cfg, log=lambda m: None)
+        m2 = ex2.run(run_id="keep-2", exported_at="2026-01-06 12:30:00")
+        assert m2["previous_export"] == "previous/keep-1"
+        prev = os.path.join(cfg.out_dir, "previous", "keep-1")
+        assert os.path.isdir(prev)
+        with open(os.path.join(prev, "corpus.jsonl"), encoding="utf-8") as f:
+            first = [json.loads(l)["record_id"] for l in f if l.strip()][0]
+        assert first == n1
+        with open(os.path.join(prev, "manifest.json"), encoding="utf-8") as f:
+            m1p = json.load(f)
+        assert m1p["run_id"] == "keep-1"
+        assert m1p["previous_export"] is None
+
+
+def test_previous_retention_prunes_old_slots():
+    with tempfile.TemporaryDirectory() as tmp:
+        db, cfg, _ = _setup(tmp)
+        # run N archives the live output of run N-1 (slot named after the
+        # OLD run), so 5 runs leave slots slot-1..slot-4; retention keeps 3
+        for i in range(1, 6):
+            ex = E.Exporter(db, cfg, log=lambda m: None)
+            ex.run(run_id="slot-%d" % i, exported_at="2026-01-06 12:00:00")
+        prev = os.path.join(cfg.out_dir, "previous")
+        slots = sorted(os.listdir(prev))
+        assert slots == ["slot-2", "slot-3", "slot-4"], slots
+
+
+def test_failed_run_leaves_live_outputs_untouched():
+    with tempfile.TemporaryDirectory() as tmp:
+        db, cfg, sessions = _setup(tmp)
+        ex1 = E.Exporter(db, cfg, log=lambda m: None)
+        m1 = ex1.run(run_id="good", exported_at="2026-01-06 12:00:00")
+        live_before = {n: E._sha256_of_file(os.path.join(cfg.out_dir, n))
+                       for n in ex1.live_output_files()}
+
+        ex2 = E.Exporter(db, cfg, log=lambda m: None)
+        # break the staged corpus so validation must fail before promotion
+        ex2._validate_staged = (
+            lambda sf, a, b, c: (_ for _ in ()).throw(
+                RuntimeError("injected validation failure")))
+        try:
+            ex2.run(run_id="bad", exported_at="2026-01-06 12:30:00")
+            raise AssertionError("expected RuntimeError")
+        except RuntimeError:
+            pass
+        live_after = ex2.live_output_files()
+        assert live_after == sorted(live_before.keys())
+        for n in live_after:
+            assert E._sha256_of_file(os.path.join(cfg.out_dir, n)) == \
+                live_before[n], "live %s was modified" % n
+        assert m1["run_id"] == "good"
+        with open(os.path.join(cfg.out_dir, "manifest.json"),
+                  encoding="utf-8") as f:
+            assert json.load(f)["run_id"] == "good"
+        # no staging debris left behind
+        assert not any(n.startswith(".staging.") for n in
+                       os.listdir(cfg.out_dir))

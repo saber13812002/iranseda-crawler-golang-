@@ -3,7 +3,9 @@
 Usage (from the project root; the dashboard venv on 53 has pymysql):
 
   python -m corpus.cli check                 # connectivity + inventory
-  python -m corpus.cli export [--limit N]    # full (or bounded) export
+  python -m corpus.cli export [--limit N] [--deterministic] [--run-id ID]
+                               # full (or bounded) export; --deterministic
+                               # pins exported_at to the DB watermark
   python -m corpus.cli incremental           # watermark-based partial export
   python -m corpus.cli reconcile             # full re-scan + diff report
   python -m corpus.cli validate              # validate the current output
@@ -48,10 +50,28 @@ def cmd_check(cfg):
     return 0
 
 
-def cmd_export(cfg, limit=None):
+def cmd_export(cfg, limit=None, deterministic=False, run_id=None):
     with _database.Database(cfg) as db:
+        wm = db.high_watermark()
+        # --deterministic: pin exported_at to the DB high watermark so
+        # two runs over unchanged data produce byte-identical data files
+        # and identical checksums.sha256 (manifest duration_sec excepted).
+        exported_at = None
+        if deterministic:
+            anchor = (wm.get("sessions_updated_at")
+                      or wm.get("llm_finished_at") or "")
+            if not anchor:
+                print("export: cannot pin exported_at (empty DB watermark)")
+                return 2
+            exported_at = anchor
+            if run_id is None:
+                # filesystem-safe (':') — matches Exporter's derivation
+                run_id = "corpus-det-%s" % (anchor
+                                             .replace(" ", "T")
+                                             .replace(":", "-"))
         ex = _exporter.Exporter(db, cfg, log=print)
-        manifest = ex.run(limit=limit)
+        manifest = ex.run(limit=limit, run_id=run_id,
+                          exported_at=exported_at)
         _metrics.write_prometheus(cfg)
     print(json.dumps(manifest, indent=2, ensure_ascii=False))
     return 0
@@ -169,7 +189,12 @@ def main(argv=None):
         limit = None
         if "--limit" in argv:
             limit = int(argv[argv.index("--limit") + 1])
-        return cmd_export(cfg, limit=limit)
+        run_id = None
+        if "--run-id" in argv:
+            run_id = argv[argv.index("--run-id") + 1]
+        return cmd_export(cfg, limit=limit,
+                          deterministic="--deterministic" in argv,
+                          run_id=run_id)
     if cmd == "incremental":
         return cmd_incremental(cfg, force_full="--full" in argv)
     if cmd == "reconcile":
