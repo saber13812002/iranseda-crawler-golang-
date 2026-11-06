@@ -237,6 +237,106 @@ class Database(object):
         clause = "((updated_at IS NULL) OR " + " OR ".join(parts) + ")"
         return clause, pp
 
+    def changed_session_ids(self, wm, overlap_sec):
+        """Strongest available change detection (mission §8 — Stage 4).
+
+        Returns the UNION of session ids that any of these signals say
+        have changed since the stored watermark:
+          * radio_program_sessions.updated_at >= wm - overlap  (touch)
+          * radio_program_sessions.id > wm.max_id              (inserts)
+          * llm_output.finished_at >= wm - overlap OR id > wm  (new
+            SRT/summary/correction — corrections do NOT bump the
+            session's updated_at, so this signal is essential)
+          * asr_output.updated_at >= wm - overlap              (ASR)
+          * crop_detection.updated_at >= wm - overlap          (crop)
+        All id bounds are inlined integer literals (pymysql %d lesson);
+        timestamps are bound via %s placeholders. On any single-signal
+        query failure the signal is dropped (logged) — the union of the
+        remaining signals is still returned (never raises).
+        """
+        from datetime import timedelta
+
+        signals = {}
+        ids = set()
+
+        def since(ts_key):
+            ts = wm.get(ts_key)
+            if not ts:
+                return None
+            dt = _dt_from_iso(ts[:19])
+            return dt - timedelta(seconds=int(overlap_sec)) if dt else None
+
+        # 1) sessions touch / inserts
+        sid = since("sessions_updated_at")
+        if sid is not None or wm.get("sessions_max_id") is not None:
+            sql = "SELECT DISTINCT id FROM radio_program_sessions WHERE ("
+            conds = []
+            args = []
+            if sid is not None:
+                conds.append("updated_at >= %s")
+                args.append(sid)
+            if wm.get("sessions_max_id") is not None:
+                conds.append("id > %d" % int(wm["sessions_max_id"]))
+            if conds:
+                sql += " OR ".join(conds) + ")"
+            try:
+                for r in self.query(sql, tuple(args)):
+                    ids.add(int(r["id"]))
+            except Exception as e:  # noqa: BLE001
+                signals["sessions"] = "error: %s" % e
+        signals.setdefault("sessions", "ok")
+
+        # 2) llm_output freshness (new/corrected SRTs, summaries, ...)
+        lid = wm.get("llm_max_id")
+        lsince = since("llm_finished_at")
+        if lid is not None or lsince is not None:
+            sql = "SELECT DISTINCT session_id FROM llm_output WHERE ("
+            conds = []
+            args = []
+            if lsince is not None:
+                conds.append("finished_at >= %s")
+                args.append(lsince)
+            if lid is not None:
+                conds.append("id > %d" % int(lid))
+            if conds:
+                sql += " OR ".join(conds) + ")"
+            try:
+                for r in self.query(sql, tuple(args)):
+                    if r.get("session_id") is not None:
+                        ids.add(int(r["session_id"]))
+            except Exception as e:  # noqa: BLE001
+                signals["llm"] = "error: %s" % e
+        signals.setdefault("llm", "ok")
+
+        # 3) asr_output freshness (updated_at only — no id watermark
+        #    tracked for asr; overlap window covers the gap)
+        asince = since("sessions_updated_at")
+        if asince is not None:
+            try:
+                for r in self.query(
+                        "SELECT DISTINCT session_id FROM asr_output "
+                        "WHERE updated_at >= %s", (asince,)):
+                    if r.get("session_id") is not None:
+                        ids.add(int(r["session_id"]))
+            except Exception as e:  # noqa: BLE001
+                signals["asr"] = "error: %s" % e
+        signals.setdefault("asr", "ok")
+
+        # 4) crop_detection freshness (same approach as asr)
+        csince = since("sessions_updated_at")
+        if csince is not None:
+            try:
+                for r in self.query(
+                        "SELECT DISTINCT session_id FROM crop_detection "
+                        "WHERE updated_at >= %s", (csince,)):
+                    if r.get("session_id") is not None:
+                        ids.add(int(r["session_id"]))
+            except Exception as e:  # noqa: BLE001
+                signals["crop"] = "error: %s" % e
+        signals.setdefault("crop", "ok")
+
+        return sorted(ids), signals
+
     # ------------------------------------------------------------------
     # URL / identity regex helpers (single home for the patterns)
     # ------------------------------------------------------------------

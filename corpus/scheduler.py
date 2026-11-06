@@ -33,22 +33,23 @@ def _log(msg):
 
 
 def _acquire_lock(cfg):
-    """Single-instance guard (pidfile with stale detection)."""
+    """Single-instance guard (pidfile with stale detection).
+
+    Uses exporter._pid_alive: on Windows os.kill(pid, 0) is NOT a
+    liveness check (signal 0 == Ctrl+C event for the console group) —
+    it must go through OpenProcess instead.
+    """
     path = os.path.join(cfg.out_dir, STATE_LOCK)
     os.makedirs(cfg.out_dir, exist_ok=True)
     if os.path.exists(path):
         try:
             with open(path, encoding="utf-8") as f:
                 old = int(f.read().strip() or 0)
-            # stale if that pid doesn't exist (best effort on Linux)
-            os.kill(old, 0)
-            _log("scheduler: another instance running (pid %d) — exiting" % old)
-            return False
-        except (ValueError, OSError, ProcessLookupError):
-            pass  # stale lock
-        except PermissionError:
-            _log("scheduler: lock held by another uid — exiting")
-            return False
+            if _exporter._pid_alive(old):
+                _log("scheduler: another instance running (pid %d) — exiting" % old)
+                return False
+        except ValueError:
+            pass  # unreadable/stale lock
     with open(path, "w", encoding="utf-8") as f:
         f.write(str(os.getpid()))
     return True
@@ -56,12 +57,19 @@ def _acquire_lock(cfg):
 
 def _release_lock(cfg):
     path = os.path.join(cfg.out_dir, STATE_LOCK)
+    # read the holder BEFORE removing: on Windows os.remove fails
+    # (WinError 32) while the file still has an open handle.
+    holder = None
     try:
         with open(path, encoding="utf-8") as f:
-            if f.read().strip() == str(os.getpid()):
-                os.remove(path)
+            holder = f.read().strip()
     except OSError:
-        pass
+        return
+    if holder == str(os.getpid()):
+        try:
+            os.remove(path)
+        except OSError:
+            pass
 
 
 def _weekly_reconcile_due(cfg):

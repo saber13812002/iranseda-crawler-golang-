@@ -80,6 +80,98 @@ def _is_duplicate_record_id(problems):
     return any("duplicate record_id" in p for p in problems)
 
 
+# ----------------------------------------------------------------------
+# Exclusive job lock (mission §8 — Stage 4: exactly ONE corpus export at
+# a time, across `export`, `incremental`, `reconcile` and the scheduler).
+# Pidfile with stale detection: signal 0 is a pure existence check
+# (no signal is delivered), so a dead holder's lock is taken over.
+# ----------------------------------------------------------------------
+LOCK_FILE = "export.lock"
+
+
+class NoLiveCorpusError(RuntimeError):
+    """Incremental merge was requested but there is no live corpus to
+    merge into — the caller must fall back to a full export."""
+
+
+def _pid_alive(pid):
+    """Best-effort liveness check for the lock holder pid.
+
+    NOTE: os.kill(pid, 0) is NOT a pure existence check on Windows —
+    signal 0 == CTRL_C_EVENT, which would deliver a Ctrl+C to the
+    console group. On Windows use OpenProcess instead: a handle is
+    returned iff the process exists (access-denied still means the
+    process exists but is invisible -> treat as alive, safe side).
+    """
+    try:
+        pid = int(pid)
+    except (TypeError, ValueError):
+        return False
+    if pid <= 0:
+        return False
+    if os.name == "nt":
+        import ctypes
+        k32 = ctypes.windll.kernel32
+        PROCESS_QUERY_INFORMATION = 0x0400
+        h = k32.OpenProcess(PROCESS_QUERY_INFORMATION, False, pid)
+        if h:
+            k32.CloseHandle(h)
+            return True
+        if k32.GetLastError() == 5:  # ERROR_ACCESS_DENIED -> exists
+            return True
+        return False
+    try:
+        os.kill(pid, 0)  # unix: signal 0 is a pure existence check
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True  # exists, owned by another uid
+    except OSError:
+        return False
+
+
+def _acquire_export_lock(cfg, log=None):
+    """Acquire <out_dir>/export.lock. Returns True when this process now
+    holds it. A lock whose pid is dead (or unreadable) is stale and is
+    taken over; a lock held by a live foreign pid refuses the export."""
+    log = log or (lambda m: None)
+    path = os.path.join(cfg.out_dir, LOCK_FILE)
+    os.makedirs(cfg.out_dir, exist_ok=True)
+    if os.path.exists(path):
+        old = None
+        try:
+            with open(path, encoding="utf-8") as f:
+                old = int((f.read().strip() or "0").split()[0])
+        except (ValueError, OSError, IndexError):
+            old = None
+        if old is not None and old != os.getpid() and _pid_alive(old):
+            log("exporter: %s held by pid %d — another export in progress; "
+                "aborting" % (LOCK_FILE, old))
+            return False
+        log("exporter: taking over stale %s (old pid %s)" % (LOCK_FILE, old))
+    with open(path, "w", encoding="utf-8") as f:
+        f.write("%d %s" % (os.getpid(), _now_iso()))
+    return True
+
+
+def _release_export_lock(cfg):
+    path = os.path.join(cfg.out_dir, LOCK_FILE)
+    # NOTE: read the holder BEFORE removing — on Windows os.remove fails
+    # (WinError 32) while the file still has an open handle.
+    holder = None
+    try:
+        with open(path, encoding="utf-8") as f:
+            holder = f.read().strip().split()[0]
+    except (OSError, IndexError, ValueError):
+        return
+    if holder == str(os.getpid()):
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+
+
 class Exporter(object):
     # how many previous/<run_id> slots to keep after each successful run
     PREVIOUS_RETENTION = 3
@@ -305,49 +397,66 @@ class Exporter(object):
                           % datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
 
         os.makedirs(self.cfg.out_dir, exist_ok=True)
-        self._run_slot = run_id
-        staging = os.path.join(self.cfg.out_dir, ".staging.%s" % run_id)
-        self._clean_staging(staging)
+        if not _acquire_export_lock(self.cfg, self.log):
+            raise RuntimeError(
+                "export.lock held by another live process — "
+                "refusing to run a concurrent export")
         try:
-            return self._run_inner(staging, where=where, params=params,
-                                    limit=limit, run_id=run_id,
-                                    exported_at=exported_at,
-                                    deterministic=deterministic, t0=t0)
-        except Exception:
-            # a failed run must never leave staging debris behind and,
-            # crucially, never touched the live outputs
-            shutil.rmtree(staging, ignore_errors=True)
-            raise
+            self._run_slot = run_id
+            staging = os.path.join(self.cfg.out_dir, ".staging.%s" % run_id)
+            self._clean_staging(staging)
+            try:
+                return self._run_inner(staging, where=where, params=params,
+                                        limit=limit, run_id=run_id,
+                                        exported_at=exported_at,
+                                        deterministic=deterministic, t0=t0)
+            except Exception:
+                # a failed run must never leave staging debris behind and,
+                # crucially, never touched the live outputs
+                shutil.rmtree(staging, ignore_errors=True)
+                raise
+        finally:
+            _release_export_lock(self.cfg)
 
-    def _run_inner(self, staging, where, params, limit, run_id, exported_at,
-                   deterministic, t0):
-        # ---- load lookup tables (small) -----------------------------
+    # ------------------------------------------------------------------
+    def _commit(self, staging, stage_files, n_ok, n_invalid, n_quarantine,
+                manifest, t0):
+        """Shared atomic tail of every export path (full, incremental
+        merge): validate staged output -> archive live into previous/ ->
+        rewrite manifest (previous_export + duration) -> promote ->
+        checksums -> retention pruning. Returns the manifest."""
+        self._validate_staged(stage_files, n_ok, n_invalid, n_quarantine)
+        prev_slot = self._archive_live()
+        manifest["previous_export"] = (
+            None if prev_slot is None else "previous/" + prev_slot)
+        manifest["duration_sec"] = round(time.time() - t0, 1)
+        _atomic_write(os.path.join(staging, "manifest.json"),
+                      json.dumps(manifest, indent=2, ensure_ascii=False))
+        self._promote(staging)
+        manifest["checksums_files"] = self._write_checksums()
+        self._prune_previous()
+        return manifest
+
+    def _load_lookup_tables(self):
+        """(prog_by_id, prog_by_chm, llm_by_session, asr_by_session,
+        crop_by_session) — dimension tables, loaded once per build."""
         prog_by_id, prog_by_chm = self.ex.load_programs()
-        llm_by_session, llm_total = self.ex.load_llm_outputs()
+        llm_by_session, _llm_total = self.ex.load_llm_outputs()
         asr_by_session = self.ex.load_asr_outputs()
         crop_by_session = self.ex.load_crop_detections()
-        counts = self.db.table_counts()
-        wm = self.db.high_watermark()
-        if deterministic:
-            # keep data fields reproducible; the DB watermark is the anchor
-            wm = dict(wm)
-            wm["note"] = ("frozen: deterministic build pinned to DB "
-                          "high watermark")
+        return (prog_by_id, prog_by_chm, llm_by_session, asr_by_session,
+                crop_by_session)
 
-        # ---- walk sessions ------------------------------------------
-        total_sessions, gen = self.db.fetch_sessions(where=where, params=params)
-        if limit is not None:
-            # bounded iteration for pilots (wrap the already-open iterator)
-            _unbounded = gen
-
-            def _limited():
-                for _i, r in enumerate(_unbounded):
-                    if _i >= limit:
-                        break
-                    yield r
-
-            gen = _limited()
-
+    # ------------------------------------------------------------------
+    def _build_session_slice(self, gen, total_sessions, staging, run_id,
+                             exported_at):
+        """Map the given session iterator to records and write them to the
+        staging corpus file (single or sharded). Validation runs with a
+        FRESH seen set: duplicates inside the slice -> quarantine (Stage 3
+        contract). Returns {n, n_ok, n_invalid, n_quarantine, out_path,
+        shard_paths, stats}."""
+        (prog_by_id, prog_by_chm, llm_by_session,
+         asr_by_session, crop_by_session) = self._load_lookup_tables()
         out_path = None
         shard_paths = []
         f = None
@@ -434,14 +543,25 @@ class Exporter(object):
             if qar is not None:
                 qar.close()
 
-        # ---- staged corpus files -------------------------------------
-        stage_files = {
-            "corpus": out_path if out_path else shard_paths,
-            "invalid": invalid_path if os.path.exists(invalid_path) else None,
-            "quarantine": quarantine_path if os.path.exists(quarantine_path) else None,
+        return {
+            "n": n,
+            "n_ok": n_ok,
+            "n_invalid": n_invalid,
+            "n_quarantine": n_quarantine,
+            "out_path": out_path,
+            "shard_paths": shard_paths,
+            "invalid_path": invalid_path if os.path.exists(invalid_path) else None,
+            "quarantine_path": (quarantine_path
+                                if os.path.exists(quarantine_path) else None),
+            "stats": stats,
         }
 
-        # ---- manifest + stats (staged) -------------------------------
+    # ------------------------------------------------------------------
+    def _build_manifest(self, staging, ns, total_sessions, wm, counts,
+                        run_id, exported_at, mode, deterministic, extra=None):
+        """Staged manifest.json + stats.json, shared by the full and the
+        incremental-merge paths. ns = the build namespace dict (see
+        _build_session_slice / _run_incremental_inner)."""
         scanned_at = self.ex.disk.scanned_at
         if deterministic:
             # wall-clock epoch float -> keep data fields reproducible
@@ -450,20 +570,21 @@ class Exporter(object):
             "schema_version": "1.0",
             "run_id": run_id,
             "exported_at": exported_at,
-            "mode": "incremental" if where else "full",
+            "mode": mode,
             "deterministic": deterministic,
-            "records_written": n_ok,
-            "records_invalid": n_invalid,
-            "records_quarantined": n_quarantine,
-            "sessions_seen": n,
+            "records_written": ns["n_ok"],
+            "records_invalid": ns["n_invalid"],
+            "records_quarantined": ns["n_quarantine"],
+            "sessions_seen": ns["n"],
             "sessions_total_in_db": total_sessions,
             "output_files": ([os.path.join(self.cfg.out_dir, "corpus.jsonl")]
-                             if out_path
-                             else [os.path.join(self.cfg.out_dir, "corpus-%04d.jsonl" % (i + 1))
-                                   for i in range(len(shard_paths))]),
+                             if ns["out_path"]
+                             else [os.path.join(self.cfg.out_dir,
+                                                 "corpus-%04d.jsonl" % (i + 1))
+                                   for i in range(len(ns["shard_paths"]))]),
             "shard_lines": self.cfg.shard_lines,
-            "quarantine_file": "quarantine.jsonl" if stage_files["quarantine"] else None,
-            "invalid_file": "invalid.jsonl" if stage_files["invalid"] else None,
+            "quarantine_file": "quarantine.jsonl" if ns["quarantine_path"] else None,
+            "invalid_file": "invalid.jsonl" if ns["invalid_path"] else None,
             "quarantine_policy": QUARANTINE_POLICY,
             "quarantine_ref": QUARANTINE_REF,
             "checksums_file": "checksums.sha256",
@@ -479,31 +600,336 @@ class Exporter(object):
             "config": self.cfg.to_dict(),
             "fingerprint_note": "per-record fingerprints in stats.fingerprints_sample",
         }
+        if extra:
+            manifest.update(extra)
         _atomic_write(os.path.join(staging, "manifest.json"),
                       json.dumps(manifest, indent=2, ensure_ascii=False))
         _atomic_write(os.path.join(staging, "stats.json"),
-                      json.dumps(stats, indent=2, ensure_ascii=False))
+                      json.dumps(ns["stats"], indent=2, ensure_ascii=False))
+        return manifest
 
-        # ---- validate staged output, archive live, promote ------------
-        self._validate_staged(stage_files, n_ok, n_invalid, n_quarantine)
-        prev_slot = self._archive_live()
-        manifest["previous_export"] = (
-            None if prev_slot is None
-            else "previous/" + prev_slot)
-        manifest["duration_sec"] = round(time.time() - t0, 1)
-        _atomic_write(os.path.join(staging, "manifest.json"),
-                      json.dumps(manifest, indent=2, ensure_ascii=False))
-        self._promote(staging)
+    # ------------------------------------------------------------------
+    def _run_inner(self, staging, where, params, limit, run_id, exported_at,
+                   deterministic, t0):
+        counts = self.db.table_counts()
+        wm = self.db.high_watermark()
+        if deterministic:
+            # keep data fields reproducible; the DB watermark is the anchor
+            wm = dict(wm)
+            wm["note"] = ("frozen: deterministic build pinned to DB "
+                          "high watermark")
 
-        # ---- checksums over the promoted (live) data files ------------
-        manifest["checksums_files"] = self._write_checksums()
-        self._prune_previous()
+        total_sessions, gen = self.db.fetch_sessions(where=where, params=params)
+        if limit is not None:
+            # bounded iteration for pilots (wrap the already-open iterator)
+            _unbounded = gen
 
+            def _limited():
+                for _i, r in enumerate(_unbounded):
+                    if _i >= limit:
+                        break
+                    yield r
+
+            gen = _limited()
+
+        ns = self._build_session_slice(gen, total_sessions, staging,
+                                       run_id, exported_at)
+        manifest = self._build_manifest(
+            staging, ns, total_sessions, wm, counts, run_id, exported_at,
+            mode="incremental" if where else "full",
+            deterministic=deterministic)
+        stage_files = {
+            "corpus": ns["out_path"] if ns["out_path"] else ns["shard_paths"],
+            "invalid": ns["invalid_path"],
+            "quarantine": ns["quarantine_path"],
+        }
+        manifest = self._commit(staging, stage_files, ns["n_ok"],
+                                 ns["n_invalid"], ns["n_quarantine"],
+                                 manifest, t0)
         self.log("exporter: done in %ss — %d ok, %d invalid, %d quarantined, "
                  "%d seen (total %d)"
-                 % (manifest["duration_sec"], n_ok, n_invalid, n_quarantine,
-                    n, total_sessions))
+                 % (manifest["duration_sec"], ns["n_ok"], ns["n_invalid"],
+                    ns["n_quarantine"], ns["n"], total_sessions))
         return manifest
+
+    # ------------------------------------------------------------------
+    # Incremental MERGE path (mission §8 — Stage 4)
+    # ------------------------------------------------------------------
+    def run_incremental(self, where, params=None, run_id=None,
+                        exported_at=None, extra=None):
+        """Merge-based incremental export (Stage 4).
+
+        Exports ONLY the changed-session slice (caller supplies WHERE)
+        and merges it INTO the currently-live corpus by record_id — the
+        live corpus is never replaced by the slice:
+
+          * slice records replace/insert into the live corpus by
+            record_id (a correction updates the SAME record)
+          * a slice record whose record_id already exists in the live
+            corpus under a DIFFERENT session goes to quarantine (a
+            cross-run collision; first-seen wins; never merged or
+            reclassified — Class B policy)
+          * quarantine/invalid entries merge keyed by
+            (record_id, session_id); the slice wins per key, untouched
+            live entries are preserved (permanent quarantine)
+          * NOTHING is ever physically deleted — a session that
+            disappears from the DB stays in the corpus until a
+            reconcile records its removal
+
+        The merged output goes through the same atomic commit pipeline
+        as a full export (validate staged -> archive live -> promote).
+        Raises NoLiveCorpusError when there is no live corpus to merge
+        into (the caller falls back to a full export). `extra` is an
+        optional dict merged into the manifest (e.g. the change-detection
+        signals).
+        """
+        t0 = time.time()
+        deterministic = exported_at is not None
+        if exported_at is None:
+            exported_at = _now_iso()
+        if run_id is None:
+            run_id = ("corpus-inc-%s"
+                      % datetime.datetime.now().strftime("%Y%m%d-%H%M%S"))
+        os.makedirs(self.cfg.out_dir, exist_ok=True)
+        if not _acquire_export_lock(self.cfg, self.log):
+            raise RuntimeError(
+                "export.lock held by another live process — "
+                "refusing to run a concurrent export")
+        try:
+            return self._run_incremental_inner(
+                where=where, params=params, run_id=run_id,
+                exported_at=exported_at, deterministic=deterministic,
+                extra=extra, t0=t0)
+        finally:
+            _release_export_lock(self.cfg)
+
+    def _run_incremental_inner(self, where, params, run_id, exported_at,
+                               deterministic, extra, t0):
+        # --- 1) live corpus to merge into (guard: must exist) ----------
+        live_records = self.read_output()
+        if not live_records:
+            raise NoLiveCorpusError(
+                "no live corpus.jsonl to merge into — run a full export "
+                "first")
+        live_by_id = {r["record_id"]: r for r in live_records}
+        live_q = self._read_live_side_file("quarantine.jsonl")
+        live_i = self._read_live_side_file("invalid.jsonl")
+
+        # --- 2) export the changed slice into staging ------------------
+        staging = os.path.join(self.cfg.out_dir, ".staging.%s" % run_id)
+        self._clean_staging(staging)
+        try:
+            total_sessions, gen = self.db.fetch_sessions(
+                where=where, params=params)
+            ns = self._build_session_slice(gen, total_sessions, staging,
+                                           run_id, exported_at)
+
+            # --- 3) merge slice into live corpus by record_id ----------
+            merged = {}
+            for rid, rec in live_by_id.items():
+                sid = (rec.get("database_refs") or {}).get("session_id")
+                merged[(sid, rid)] = rec
+            merged_q = dict(live_q)
+            merged_i = dict(live_i)
+
+            # the slice's own quarantine/invalid entries replace the
+            # live entry with the same key
+            merged_q.update(self._read_side_lines(ns["quarantine_path"]))
+            merged_i.update(self._read_side_lines(ns["invalid_path"]))
+
+            n_cross_collision = 0
+            for rid, line in self._read_corpus_lines(
+                    ns["out_path"], ns["shard_paths"]).items():
+                rec = json.loads(line)
+                sid = (rec.get("database_refs") or {}).get("session_id")
+                if rid in live_by_id:
+                    live_sid = ((live_by_id[rid].get("database_refs")
+                                 or {}).get("session_id"))
+                    if live_sid != sid:
+                        # cross-run collision: the LIVE record stays
+                        # (first-seen wins); this record is preserved in
+                        # quarantine.jsonl permanently — never merged or
+                        # reclassified.
+                        n_cross_collision += 1
+                        merged_q[(rid, sid)] = json.dumps({
+                            "record": rec,
+                            "problems": [
+                                "duplicate record_id across export runs: %s"
+                                % rid],
+                            "quarantine": {
+                                "policy": QUARANTINE_POLICY,
+                                "class": "B",
+                                "reason": ("identity collision across "
+                                           "export runs (duplicate "
+                                           "record_id)"),
+                                "session_id": sid,
+                                "record_id": rid,
+                                "investigation_ref": QUARANTINE_REF,
+                                "quarantined_at": exported_at,
+                            },
+                        }, ensure_ascii=False)
+                        continue
+                merged[(sid, rid)] = rec
+                live_by_id[rid] = rec
+
+            # --- 4) write the merged staged output ----------------------
+            merged_items = sorted(
+                merged.items(),
+                key=lambda kv: (kv[0][0] is None, kv[0][0] or 0,
+                                 kv[0][1] or ""))
+            m_out, m_shards = self._write_merged_corpus(
+                staging, [rec for _k, rec in merged_items])
+            m_qar = os.path.join(staging, "quarantine.jsonl")
+            m_inv = os.path.join(staging, "invalid.jsonl")
+            self._write_side_file(m_qar, merged_q)
+            self._write_side_file(m_inv, merged_i)
+
+            # stats recomputed from the MERGED corpus
+            stats = self._init_stats()
+            for _k, rec in merged_items:
+                stats = self._bump_stats(stats, rec)
+
+            m_ns = {
+                "n": ns["n"],
+                "n_ok": len(merged_items),
+                "n_invalid": len(merged_i),
+                "n_quarantine": len(merged_q),
+                "out_path": m_out,
+                "shard_paths": m_shards,
+                "invalid_path": m_inv if os.path.exists(m_inv) else None,
+                "quarantine_path": (m_qar if os.path.exists(m_qar) else None),
+                "stats": stats,
+            }
+
+            wm = self.db.high_watermark()
+            counts = self.db.table_counts()
+            extra2 = dict(extra or {})
+            extra2["incremental"] = {
+                "changed_sessions_seen": ns["n"],
+                "records_before": len(live_records),
+                "records_after": len(merged_items),
+                "quarantined_before": len(live_q),
+                "quarantined_after": len(merged_q),
+                "invalid_before": len(live_i),
+                "invalid_after": len(merged_i),
+                "cross_run_collisions": n_cross_collision,
+            }
+            manifest = self._build_manifest(
+                staging, m_ns, total_sessions, wm, counts, run_id,
+                exported_at, mode="incremental",
+                deterministic=deterministic, extra=extra2)
+            stage_files = {
+                "corpus": m_out if m_out else m_shards,
+                "invalid": m_ns["invalid_path"],
+                "quarantine": m_ns["quarantine_path"],
+            }
+            manifest = self._commit(staging, stage_files, m_ns["n_ok"],
+                                     m_ns["n_invalid"], m_ns["n_quarantine"],
+                                     manifest, t0)
+            self.log("exporter: incremental merge done in %ss — %d -> %d "
+                     "records (%d changed sessions, %d cross-run "
+                     "collisions quarantined)"
+                     % (manifest["duration_sec"], len(live_records),
+                        len(merged_items), ns["n"], n_cross_collision))
+            return manifest
+        finally:
+            # a failed merge never touches live outputs (as in the full
+            # path): staging is cleaned, live files stay intact
+            if os.path.isdir(staging):
+                shutil.rmtree(staging, ignore_errors=True)
+
+    # ------------------------------------------------------------------
+    # side-file / corpus-line readers for the merge path
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _side_key(wrapper):
+        rec = wrapper.get("record") or {}
+        return (rec.get("record_id"),
+                (rec.get("database_refs") or {}).get("session_id"))
+
+    def _read_live_side_file(self, name):
+        """Live quarantine.jsonl / invalid.jsonl as {(rid, sid): line}."""
+        out = {}
+        p = os.path.join(self.cfg.out_dir, name)
+        if not os.path.exists(p):
+            return out
+        with open(p, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    w = json.loads(line)
+                except ValueError:
+                    continue
+                out[self._side_key(w)] = line
+        return out
+
+    @staticmethod
+    def _read_side_lines(path):
+        if not path or not os.path.exists(path):
+            return {}
+        out = {}
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    w = json.loads(line)
+                except ValueError:
+                    continue
+                out[Exporter._side_key(w)] = line
+        return out
+
+    @staticmethod
+    def _read_corpus_lines(out_path, shard_paths):
+        paths = [out_path] if out_path else list(shard_paths or [])
+        out = {}
+        for p in paths:
+            with open(p, encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    out[json.loads(line)["record_id"]] = line
+        return out
+
+    def _write_merged_corpus(self, staging, records):
+        """Write the merged corpus into staging (replacing the slice
+        corpus files). Returns (out_path, shard_paths)."""
+        for name in os.listdir(staging):
+            if name == "corpus.jsonl" or (name.startswith("corpus-")
+                                          and name.endswith(".jsonl")):
+                os.remove(os.path.join(staging, name))
+        lines = [json.dumps(rec, ensure_ascii=False) for rec in records]
+        shard_size = self.cfg.shard_lines
+        if shard_size > 0:
+            shard_paths = []
+            for i in range(0, max(1, len(lines)), shard_size):
+                p = os.path.join(staging,
+                                 "corpus-%04d.jsonl" % (len(shard_paths) + 1))
+                with open(p, "w", encoding="utf-8", newline="\n") as f:
+                    for ln in lines[i:i + shard_size]:
+                        f.write(ln + "\n")
+                shard_paths.append(p)
+            return None, shard_paths
+        out_path = os.path.join(staging, "corpus.jsonl")
+        with open(out_path, "w", encoding="utf-8", newline="\n") as f:
+            for ln in lines:
+                f.write(ln + "\n")
+        return out_path, []
+
+    @staticmethod
+    def _write_side_file(path, entries):
+        """Write {(key): line} in key order; remove the file if empty."""
+        if not entries:
+            if os.path.exists(path):
+                os.remove(path)
+            return
+        with open(path, "w", encoding="utf-8", newline="\n") as f:
+            for key in sorted(entries, key=lambda k: (k[0] or "", k[1] or 0)):
+                f.write(entries[key] + "\n")
 
     # ------------------------------------------------------------------
     @staticmethod

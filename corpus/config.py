@@ -14,6 +14,8 @@ Env vars (all optional; sensible defaults):
   CORPUS_SHARD_LINES      max records per jsonl shard (default 0 = single file)
   CORPUS_INCREMENTAL_HOURS  scheduler interval (default 6)
   CORPUS_OVERLAP_HOURS    watermark overlap (default 12)
+  CORPUS_MAX_INCREMENTAL_SESSIONS  changed-session cap before full
+                          rebuild fallback (default 10000)
   CORPUS_EXPORT_ENABLED   scheduler on/off (default false)
 """
 
@@ -31,6 +33,7 @@ DEFAULTS = {
     "shard_lines": 0,
     "incremental_hours": 6.0,
     "overlap_hours": 12.0,
+    "max_incremental_sessions": 10000,
     "export_enabled": False,
     "site_base": "https://radio.iranseda.ir/",
 }
@@ -74,6 +77,8 @@ class Config(object):
         self.shard_lines = int(kw.get("shard_lines", DEFAULTS["shard_lines"]))
         self.incremental_hours = float(kw.get("incremental_hours", DEFAULTS["incremental_hours"]))
         self.overlap_hours = float(kw.get("overlap_hours", DEFAULTS["overlap_hours"]))
+        self.max_incremental_sessions = int(
+            kw.get("max_incremental_sessions", DEFAULTS["max_incremental_sessions"]))
         self.export_enabled = bool(kw.get("export_enabled", DEFAULTS["export_enabled"]))
         self.site_base = kw.get("site_base", DEFAULTS["site_base"])
 
@@ -112,11 +117,14 @@ class Config(object):
             shard_lines=int(pick("CORPUS_SHARD_LINES", DEFAULTS["shard_lines"]) or 0),
             incremental_hours=float(pick("CORPUS_INCREMENTAL_HOURS",
                                          DEFAULTS["incremental_hours"])),
-            overlap_hours=float(pick("CORPUS_OVERLAP_HOURS", DEFAULTS["overlap_hours"])),
+            overlap_hours=float(pick("CORPUS_OVERLAP_HOURS",
+                                     DEFAULTS["overlap_hours"])),
+            max_incremental_sessions=int(pick(
+                "CORPUS_MAX_INCREMENTAL_SESSIONS",
+                DEFAULTS["max_incremental_sessions"])),
             export_enabled=_b(os.environ.get("CORPUS_EXPORT_ENABLED"),
                               DEFAULTS["export_enabled"]),
         )
-
     # ------------------------------------------------------------------
     def to_dict(self):
         """Sanitized dump (no password) for manifests/reports."""
@@ -134,6 +142,7 @@ class Config(object):
             "shard_lines": self.shard_lines,
             "incremental_hours": self.incremental_hours,
             "overlap_hours": self.overlap_hours,
+            "max_incremental_sessions": self.max_incremental_sessions,
             "export_enabled": self.export_enabled,
             "site_base": self.site_base,
         }
