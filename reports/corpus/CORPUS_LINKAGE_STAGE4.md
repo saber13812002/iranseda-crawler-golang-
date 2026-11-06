@@ -436,10 +436,10 @@ backfills):
 3. `79cebd46d9167b951e287d0971cbf413fd2bf732` — **report + evidence** (20
    files): `reports/corpus/CORPUS_LINKAGE_STAGE4.md` + 19 curated
    `stage4_*` evidence files
-4. `(backfill-sha-marker)` — **backfill** of the commit SHAs and push #1
+4. `31548e6ab3e0811ca00848fb6d61bc0c3b455798` — **backfill** of the commit SHAs and push #1
    output into this report (Stage 3 convention: the backfill commit's own
    SHA cannot be known at its own commit time — it is recorded in commit 5)
-5. branch HEAD — records the backfill commit SHA above (no placeholders left)
+5. branch HEAD (this commit) — records the backfill commit SHA above (item 4); no placeholders left
 
 Push #1 (after commit 3): `git push origin stage2-corpus-linkage` —
 fast-forward from the Stage 3 tip, **no force**:
