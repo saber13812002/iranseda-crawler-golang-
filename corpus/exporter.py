@@ -23,6 +23,20 @@ watermark via --deterministic) and two runs over unchanged data produce
 byte-identical data files (corpus/quarantine/invalid/stats) and identical
 checksums.sha256. manifest.json is a run record and differs only in
 duration_sec (wall clock).
+
+Stage 4 (v1.1): additive source-linkage export + incremental merge.
+  * Records are built by mapper.build_record with schema_version="1.1"
+    (additive fields only; a "1.0" build is byte-identical to Stage 2/3).
+  * manifest.json is VERSIONED: manifest_version / schema_version /
+    produced_at / source_db_row_count / field_coverage / mode /
+    previous_manifest / asset_manifest_ref / rag_linkage_ref.
+  * incremental (where-clause) runs are UPSERT-MERGEs against the live
+    corpus: live lines the batch does not touch are preserved VERBATIM,
+    the batch's records upsert by record_id (corrections update the SAME
+    record, R3), and quarantine membership never shrinks (a colliding
+    session that is not the live corpus owner is quarantined; live
+    quarantine lines are kept byte-for-byte). Pinned exported_at + run_id
+    (cli --pin) make a no-change merge a byte-identical no-op.
 """
 
 import os
@@ -42,6 +56,10 @@ from . import validator as _validator
 # Class B quarantine (Stage 1 policy — never delete/merge/reclassify).
 QUARANTINE_POLICY = "PERMANENT_UNTIL_IDENTITY_PROVEN"
 QUARANTINE_REF = "reports/corpus/STAGE_1_CLASS_B_IDENTITY_REPORT.md"
+
+# Stage 4 (v1.1)
+SCHEMA_VERSION = "1.1"
+MANIFEST_VERSION = "1.1"
 
 # Live export files that get archived into previous/ + promoted.
 _LIVE_RE = re.compile(r"^(corpus\.jsonl|corpus-\d{4}\.jsonl|invalid\.jsonl"
@@ -78,6 +96,150 @@ def _sha256_of_file(path):
 
 def _is_duplicate_record_id(problems):
     return any("duplicate record_id" in p for p in problems)
+
+
+def _quarantine_line(rec, problems, exported_at):
+    """One quarantine.jsonl line (Class B identity-collision wrapper)."""
+    return {
+        "record": rec,
+        "problems": problems,
+        "quarantine": {
+            "policy": QUARANTINE_POLICY,
+            "class": "B",
+            "reason": "identity collision (duplicate record_id)",
+            "session_id": rec.get("database_refs", {}).get("session_id"),
+            "record_id": rec.get("record_id"),
+            "investigation_ref": QUARANTINE_REF,
+            "quarantined_at": exported_at,
+        },
+    }
+
+
+def _read_live_state(out_dir):
+    """Live corpus state for upsert-merge (Stage 4).
+
+    Reads the live corpus (single file or shards), quarantine.jsonl,
+    invalid.jsonl and manifest.json as raw lines. Merge never rewrites
+    lines the batch did not touch, so raw-line preservation is the
+    invariance mechanism.
+    """
+    state = {"ids": {}, "order": [], "quar_lines": [], "quar_rids": set(),
+             "inv_lines": [], "inv_rids": set(), "manifest": None}
+    if not os.path.isdir(out_dir):
+        return state
+    paths = []
+    sp = os.path.join(out_dir, "corpus.jsonl")
+    if os.path.exists(sp):
+        paths.append(sp)
+    else:
+        for n in sorted(os.listdir(out_dir)):
+            if n.startswith("corpus-") and n.endswith(".jsonl") \
+                    and re.match(r"^corpus-\d{4}\.jsonl$", n):
+                paths.append(os.path.join(out_dir, n))
+    for p in paths:
+        with open(p, encoding="utf-8") as f:
+            for line in f:
+                if not line.strip():
+                    continue
+                raw = line if line.endswith("\n") else line + "\n"
+                rec = json.loads(line)
+                rid = rec.get("record_id")
+                if rid is not None:
+                    state["ids"][rid] = rec.get("database_refs", {}) \
+                                       .get("session_id")
+                state["order"].append((rid, raw))
+    qp = os.path.join(out_dir, "quarantine.jsonl")
+    if os.path.exists(qp):
+        with open(qp, encoding="utf-8") as f:
+            for line in f:
+                if not line.strip():
+                    continue
+                state["quar_lines"].append(
+                    line if line.endswith("\n") else line + "\n")
+                try:
+                    state["quar_rids"].add(
+                        json.loads(line).get("record", {}).get("record_id"))
+                except ValueError:
+                    pass
+    ip = os.path.join(out_dir, "invalid.jsonl")
+    if os.path.exists(ip):
+        with open(ip, encoding="utf-8") as f:
+            for line in f:
+                if not line.strip():
+                    continue
+                state["inv_lines"].append(
+                    line if line.endswith("\n") else line + "\n")
+                try:
+                    state["inv_rids"].add(
+                        json.loads(line).get("record", {}).get("record_id"))
+                except ValueError:
+                    pass
+    mp = os.path.join(out_dir, "manifest.json")
+    if os.path.exists(mp):
+        try:
+            with open(mp, encoding="utf-8") as f:
+                state["manifest"] = json.load(f)
+        except (ValueError, OSError):
+            state["manifest"] = None
+    return state
+
+
+# Field paths for the manifest field_coverage table (fill %). v1.1 paths
+# are reported on v1.1 records; v1.0 records simply leave them unfilled.
+_COVERAGE_PATHS = (
+    "record_id",
+    "episode_key.source",
+    "database_refs.session_id",
+    "database_refs.program_id",
+    "program",
+    "program.schedule",
+    "broadcast",
+    "broadcast.jalali",
+    "broadcast.gregorian",
+    "broadcast.timezone",
+    "broadcast.validity",
+    "broadcast.day_of_week",
+    "audio.url",
+    "audio.local_exists",
+    "transcripts.originals.srt",
+    "transcripts.originals.txt",
+    "transcripts.llm_outputs",
+    "crop",
+    "session_uid",
+    "program_uid",
+    "linkage",
+    "linkage.links",
+    "linkage.air_date_status",
+    "linkage.asset_summary",
+)
+
+
+def _get_path(rec, path):
+    node = rec
+    for part in path.split("."):
+        if not isinstance(node, dict):
+            return None
+        node = node.get(part)
+    return node
+
+
+def _accumulate_coverage(agg, rec):
+    """agg: {path: [filled, total]} — bumped once per corpus record."""
+    for path in _COVERAGE_PATHS:
+        filled, total = agg.get(path, (0, 0))
+        total += 1
+        if _get_path(rec, path) is not None:
+            filled += 1
+        agg[path] = [filled, total]
+
+
+def _finish_coverage(agg):
+    """{path: fill_pct rounded to 2dp} for the manifest."""
+    out = {}
+    for path in sorted(agg):
+        filled, n = agg[path]
+        out[path] = round(100.0 * filled / n, 2) if n else 0.0
+    return out
 
 
 class Exporter(object):
@@ -225,7 +387,7 @@ class Exporter(object):
         """
         names = self.live_output_files()
         if not names:
-            return None
+            return None, None
         old_run = None
         live_manifest = os.path.join(self.cfg.out_dir, "manifest.json")
         if os.path.exists(live_manifest):
@@ -249,7 +411,7 @@ class Exporter(object):
         for name in names:
             shutil.move(os.path.join(self.cfg.out_dir, name),
                         os.path.join(dest, name))
-        return slot
+        return slot, old_run
 
     def _promote(self, staging):
         for name in sorted(os.listdir(staging)):
@@ -281,12 +443,21 @@ class Exporter(object):
 
     # ------------------------------------------------------------------
     def run(self, where=None, params=None, limit=None, run_id=None,
-            exported_at=None):
+            exported_at=None, linkage_ctx=None):
         """Full (or filtered) export. Returns the manifest dict.
 
         exported_at: fixed timestamp for deterministic builds; when given,
         the manifest's exported_at and every record's provenance.exported_at
         use this value (pin it to the DB watermark for reproducible builds).
+
+        linkage_ctx: optional {"git_paths": set|None} — the single
+        ``git ls-tree -r <branch> --name-only`` relpath set feeding the
+        v1.1 linkage.asset_summary git-tree tier (no per-asset HTTP).
+
+        where (without limit): upsert-MERGE against the live corpus
+        (the incremental export). Untouched live lines are preserved
+        verbatim; pin exported_at + run_id (cli --pin) so a no-change
+        merge is a byte-identical no-op.
         """
         t0 = time.time()
         deterministic = exported_at is not None
@@ -312,7 +483,8 @@ class Exporter(object):
             return self._run_inner(staging, where=where, params=params,
                                     limit=limit, run_id=run_id,
                                     exported_at=exported_at,
-                                    deterministic=deterministic, t0=t0)
+                                    deterministic=deterministic, t0=t0,
+                                    linkage_ctx=linkage_ctx)
         except Exception:
             # a failed run must never leave staging debris behind and,
             # crucially, never touched the live outputs
@@ -320,7 +492,7 @@ class Exporter(object):
             raise
 
     def _run_inner(self, staging, where, params, limit, run_id, exported_at,
-                   deterministic, t0):
+                   deterministic, t0, linkage_ctx=None):
         # ---- load lookup tables (small) -----------------------------
         prog_by_id, prog_by_chm = self.ex.load_programs()
         llm_by_session, llm_total = self.ex.load_llm_outputs()
@@ -333,6 +505,15 @@ class Exporter(object):
             wm = dict(wm)
             wm["note"] = ("frozen: deterministic build pinned to DB "
                           "high watermark")
+
+        # ---- merge (Stage 4): upsert against the live corpus ----------
+        merge = where is not None and limit is None
+        st = _read_live_state(self.cfg.out_dir) if merge else None
+        if merge:
+            self.log("exporter: merge mode — %d live records, %d live "
+                     "quarantine lines, %d live invalid lines"
+                     % (len(st["order"]), len(st["quar_lines"]),
+                        len(st["inv_lines"])))
 
         # ---- walk sessions ------------------------------------------
         total_sessions, gen = self.db.fetch_sessions(where=where, params=params)
@@ -361,9 +542,27 @@ class Exporter(object):
         qar = None
         seen_ids = set()
         stats = self._init_stats()
+        merge_new_lines = {}
+        merge_new_quar = []
+        merge_new_inv = []
+        merge_new_inv_rids = set()
 
         shard_size = self.cfg.shard_lines
-        if shard_size > 0:
+        if merge:
+            # the merged corpus.jsonl is assembled (and written) after the
+            # loop; sharding is unsupported for merges — a single file is
+            # what preserves the live line order.
+            if shard_size > 0:
+                raise ValueError("merge (where-clause) runs do not support "
+                                 "sharded output (shard_lines must be 0)")
+            out_path = os.path.join(staging, "corpus.jsonl")
+            f = None
+            # pre-seed the duplicate detector with the live corpus ids:
+            # the live OWNER re-processing itself is the EXPECTED
+            # duplicate (upsert); a DIFFERENT session with the same
+            # record_id is a collision (conservative quarantine, R4).
+            seen_ids.update(st["ids"])
+        elif shard_size > 0:
             def new_shard():
                 global_idx = len(shard_paths)
                 p = os.path.join(staging, "corpus-%04d.jsonl" % (global_idx + 1))
@@ -384,30 +583,24 @@ class Exporter(object):
                     asr_by_session.get(session["id"], []),
                     crop_by_session.get(session["id"]),
                     self.ex.disk, self.cfg, run_id, exported_at,
+                    linkage_ctx=linkage_ctx,
                 )
                 n += 1
                 probs = _validator.validate_record(rec, seen_ids=seen_ids)
-                if probs:
-                    if _is_duplicate_record_id(probs):
+                dup = _is_duplicate_record_id(probs)
+                real = [p for p in probs
+                        if "duplicate record_id" not in p]
+                if probs and not merge:
+                    if dup:
                         # Class B: identity collision — permanent
                         # quarantine, preserved with the full record.
                         n_quarantine += 1
                         if qar is None:
                             qar = open(quarantine_path, "w",
                                        encoding="utf-8", newline="\n")
-                        qar.write(json.dumps({
-                            "record": rec,
-                            "problems": probs,
-                            "quarantine": {
-                                "policy": QUARANTINE_POLICY,
-                                "class": "B",
-                                "reason": "identity collision (duplicate record_id)",
-                                "session_id": rec.get("database_refs", {}).get("session_id"),
-                                "record_id": rec.get("record_id"),
-                                "investigation_ref": QUARANTINE_REF,
-                                "quarantined_at": exported_at,
-                            },
-                        }, ensure_ascii=False) + "\n")
+                        qar.write(json.dumps(
+                            _quarantine_line(rec, probs, exported_at),
+                            ensure_ascii=False) + "\n")
                     else:
                         n_invalid += 1
                         if inv is None:
@@ -416,23 +609,120 @@ class Exporter(object):
                         inv.write(json.dumps({"record": rec, "problems": probs},
                                              ensure_ascii=False) + "\n")
                     continue
-                n_ok += 1
-                f.write(json.dumps(rec, ensure_ascii=False) + "\n")
-                if shard_size > 0:
-                    shard_count_in_file += 1
-                    if shard_count_in_file >= shard_size:
-                        f.close()
-                        f = new_shard()
-                        shard_count_in_file = 0
-                stats = self._bump_stats(stats, rec)
+                if probs and merge:
+                    rid = rec.get("record_id")
+                    if real:
+                        # structural problem: recorded for repair, never
+                        # dropped (the live line, if any, is kept)
+                        if rid not in merge_new_inv_rids:
+                            merge_new_inv_rids.add(rid)
+                            merge_new_inv.append(json.dumps(
+                                {"record": rec, "problems": probs},
+                                ensure_ascii=False) + "\n")
+                            n_invalid += 1
+                        continue
+                    if dup and rid in st["quar_rids"]:
+                        # a live quarantine line already carries this
+                        # record_id — keep it verbatim; membership is
+                        # invariant (R4)
+                        continue
+                    if dup:
+                        is_owner = (rid in st["ids"]
+                                    and st["ids"][rid] ==
+                                    rec.get("database_refs", {}).get("session_id"))
+                        if is_owner:
+                            # the live corpus owner re-processing itself:
+                            # the duplicate marker against the pre-seeded
+                            # live corpus is EXPECTED -> upsert below
+                            probs = []
+                        else:
+                            # collision with the live corpus owner (or a
+                            # same-batch twin): conservative quarantine —
+                            # membership never shrinks (R4)
+                            _mapper.apply_quarantine_linkage(rec)
+                            merge_new_quar.append(json.dumps(
+                                _quarantine_line(rec, probs, exported_at),
+                                ensure_ascii=False) + "\n")
+                            n_quarantine += 1
+                            continue
+                if merge:
+                    # upsert: the record replaces the live line with this
+                    # record_id (corrections update the SAME record, R3)
+                    merge_new_lines[rec["record_id"]] = \
+                        json.dumps(rec, ensure_ascii=False) + "\n"
+                    n_ok += 1
+                else:
+                    n_ok += 1
+                    f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+                    if shard_size > 0:
+                        shard_count_in_file += 1
+                        if shard_count_in_file >= shard_size:
+                            f.close()
+                            f = new_shard()
+                            shard_count_in_file = 0
+                    stats = self._bump_stats(stats, rec)
                 if n % 500 == 0:
                     self.log("exporter: %d/%d sessions..." % (n, total_sessions))
         finally:
-            f.close()
+            if f is not None:
+                f.close()
             if inv is not None:
                 inv.close()
             if qar is not None:
                 qar.close()
+
+        # ---- merge assembly (Stage 4) --------------------------------
+        merge_stats = None
+        if merge:
+            # merged corpus: live lines VERBATIM (live order), batch
+            # records upserted by record_id, brand-new rids appended in
+            # batch order. Untouched live lines keep their exact bytes.
+            out_lines = [merge_new_lines.get(rid, raw)
+                         for rid, raw in st["order"]]
+            appended = [rid for rid in merge_new_lines
+                        if rid not in st["ids"]]
+            for rid in appended:
+                out_lines.append(merge_new_lines[rid])
+            quar_out = st["quar_lines"] + merge_new_quar
+            inv_out = st["inv_lines"] + merge_new_inv
+            n_ok = len(out_lines)
+            n_quarantine = len(quar_out)
+            n_invalid = len(inv_out)
+            _atomic_write(out_path, "".join(out_lines))
+            if quar_out:
+                _atomic_write(quarantine_path, "".join(quar_out))
+            if inv_out:
+                _atomic_write(invalid_path, "".join(inv_out))
+            # stats + field coverage over the FINAL merged corpus
+            stats = self._init_stats()
+            cov_agg = {}
+            for line in out_lines:
+                rec = json.loads(line)
+                stats = self._bump_stats(stats, rec)
+                _accumulate_coverage(cov_agg, rec)
+            field_coverage = _finish_coverage(cov_agg)
+            merge_stats = {
+                "mode": "upsert-merge",
+                "live_records": len(st["order"]),
+                "live_quarantine_lines": len(st["quar_lines"]),
+                "live_invalid_lines": len(st["inv_lines"]),
+                "batch_sessions_seen": n,
+                "batch_records_updated": len(merge_new_lines) - len(appended),
+                "batch_records_appended": len(appended),
+                "batch_records_invalid": len(merge_new_inv),
+                "batch_records_quarantined": len(merge_new_quar),
+                "corpus_after": len(out_lines),
+                "quarantine_after": len(quar_out),
+                "invalid_after": len(inv_out),
+            }
+        else:
+            cov_agg = {}
+            for p in ([out_path] if out_path else shard_paths):
+                with open(p, encoding="utf-8") as fh:
+                    for line in fh:
+                        if line.strip():
+                            _accumulate_coverage(cov_agg, json.loads(line))
+            field_coverage = _finish_coverage(cov_agg)
 
         # ---- staged corpus files -------------------------------------
         stage_files = {
@@ -447,20 +737,26 @@ class Exporter(object):
             # wall-clock epoch float -> keep data fields reproducible
             scanned_at = "frozen: pinned to run's disk scan (deterministic)"
         manifest = {
-            "schema_version": "1.0",
+            "manifest_version": MANIFEST_VERSION,
+            "schema_version": SCHEMA_VERSION,
             "run_id": run_id,
             "exported_at": exported_at,
-            "mode": "incremental" if where else "full",
+            "produced_at": _now_iso(),
+            "mode": ("incremental-merge" if merge
+                     else ("incremental" if where else "full")),
             "deterministic": deterministic,
             "records_written": n_ok,
             "records_invalid": n_invalid,
             "records_quarantined": n_quarantine,
             "sessions_seen": n,
             "sessions_total_in_db": total_sessions,
+            "source_db_row_count": (counts.get("radio_program_sessions")
+                                    if isinstance(counts, dict) else None),
+            "field_coverage": field_coverage,
             "output_files": ([os.path.join(self.cfg.out_dir, "corpus.jsonl")]
-                             if out_path
-                             else [os.path.join(self.cfg.out_dir, "corpus-%04d.jsonl" % (i + 1))
-                                   for i in range(len(shard_paths))]),
+                              if out_path
+                              else [os.path.join(self.cfg.out_dir, "corpus-%04d.jsonl" % (i + 1))
+                                    for i in range(len(shard_paths))]),
             "shard_lines": self.cfg.shard_lines,
             "quarantine_file": "quarantine.jsonl" if stage_files["quarantine"] else None,
             "invalid_file": "invalid.jsonl" if stage_files["invalid"] else None,
@@ -468,6 +764,18 @@ class Exporter(object):
             "quarantine_ref": QUARANTINE_REF,
             "checksums_file": "checksums.sha256",
             "previous_export": None,  # filled after archiving
+            "previous_manifest": None,  # previous run_id (filled after archiving)
+            "asset_manifest_ref": ("asset_manifest.jsonl"
+                                   if os.path.exists(
+                                       os.path.join(self.cfg.out_dir,
+                                                    "asset_manifest.jsonl"))
+                                   else None),
+            "rag_linkage_ref": ("rag_linkage.jsonl"
+                                if os.path.exists(
+                                    os.path.join(self.cfg.out_dir,
+                                                "rag_linkage.jsonl"))
+                                else None),
+            "merge": merge_stats,
             "db_counts_at_run": counts,
             "watermark": wm,
             "disk": {
@@ -486,10 +794,11 @@ class Exporter(object):
 
         # ---- validate staged output, archive live, promote ------------
         self._validate_staged(stage_files, n_ok, n_invalid, n_quarantine)
-        prev_slot = self._archive_live()
+        prev_slot, prev_run = self._archive_live()
         manifest["previous_export"] = (
             None if prev_slot is None
             else "previous/" + prev_slot)
+        manifest["previous_manifest"] = prev_run
         manifest["duration_sec"] = round(time.time() - t0, 1)
         _atomic_write(os.path.join(staging, "manifest.json"),
                       json.dumps(manifest, indent=2, ensure_ascii=False))
@@ -499,10 +808,18 @@ class Exporter(object):
         manifest["checksums_files"] = self._write_checksums()
         self._prune_previous()
 
+        extra = ""
+        if merge:
+            extra = (" [merge: +%d updated, +%d appended, +%d invalid, "
+                     "+%d quarantined]") % (
+                merge_stats["batch_records_updated"],
+                merge_stats["batch_records_appended"],
+                merge_stats["batch_records_invalid"],
+                merge_stats["batch_records_quarantined"])
         self.log("exporter: done in %ss — %d ok, %d invalid, %d quarantined, "
-                 "%d seen (total %d)"
+                 "%d seen (total %d)%s"
                  % (manifest["duration_sec"], n_ok, n_invalid, n_quarantine,
-                    n, total_sessions))
+                    n, total_sessions, extra))
         return manifest
 
     # ------------------------------------------------------------------

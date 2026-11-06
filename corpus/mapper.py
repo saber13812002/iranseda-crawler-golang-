@@ -13,6 +13,8 @@ from . import normalizer
 from . import srt as srtmod
 from . import jalali
 from . import database as _db
+from . import linkage as _linkage
+from . import assets as _assets
 
 
 def _iso(dt):
@@ -266,9 +268,292 @@ def _merge_program(prog_rows):
     return merged, warnings, ids_all
 
 
+# ---------------------------------------------------------------------------
+# v1.1 linkage fields (Stage 4 — CORPUS_LINKAGE_SPEC.md §8.1 / §8.2)
+# ---------------------------------------------------------------------------
+
+LINKAGE_VERSION = "1.1"
+ASSET_MANIFEST_REF = "asset_manifest.jsonl"
+
+
+def program_uid_for(program):
+    """Canonical program identity 'iranseda:prog:ch<ch>:m<m>' (D-1) or
+    None when the program row carries no ch/m (absent -> null, never
+    fabricated)."""
+    ch = (program or {}).get("ch")
+    m = (program or {}).get("m")
+    if ch is None or m is None:
+        return None
+    return "iranseda:prog:ch%d:m%s" % (ch, m)
+
+
+def _day_of_week(gregorian_date):
+    """'YYYY-MM-DD' -> ISO weekday int 1=Mon..7=Sun, or None."""
+    if not gregorian_date:
+        return None
+    try:
+        y, mo, d = (int(x) for x in str(gregorian_date).split("-"))
+        return datetime.date(y, mo, d).isoweekday()
+    except (ValueError, TypeError):
+        return None
+
+
+def _session_asset_candidates(session, llm_rows):
+    """Per-session asset candidates [(asset_type, relpath), ...].
+
+    Mirrors corpus.assets.build_registry sources (audio, raw_srt, LLM
+    artifacts via JOB_TO_ASSET, summary_en pattern) without the GitHub
+    branch requirement, so the in-record asset summary works even when
+    the asset-manifest identity (GITHUB_BRANCH) is unavailable. Dedup on
+    (asset_type, relpath); the latest llm_output id wins.
+    """
+    fname = (session.get("filename") or "").strip()
+    srtf = (session.get("srt_filename") or "").strip()
+    cands = {}
+
+    def add(asset_type, relpath, sort_id):
+        relpath = _assets._norm_relpath(relpath)
+        key = (asset_type, relpath)
+        prev = cands.get(key)
+        if prev is None or sort_id > prev[2]:
+            cands[key] = (asset_type, relpath, sort_id)
+
+    if fname:
+        add("audio", "downloads/" + os.path.basename(fname), 0)
+    if srtf:
+        add("raw_srt", "downloads/" + os.path.basename(srtf), 0)
+    for r in sorted(llm_rows or [], key=lambda r: int(r.get("id") or 0)):
+        rel = (r.get("file_relpath") or "").strip()
+        if rel:
+            add(_assets.JOB_TO_ASSET.get(r.get("job_type"), "other_llm"),
+                rel, int(r.get("id") or 0))
+    if fname:
+        parse = _assets.parse_asset_filename(fname)
+        if parse and parse["stem_family"] == "canonical":
+            add("summary_en",
+                "downloads/cleaned/%s.summary.en.txt" % parse["stem"], -1)
+    return [(a, r) for (a, r, _s) in cands.values()]
+
+
+def _asset_summary_rows(session, llm_rows, disk, git_paths):
+    """Cheap per-asset status.
+
+    Tiering decision (Stage 4): the corpus pass records disk presence
+    + single ``git ls-tree`` set membership only — NO HTTP and NO
+    per-file git log. The full C1-C14 five-way verification stays in
+    corpus/asset_manifest.jsonl (Stage 3 tooling).
+    """
+    rows = []
+    for asset_type, relpath in _session_asset_candidates(session, llm_rows):
+        on_disk = None if disk is None else (disk.find(relpath) is not None)
+        in_git = None if git_paths is None else (relpath in git_paths)
+        if on_disk is None or in_git is None:
+            state = "unknown"
+        elif not on_disk:
+            state = "missing"
+        elif not in_git:
+            state = "not_published"
+        else:
+            state = "published"
+        rows.append({
+            "asset_type": asset_type,
+            "relpath": relpath,
+            "on_disk": on_disk,
+            "in_git_tree": in_git,
+            "state": state,
+        })
+    return rows
+
+
+def build_linkage_block(ch, e, program, validity, session, llm_rows, disk,
+                        cfg, linkage_ctx):
+    """The v1.1 top-level ``linkage`` object (spec §8.1).
+
+    ``validity`` is the corpus.linkage.classify_date(session) result.
+    ``linkage_ctx``: optional {"git_paths": set|None} — the single
+    ``git ls-tree -r <branch> --name-only`` relpath set (see
+    corpus.rag_linkage).
+
+    Link eligibility (spec §6 + Stage 2 evidence):
+      * episode      — always, when ch and e are present.
+      * day_archive  — only when the date is unverified/confirmed AND a
+                       gregorian date is resolvable (NOT for impossible;
+                       §4.2 keeps the parsed date for audit, links off).
+      * time_slot    — day_archive eligible + start time present.
+      * program_page — the stored radio_programs.url verbatim plus the
+                       normalized form (OQ-3).
+    """
+    site_base = cfg.site_base
+    date_status = validity["status"]
+    gdate = (validity.get("gregorian") or {}).get("date")
+    jtime = (validity.get("jalali") or {}).get("time")
+
+    links = []
+    if ch is not None and e is not None:
+        links.append({
+            "type": _linkage.LINK_EPISODE,
+            "url": _linkage.build_episode_url(ch, e, site_base),
+            "url_normalized": None,
+            "status": "eligible",
+            "reason": None,
+        })
+    else:
+        links.append({
+            "type": _linkage.LINK_EPISODE,
+            "url": None,
+            "url_normalized": None,
+            "status": "not_eligible",
+            "reason": "missing_episode_key",
+        })
+
+    day_ok = (ch is not None and gdate is not None
+              and date_status in (_linkage.DATE_STATUS_UNVERIFIED,
+                                  _linkage.DATE_STATUS_CONFIRMED))
+    if day_ok:
+        links.append({
+            "type": _linkage.LINK_DAY_ARCHIVE,
+            "url": _linkage.build_day_archive_url(ch, gdate, site_base),
+            "url_normalized": None,
+            "status": "eligible",
+            "reason": None,
+        })
+    else:
+        if ch is None:
+            reason = "missing_channel"
+        elif date_status == _linkage.DATE_STATUS_IMPOSSIBLE:
+            reason = "impossible_date"
+        elif date_status == _linkage.DATE_STATUS_NONE:
+            reason = "no_date"
+        else:
+            reason = "date_unresolved"
+        links.append({
+            "type": _linkage.LINK_DAY_ARCHIVE,
+            "url": None,
+            "url_normalized": None,
+            "status": "not_eligible",
+            "reason": reason,
+        })
+
+    if day_ok and jtime:
+        links.append({
+            "type": _linkage.LINK_TIME_SLOT,
+            "url": _linkage.build_time_slot_url(ch, jtime, gdate, site_base),
+            "url_normalized": None,
+            "status": "eligible",
+            "reason": None,
+        })
+    else:
+        links.append({
+            "type": _linkage.LINK_TIME_SLOT,
+            "url": None,
+            "url_normalized": None,
+            "status": "not_eligible",
+            "reason": "no_start_time" if day_ok else links[1]["reason"],
+        })
+
+    prog = _linkage.build_program_page_url(program, site_base)
+    if prog["raw"]:
+        links.append({
+            "type": _linkage.LINK_PROGRAM,
+            "url": prog["raw"],
+            "url_normalized": prog["normalized"],
+            "status": "eligible",
+            "reason": None,
+        })
+    else:
+        links.append({
+            "type": _linkage.LINK_PROGRAM,
+            "url": None,
+            "url_normalized": None,
+            "status": "not_eligible",
+            "reason": "no_program_url",
+        })
+
+    git_paths = (linkage_ctx or {}).get("git_paths")
+    rows = _asset_summary_rows(session, llm_rows, disk, git_paths)
+    by_type = {}
+    counts = {"published": 0, "not_published": 0, "missing": 0, "unknown": 0}
+    for r in rows:
+        by_type[r["asset_type"]] = by_type.get(r["asset_type"], 0) + 1
+        counts[r["state"]] += 1
+    asset_summary = {
+        "total": len(rows),
+        "by_type": dict(sorted(by_type.items())),
+        "on_disk": (None if disk is None
+                    else sum(1 for r in rows if r["on_disk"])),
+        "in_git_tree": (None if git_paths is None
+                        else sum(1 for r in rows if r["in_git_tree"])),
+        "published": counts["published"],
+        "not_published": counts["not_published"],
+        "missing": counts["missing"],
+        "unknown": counts["unknown"],
+        "excluded": 0,
+    }
+
+    return {
+        "linkage_version": LINKAGE_VERSION,
+        "timezone": _linkage.TIMEZONE,
+        "links": links,
+        "air_date_status": date_status,
+        "validity": {
+            "status": date_status,
+            "reasons": list(validity["reasons"] or []),
+        },
+        "day_of_week": _day_of_week(gdate),
+        "quarantined": False,
+        "last_verified_at": None,
+        "asset_summary": asset_summary,
+        "assets_ref": ASSET_MANIFEST_REF,
+    }
+
+
+def apply_quarantine_linkage(rec):
+    """R4 (spec §10): quarantined records receive NO public links.
+
+    Applies to the NEW v1.1 linkage surface only; pre-existing v1.0
+    fields (audio.url, source_metadata.*) are left untouched for
+    byte-invariance (documented interpretation, Stage 4 report).
+    Identity uids remain (the record still identifies the session).
+    """
+    if rec.get("schema_version") != "1.1":
+        return
+    lg = rec.get("linkage")
+    if not isinstance(lg, dict):
+        return
+    lg["quarantined"] = True
+    for lk in lg.get("links") or []:
+        lk["url"] = None
+        lk["url_normalized"] = None
+        lk["status"] = "excluded"
+        lk["reason"] = "quarantined_no_public_links"
+    s = lg.get("asset_summary")
+    if isinstance(s, dict):
+        s["published"] = 0
+        s["not_published"] = 0
+        s["missing"] = 0
+        s["unknown"] = 0
+        s["excluded"] = s.get("total") or 0
+    quality = rec.get("quality")
+    if isinstance(quality, dict):
+        warnings = set(quality.get("warnings") or [])
+        warnings.add("quarantined_no_public_links")
+        quality["warnings"] = sorted(warnings)
+
+
 def build_record(session, prog_by_id, prog_by_chm, llm_rows, asr_rows, crop_row,
-                 disk, cfg, run_id, exported_at):
-    """One corpus record (dict) for one session row."""
+                 disk, cfg, run_id, exported_at,
+                 schema_version="1.1", linkage_ctx=None):
+    """One corpus record (dict) for one session row.
+
+    Stage 4: ``schema_version="1.1"`` (default) adds the additive
+    linkage fields (spec §8.1): session_uid, session_uid_status,
+    program_uid, program_uid_status, broadcast.{timezone, validity,
+    day_of_week} and the top-level linkage block. ``schema_version="1.0"``
+    reproduces the pre-Stage-4 record byte-for-byte (invariance gate).
+    ``linkage_ctx``: optional {"git_paths": set|None} — the single
+    ``git ls-tree -r`` relpath set for the asset branch (tiering:
+    no per-asset HTTP / git-log in the corpus pass).
+    """
     warnings = []
     missing = []
 
@@ -327,6 +612,7 @@ def build_record(session, prog_by_id, prog_by_chm, llm_rows, asr_rows, crop_row,
         }
         missing.append("program")
         warnings.append("program_row_missing")
+    program_present = bool(prog_rows)
     if not program.get("name"):
         missing.append("program.name")
 
@@ -536,8 +822,8 @@ def build_record(session, prog_by_id, prog_by_chm, llm_rows, asr_rows, crop_row,
         "text_normalized": "NFC",
     }
 
-    return {
-        "schema_version": "1.0",
+    rec = {
+        "schema_version": schema_version,
         "record_id": record_id,
         "episode_key": {
             "ch": ch,
@@ -579,6 +865,30 @@ def build_record(session, prog_by_id, prog_by_chm, llm_rows, asr_rows, crop_row,
         "provenance": provenance,
         "quality": quality,
     }
+
+    if schema_version == "1.1":
+        # ---- Stage 4 v1.1 additive fields (spec §8.1, D-1) ----------
+        # Additive only: projecting these keys out of a v1.1 record
+        # yields the byte-identical v1.0 record (invariance proof).
+        validity = _linkage.classify_date(session)
+        rec["session_uid"] = record_id
+        rec["session_uid_status"] = key_source
+        rec["program_uid"] = program_uid_for(program)
+        rec["program_uid_status"] = (
+            "no_program" if not program_present
+            else ("ok" if rec["program_uid"] is not None else "unresolved"))
+        if broadcast is not None:
+            broadcast["timezone"] = _linkage.TIMEZONE
+            broadcast["validity"] = {
+                "status": validity["status"],
+                "reasons": list(validity["reasons"] or []),
+            }
+            broadcast["day_of_week"] = _day_of_week(
+                (validity.get("gregorian") or {}).get("date"))
+        rec["linkage"] = build_linkage_block(
+            ch, e, program, validity, session, llm_rows, disk, cfg,
+            linkage_ctx)
+    return rec
 
 
 def _resolve_url(link, site_base):

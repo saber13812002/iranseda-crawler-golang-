@@ -1,12 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/saber13812002/iranseda-crawler-golang-/corpus/schema/corpus.schema.json",
-  "title": "IranSeda Corpus Record v1.0",
+  "title": "IranSeda Corpus Record v1.1",
   "description": "One actual radio program session of the IranSeda archive, with all transcript artifacts. Identity policy (Stage 1, IRANSEDA-CORPUS-2026-01): radio_program_sessions.id (database_refs.session_id) is the authoritative session identity; episode_key (ch,e) is a source reference, never sole identity; records colliding on (ch,e) stay quarantined (quarantine.jsonl) until identity is proven. Original content is never replaced by corrected content; every version is preserved as a separate entry. Fields without a verified source are null + missing_reason, never guessed. Broadcast dates come from the canonical filename (Jalali, 5-token stem JJ-MM-DD-HH-MM, year prefix 14) and are converted to Gregorian with a pinned conversion; archive-insert time (created_at) is never used as broadcast date. Server-private paths and secrets are forbidden everywhere in the record.",
   "x-corpus": {
-    "schema_version": "1.0",
-    "stage": "Stage 2 — versioned corpus schema (mission IRANSEDA-CORPUS-2026-01)",
-    "date": "2026-11-04",
+    "schema_version": "1.1",
+    "accepts": ["1.0", "1.1"],
+    "stage": "Stage 4 — additive source-linkage fields (mission IRANSEDA-CORPUS-2026-01, spec §8.1)",
+    "date": "2026-11-05",
     "base": "schemas/iranseda-corpus-v1.schema.json (data-contract v1, unchanged)",
     "identity_policy": "PERMANENT_UNTIL_IDENTITY_PROVEN",
     "identity_policy_ref": "reports/corpus/STAGE_1_CLASS_B_IDENTITY_REPORT.md",
@@ -29,8 +30,83 @@
   ],
   "properties": {
     "schema_version": {
-      "const": "1.0",
-      "description": "Corpus data-contract version."
+      "const": "1.1",
+      "description": "Corpus data-contract version. The validator (corpus/validator.py) accepts BOTH '1.0' (pre-Stage-4 records) and '1.1' (additive linkage fields); no v1.0 field was removed or retyped (spec §8.1/§11). This const tracks the CURRENT schema version; x-corpus.accepts lists what the pipeline validates."
+    },
+    "session_uid": {
+      "type": ["string", "null"],
+      "pattern": "^iranseda:(ch[0-9]+:e[0-9]+|db[0-9]+:s[0-9]+)$",
+      "description": "v1.1 additive (spec §8.1). Canonical session identity per D-1: (ch,e) from radio_program_sessions.link, fallback (program_id, session_id). ALWAYS equals record_id; the field exists so the identity model is explicit and stable as the record grows. Present in v1.1 records only."
+    },
+    "session_uid_status": {
+      "type": "string",
+      "enum": ["link", "fallback_db"],
+      "description": "v1.1 additive. How session_uid was resolved: 'link' = (ch,e) parsed from the episode link; 'fallback_db' = (program_id, session_id). Must equal episode_key.source."
+    },
+    "program_uid": {
+      "type": ["string", "null"],
+      "pattern": "^iranseda:prog:ch[0-9]+:m[0-9]+$",
+      "description": "v1.1 additive (D-1). Canonical program identity 'iranseda:prog:ch{ch}:m{m}' from the MERGED program's url (ch=..., m=...). null when the program row carries no resolvable (ch,m) — never fabricated."
+    },
+    "program_uid_status": {
+      "type": "string",
+      "enum": ["ok", "unresolved", "no_program"],
+      "description": "v1.1 additive. 'ok' = program_uid resolved; 'unresolved' = program row exists but (ch,m) not resolvable from its url; 'no_program' = no program row at all. Exactly one of {program_uid, program_uid_status='ok'} holds; program_uid is non-null iff status is 'ok'."
+    },
+    "linkage": {
+      "type": "object",
+      "description": "v1.1 additive top-level linkage block (spec §8.1/§8.2): the four source links, the date-validity classification, and the cheap asset summary. Quarantined records (R4) carry the block with ALL public link urls null and status 'excluded'; the pre-existing v1.0 fields (audio.url, source_metadata.*) are intentionally left untouched for byte-invariance.",
+      "required": ["linkage_version", "timezone", "links", "air_date_status", "validity", "day_of_week", "quarantined", "last_verified_at", "asset_summary", "assets_ref"],
+      "properties": {
+        "linkage_version": { "type": "string", "const": "1.1" },
+        "timezone": { "type": "string", "const": "Asia/Tehran", "description": "B19 — constant, never derived." },
+        "links": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "description": "Exactly one entry per link type (episode, day_archive, time_slot, program_page), in that order.",
+          "items": {
+            "type": "object",
+            "required": ["type", "url", "url_normalized", "status", "reason"],
+            "properties": {
+              "type": { "type": "string", "enum": ["episode", "day_archive", "time_slot", "program_page"] },
+              "url": { "type": ["string", "null"], "pattern": "^https?://\\S+$", "description": "Generated per spec §6 (param order, d= M/D/YYYY unpadded per OQ-1). null when not eligible or excluded. 'program_page' carries the stored radio_programs.url VERBATIM (OQ-3)." },
+              "url_normalized": { "type": ["string", "null"], "description": "Normalized form (param order canonicalized) — for program_page only; null for the other types. null when excluded." },
+              "status": { "type": "string", "enum": ["eligible", "not_eligible", "excluded"], "description": "'excluded' only for quarantined records (R4)." },
+              "reason": { "type": ["string", "null"], "description": "Why not eligible (missing_episode_key, missing_channel, impossible_date, no_date, date_unresolved, no_start_time, no_program_url, quarantined_no_public_links). null when eligible." }
+            }
+          }
+        },
+        "air_date_status": { "type": "string", "enum": ["confirmed", "unverified", "impossible", "none"], "description": "K20: classify_date() status of the session's broadcast date. 'impossible' (e.g. implausible jalali year 1497-1499) keeps the parsed date for audit but suppresses day_archive/time_slot links (§4.2)." },
+        "validity": {
+          "type": "object",
+          "required": ["status", "reasons"],
+          "properties": {
+            "status": { "type": "string", "enum": ["confirmed", "unverified", "impossible", "none"] },
+            "reasons": { "type": "array", "items": { "type": "string" }, "description": "§4.2 reason enum when impossible (month_gt_12, day_gt_31, implausible_year, gregorian_jalali_mismatch); free-form when 'none' (no_date_source, malformed_date_source)." }
+          }
+        },
+        "day_of_week": { "type": ["integer", "null"], "minimum": 1, "maximum": 7, "description": "ISO weekday of the gregorian broadcast date (1=Mon..7=Sun), null when the date is unresolvable." },
+        "quarantined": { "type": "boolean", "description": "R4: quarantined records get NO public links in the v1.1 fields (all links status 'excluded', urls null)." },
+        "last_verified_at": { "type": ["string", "null"], "description": "ISO timestamp of the last full 5-way link verification (Stage 2/3 samples); null in the full tier (documented tiering)." },
+        "asset_summary": {
+          "type": "object",
+          "required": ["total", "by_type", "on_disk", "in_git_tree", "published", "not_published", "missing", "unknown", "excluded"],
+          "description": "Compact per-record asset counts (tiering: disk presence + single git ls-tree set membership; NO HTTP in the corpus pass). The full C1-C14 per-asset rows live in corpus/asset_manifest.jsonl (assets_ref). on_disk/in_git_tree are null when that check was not run.",
+          "properties": {
+            "total": { "type": "integer", "minimum": 0 },
+            "by_type": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 0 }, "description": "asset_type -> count (keys from corpus.assets.ASSET_TYPES)." },
+            "on_disk": { "type": ["integer", "null"], "minimum": 0 },
+            "in_git_tree": { "type": ["integer", "null"], "minimum": 0 },
+            "published": { "type": "integer", "minimum": 0, "description": "disk AND git tree. Quarantined records: 0 (R4)." },
+            "not_published": { "type": "integer", "minimum": 0 },
+            "missing": { "type": "integer", "minimum": 0 },
+            "unknown": { "type": "integer", "minimum": 0 },
+            "excluded": { "type": "integer", "minimum": 0, "description": "Quarantined records: equals total (R4)." }
+          }
+        },
+        "assets_ref": { "type": "string", "description": "Pointer to the full per-asset manifest (one JSONL line per asset, spec §5): corpus/asset_manifest.jsonl." }
+      }
     },
     "record_id": {
       "type": "string",
@@ -124,7 +200,18 @@
             "conversion": { "type": ["string", "null"], "description": "Library + version used for the conversion." }
           }
         },
-        "filename_stem": { "type": ["string", "null"], "description": "The exact stem the broadcast date was parsed from (auditability)." }
+        "filename_stem": { "type": ["string", "null"], "description": "The exact stem the broadcast date was parsed from (auditability)." },
+        "timezone": { "type": "string", "const": "Asia/Tehran", "description": "v1.1 additive (B19): constant, never derived. Present when broadcast is non-null." },
+        "validity": {
+          "type": "object",
+          "required": ["status", "reasons"],
+          "description": "v1.1 additive: classify_date() result for this session (mirrors linkage.air_date_status / linkage.validity; kept here so the date validity travels with the date).",
+          "properties": {
+            "status": { "type": "string", "enum": ["confirmed", "unverified", "impossible", "none"] },
+            "reasons": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "day_of_week": { "type": ["integer", "null"], "minimum": 1, "maximum": 7, "description": "v1.1 additive: ISO weekday (1=Mon..7=Sun) of the gregorian date, null when unresolvable." }
       }
     },
     "audio": {

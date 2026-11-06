@@ -54,6 +54,9 @@ REQUIRED_TOP_COVERAGE = (
     "schema_version", "record_id", "episode_key", "database_refs",
     "program", "audio", "speakers", "transcripts", "crop",
     "source_metadata", "pipeline_state", "provenance", "quality",
+    # v1.1 additive (Stage 4, spec §8.1) — must be covered by field mapping
+    "session_uid", "session_uid_status", "program_uid",
+    "program_uid_status", "linkage",
 )
 
 
@@ -188,7 +191,7 @@ def verify(examples=None):
         except (OSError, ValueError) as e:
             p.append("examples/%s: unreadable: %s" % (name, e))
             continue
-        if name == "quarantine_record.json":
+        if name.startswith("quarantine_record"):
             rec = ex.get("record")
             if not isinstance(rec, dict):
                 p.append("examples/%s: missing 'record' object" % name)

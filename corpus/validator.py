@@ -1,7 +1,11 @@
 """Structural record validator (pure stdlib — no jsonschema dependency).
 
 Validates corpus records against the v1 contract WITHOUT the jsonschema
-library (53's venv lacks it). It enforces the same structural rules as
+library (53's venv lacks it). Stage 4: accepts BOTH schema_version "1.0"
+and "1.1" (spec §8.1 / §11 compatibility). v1.1 records get the additive
+linkage checks in :func:`_check_v11` (identity uids, the linkage block,
+null-not-empty-string discipline, quarantine no-public-links R4, date
+classification consistency). It enforces the same structural rules as
 schemas/iranseda-corpus-v1.schema.json plus the mission §4 rules:
 
   * required top-level keys, types, enums, patterns
@@ -20,8 +24,10 @@ schemas/iranseda-corpus-v1.schema.json plus the mission §4 rules:
 import os
 import re
 import json
+import datetime
 
 from . import srt as srtmod
+from . import assets as _assets
 
 REQUIRED_TOP = (
     "schema_version", "record_id", "episode_key", "database_refs",
@@ -85,8 +91,8 @@ def validate_record(rec, seen_ids=None):
     if p:
         return p
 
-    if rec["schema_version"] != "1.0":
-        _err(rec, p, "schema_version", "must be '1.0'")
+    if rec["schema_version"] not in ("1.0", "1.1"):
+        _err(rec, p, "schema_version", "must be '1.0' or '1.1'")
 
     rid = rec["record_id"]
     if not isinstance(rid, str) or not RECORD_ID_RE.match(rid):
@@ -257,8 +263,284 @@ def validate_record(rec, seen_ids=None):
         if q.get("text_normalized") != "NFC":
             _err(rec, p, "quality.text_normalized", "must be 'NFC'")
 
+    if rec["schema_version"] == "1.1":
+        _check_v11(rec, p)
+
     _scan_strings(p, rec)
     return p
+
+
+# ---------------------------------------------------------------------------
+# v1.1 additive checks (Stage 4 — spec §8.1 / §8.2, D-1, R4)
+# ---------------------------------------------------------------------------
+
+LINK_TYPES = ("episode", "day_archive", "time_slot", "program_page")
+LINK_STATUSES = ("eligible", "not_eligible", "excluded")
+DATE_STATUSES = ("confirmed", "unverified", "impossible", "none")
+PROGRAM_UID_RE = re.compile(r"^iranseda:prog:ch[0-9]+:m[0-9]+$")
+_URL_RE = re.compile(r"^https?://\S+$")
+_ASSET_TYPES = set(_assets.ASSET_TYPES)
+
+
+def _nonempty_str(v):
+    return isinstance(v, str) and v != ""
+
+
+def _int_ge_0(v):
+    return isinstance(v, int) and not isinstance(v, bool) and v >= 0
+
+
+def _check_v11(rec, p):
+    """Additive v1.1 field checks (only called when schema_version=='1.1').
+
+    Null discipline: every NEW string field is null or a non-empty string
+    (never ""). Link discipline: status <-> url consistency, cross-link
+    rules, and R4 (quarantined records get no public links).
+    """
+    # -- identity uids (D-1) ------------------------------------------
+    suid = rec.get("session_uid")
+    if not _nonempty_str(suid):
+        _err(rec, p, "session_uid", "must be non-empty string (v1.1)")
+    elif not RECORD_ID_RE.match(suid):
+        _err(rec, p, "session_uid", "bad pattern: %r" % (suid,))
+    elif suid != rec.get("record_id"):
+        _err(rec, p, "session_uid", "must equal record_id")
+
+    sstat = rec.get("session_uid_status")
+    if sstat not in ("link", "fallback_db"):
+        _err(rec, p, "session_uid_status", "bad enum %r" % (sstat,))
+    else:
+        if sstat != rec["episode_key"].get("source"):
+            _err(rec, p, "session_uid_status",
+                 "must match episode_key.source")
+        if _nonempty_str(suid):
+            expect = ("link" if suid.startswith("iranseda:ch")
+                      else "fallback_db")
+            if sstat != expect:
+                _err(rec, p, "session_uid_status",
+                     "prefix mismatch: uid %r vs status %r" % (suid, sstat))
+
+    if "program_uid" not in rec:
+        _err(rec, p, "program_uid", "missing (v1.1)")
+    else:
+        puid = rec["program_uid"]
+        if puid is not None and not (
+                isinstance(puid, str) and PROGRAM_UID_RE.match(puid)):
+            _err(rec, p, "program_uid", "bad pattern: %r" % (puid,))
+
+    pstat = rec.get("program_uid_status")
+    if pstat not in ("ok", "unresolved", "no_program"):
+        _err(rec, p, "program_uid_status", "bad enum %r" % (pstat,))
+    elif "program_uid" in rec:
+        if pstat == "ok" and rec["program_uid"] is None:
+            _err(rec, p, "program_uid_status",
+                 "'ok' requires non-null program_uid")
+        if pstat != "ok" and rec["program_uid"] is not None:
+            _err(rec, p, "program_uid_status",
+                 "%r requires null program_uid" % pstat)
+
+    # -- linkage block ---------------------------------------------------
+    lg = rec.get("linkage")
+    if not _type_ok(lg, (dict,)):
+        _err(rec, p, "linkage", "must be object (v1.1)")
+        return
+    for k in ("linkage_version", "timezone", "links", "air_date_status",
+              "validity", "day_of_week", "quarantined", "last_verified_at",
+              "asset_summary", "assets_ref"):
+        if k not in lg:
+            _err(rec, p, "linkage.%s" % k, "missing")
+    if lg.get("linkage_version") != "1.1":
+        _err(rec, p, "linkage.linkage_version", "must be '1.1'")
+    if lg.get("timezone") != "Asia/Tehran":
+        _err(rec, p, "linkage.timezone", "must be 'Asia/Tehran'")
+
+    dstat = lg.get("air_date_status")
+    if dstat not in DATE_STATUSES:
+        _err(rec, p, "linkage.air_date_status", "bad enum %r" % (dstat,))
+
+    val = lg.get("validity")
+    if not _type_ok(val, (dict,)):
+        _err(rec, p, "linkage.validity", "must be object")
+    else:
+        if val.get("status") not in DATE_STATUSES:
+            _err(rec, p, "linkage.validity.status", "bad enum")
+        elif dstat in DATE_STATUSES and val.get("status") != dstat:
+            _err(rec, p, "linkage.validity.status",
+                 "must equal air_date_status")
+        reasons = val.get("reasons")
+        if not _type_ok(reasons, (list,)) or not all(
+                isinstance(r, str) for r in reasons):
+            _err(rec, p, "linkage.validity.reasons",
+                 "must be list of strings")
+
+    dow = lg.get("day_of_week")
+    if (dow is not None
+            and not (isinstance(dow, int) and not isinstance(dow, bool)
+                     and 1 <= dow <= 7)):
+        _err(rec, p, "linkage.day_of_week", "must be int 1..7 or null")
+
+    quar = lg.get("quarantined")
+    if not _type_ok(quar, (bool,)):
+        _err(rec, p, "linkage.quarantined", "must be boolean")
+
+    if "last_verified_at" in lg and lg["last_verified_at"] is not None \
+            and not _nonempty_str(lg["last_verified_at"]):
+        _err(rec, p, "linkage.last_verified_at",
+             "must be non-empty string or null")
+
+    if "assets_ref" in lg and not _nonempty_str(lg.get("assets_ref")):
+        _err(rec, p, "linkage.assets_ref", "must be non-empty string")
+
+    # -- links ------------------------------------------------------------
+    links = lg.get("links")
+    seen_types = set()
+    status_by_type = {}
+    if not _type_ok(links, (list,)) or not links:
+        _err(rec, p, "linkage.links", "must be non-empty list")
+        links = []
+    for i, lk in enumerate(links or []):
+        base = "linkage.links[%d]" % i
+        if not _type_ok(lk, (dict,)):
+            _err(rec, p, base, "must be object")
+            continue
+        lt = lk.get("type")
+        if lt not in LINK_TYPES:
+            _err(rec, p, base + ".type", "bad enum %r" % (lt,))
+        elif lt in seen_types:
+            _err(rec, p, base + ".type", "duplicate link type %s" % lt)
+        seen_types.add(lt)
+        url = lk.get("url", "MISSING")
+        if "url" not in lk:
+            _err(rec, p, base + ".url", "missing")
+        elif url is not None and not (isinstance(url, str)
+                                      and _URL_RE.match(url)):
+            _err(rec, p, base + ".url",
+                 "must be http(s) URL or null: %r" % (url,))
+        if "url_normalized" not in lk:
+            _err(rec, p, base + ".url_normalized", "missing")
+        elif lk["url_normalized"] is not None and not _nonempty_str(
+                lk["url_normalized"]):
+            _err(rec, p, base + ".url_normalized",
+                 "must be non-empty string or null")
+        st = lk.get("status")
+        if st not in LINK_STATUSES:
+            _err(rec, p, base + ".status", "bad enum %r" % (st,))
+        if "reason" not in lk:
+            _err(rec, p, base + ".reason", "missing")
+        elif lk["reason"] is not None and not _nonempty_str(lk["reason"]):
+            _err(rec, p, base + ".reason",
+                 "must be non-empty string or null")
+        # status <-> url discipline (null discipline, spec §7.2)
+        if st == "eligible" and url is None:
+            _err(rec, p, base, "'eligible' requires a non-null url")
+        if st in ("not_eligible", "excluded") and url is not None:
+            _err(rec, p, base, "%s requires null url" % st)
+        if st == "excluded" and quar is not True:
+            _err(rec, p, base, "'excluded' requires quarantined=true")
+        if st == "eligible" and quar is True:
+            _err(rec, p, base, "'eligible' not allowed when quarantined")
+        status_by_type[lt] = st
+
+    # cross-link rules (date classification consistency)
+    if dstat in ("impossible", "none"):
+        for i, lk in enumerate(links or []):
+            if _type_ok(lk, (dict,)) \
+                    and lk.get("type") in ("day_archive", "time_slot") \
+                    and lk.get("url") is not None:
+                _err(rec, p, "linkage.links[%d]" % i,
+                     "%s url must be null when air_date_status=%s"
+                     % (lk.get("type"), dstat))
+    if status_by_type.get("time_slot") == "eligible" \
+            and status_by_type.get("day_archive") != "eligible":
+        _err(rec, p, "linkage.links",
+             "time_slot eligible requires day_archive eligible")
+    if quar is True:
+        for i, lk in enumerate(links or []):
+            if _type_ok(lk, (dict,)) and (
+                    lk.get("url") is not None
+                    or lk.get("url_normalized") is not None):
+                _err(rec, p, "linkage.links[%d]" % i,
+                     "quarantined record must have null public links (R4)")
+
+    # -- asset_summary ------------------------------------------------------
+    s = lg.get("asset_summary")
+    if not _type_ok(s, (dict,)):
+        _err(rec, p, "linkage.asset_summary", "must be object")
+    else:
+        total = s.get("total")
+        if not _int_ge_0(total):
+            _err(rec, p, "linkage.asset_summary.total", "must be int >= 0")
+        by_type = s.get("by_type")
+        if not _type_ok(by_type, (dict,)):
+            _err(rec, p, "linkage.asset_summary.by_type", "must be object")
+        else:
+            for k, v in by_type.items():
+                if not _int_ge_0(v):
+                    _err(rec, p, "linkage.asset_summary.by_type.%s" % k,
+                         "must be int >= 0")
+                if k not in _ASSET_TYPES:
+                    _err(rec, p, "linkage.asset_summary.by_type.%s" % k,
+                         "unknown asset type")
+        for k in ("on_disk", "in_git_tree"):
+            if k not in s:
+                _err(rec, p, "linkage.asset_summary.%s" % k, "missing")
+            elif s[k] is not None and not _int_ge_0(s[k]):
+                _err(rec, p, "linkage.asset_summary.%s" % k,
+                     "must be int >= 0 or null")
+        parts = {}
+        for k in ("published", "not_published", "missing", "unknown",
+                  "excluded"):
+            if k not in s:
+                _err(rec, p, "linkage.asset_summary.%s" % k, "missing")
+            elif not _int_ge_0(s[k]):
+                _err(rec, p, "linkage.asset_summary.%s" % k,
+                     "must be int >= 0")
+            else:
+                parts[k] = s[k]
+        if len(parts) == 5 and _int_ge_0(total) \
+                and sum(parts.values()) != total:
+            _err(rec, p, "linkage.asset_summary",
+                 "state counts must sum to total")
+        if quar is True:
+            if parts.get("published", 0) != 0 \
+                    or parts.get("excluded", -1) != (total or 0):
+                _err(rec, p, "linkage.asset_summary",
+                     "quarantined: published=0 and excluded==total (R4)")
+
+    # -- broadcast 1.1 additions ------------------------------------------
+    b = rec.get("broadcast")
+    if _type_ok(b, (dict,)):
+        if b.get("timezone") != "Asia/Tehran":
+            _err(rec, p, "broadcast.timezone",
+                 "must be 'Asia/Tehran' (v1.1)")
+        bv = b.get("validity")
+        if not _type_ok(bv, (dict,)):
+            _err(rec, p, "broadcast.validity", "must be object (v1.1)")
+        else:
+            if bv.get("status") not in DATE_STATUSES:
+                _err(rec, p, "broadcast.validity.status", "bad enum")
+            elif dstat in DATE_STATUSES and bv.get("status") != dstat:
+                _err(rec, p, "broadcast.validity.status",
+                     "must equal linkage.air_date_status")
+            if not _type_ok(bv.get("reasons"), (list,)):
+                _err(rec, p, "broadcast.validity.reasons", "must be list")
+        bdw = b.get("day_of_week")
+        if (bdw is not None
+                and not (isinstance(bdw, int)
+                         and not isinstance(bdw, bool)
+                         and 1 <= bdw <= 7)):
+            _err(rec, p, "broadcast.day_of_week", "must be int 1..7 or null")
+        g = b.get("gregorian")
+        if _type_ok(g, (dict,)) and DATE_RE.match(g.get("date") or ""):
+            try:
+                y, mo, d = (int(x) for x in g["date"].split("-"))
+                expect_dow = datetime.date(y, mo, d).isoweekday()
+            except (ValueError, TypeError):
+                expect_dow = None
+            if expect_dow is not None and bdw is not None \
+                    and bdw != expect_dow:
+                _err(rec, p, "broadcast.day_of_week",
+                     "does not match gregorian date (expect %d)" % expect_dow)
 
 
 def _check_artifact(p, base, art, srt=False):

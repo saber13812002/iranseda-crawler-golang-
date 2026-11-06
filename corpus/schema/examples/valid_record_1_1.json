@@ -1,0 +1,202 @@
+{
+  "schema_version": "1.1",
+  "record_id": "iranseda:ch14:e10000001",
+  "session_uid": "iranseda:ch14:e10000001",
+  "session_uid_status": "link",
+  "episode_key": {
+    "ch": 14,
+    "e": "10000001",
+    "m": "001100",
+    "source": "link"
+  },
+  "database_refs": {
+    "session_id": 1234,
+    "program_id": 11,
+    "program_ids_all": [11],
+    "tables": {
+      "radio_program_sessions": 1234,
+      "radio_programs": [11],
+      "llm_output": [456],
+      "crop_detection": null,
+      "asr_output": []
+    }
+  },
+  "program": {
+    "name": "رادیو فرهنگ",
+    "name_raw": "رادیو فرهنگ",
+    "url": "https://radio.iranseda.ir/program?ch=14&m=001100",
+    "ch": 14,
+    "m": "001100",
+    "radio": "FM 98.5",
+    "description": "برنامهٔ عمومی رادیو فرهنگ",
+    "schedule": {
+      "start_time": "21:00:00",
+      "description_raw": "هر روز ۲۱ تا ۲۳",
+      "description_normalized": "هر روز ۲۱ تا ۲۳",
+      "source": "programs.time"
+    },
+    "crop": null
+  },
+  "program_uid": "iranseda:prog:ch14:m001100",
+  "program_uid_status": "ok",
+  "broadcast": {
+    "jalali": {
+      "date": "1405-01-01",
+      "time": "09:00:00",
+      "source": "filename"
+    },
+    "gregorian": {
+      "date": "2026-03-21",
+      "time": "09:00:00",
+      "source": "derived_from_jalali_filename",
+      "conversion": "corpus.jalali (vendored jalali_core / jdatetime 6.1.1 algorithm)"
+    },
+    "filename_stem": "radio-maaref-05-01-01-09-00",
+    "timezone": "Asia/Tehran",
+    "validity": {
+      "status": "unverified",
+      "reasons": []
+    },
+    "day_of_week": 6
+  },
+  "audio": {
+    "url": "https://radio.iranseda.ir/radio/mp3/radio-maaref-05-01-01-09-00.mp3",
+    "link_raw": "radio/mp3/radio-maaref-05-01-01-09-00.mp3",
+    "filename": "radio-maaref-05-01-01-09-00.mp3",
+    "local_exists": true
+  },
+  "speakers": {
+    "items": [],
+    "missing_reason": "no verified source table in database (stage-1 finding #9)"
+  },
+  "transcripts": {
+    "originals": {
+      "srt": {
+        "exists": true,
+        "db_filename": "radio-maaref-05-01-01-09-00.srt",
+        "relpath": "downloads/cleaned/radio-maaref-05-01-01-09-00.srt",
+        "content": "1\n00:00:01,000 --> 00:00:04,500\nسلام دنیا\n\n2\n00:00:05,000 --> 00:00:10,000\nاین یک نمونه زیرنویس است",
+        "sha256": null,
+        "char_count": 99,
+        "segment_count": 2,
+        "duration_sec": 10.0
+      },
+      "txt": {
+        "exists": true,
+        "relpath": "downloads/cleaned/radio-maaref-05-01-01-09-00.txt",
+        "content": "سلام دنیا\nاین یک نمونه زیرنویس است",
+        "sha256": null,
+        "char_count": 33
+      }
+    },
+    "llm_outputs": [
+      {
+        "llm_output_id": 456,
+        "job_type": "correct_subtitles",
+        "model": "qwen38-nothinking",
+        "prompt_id": 12,
+        "status": "done",
+        "content": null,
+        "content_en": null,
+        "srt_content": "1\n00:00:01 --> 00:00:05\nسلام و درود\n\n2\n00:00:05 --> 00:00:10\nاین متن زیرنویس اصلاح‌شده است",
+        "file_relpath": "downloads/corrected/radio-maaref-05-01-01-09-00.srt",
+        "disk_exists": true,
+        "input_tokens": 123,
+        "output_tokens": 45,
+        "started_at": "2026-03-22T08:00:00Z",
+        "finished_at": "2026-03-22T08:05:00Z"
+      }
+    ],
+    "asr_outputs": [],
+    "whisper_provenance": {
+      "provider": "whisper (local pipeline, output not registered in asr_output)",
+      "details_available": false
+    }
+  },
+  "crop": null,
+  "source_metadata": {
+    "episode_url": "https://radio.iranseda.ir/episode?ch=14&e=10000001",
+    "program_url": "https://radio.iranseda.ir/program?ch=14&m=001100",
+    "site_base": "https://radio.iranseda.ir/"
+  },
+  "pipeline_state": {
+    "status": "subtitled",
+    "is_downloaded": true,
+    "attempts": 1,
+    "last_error": null
+  },
+  "provenance": {
+    "exported_at": "2026-11-05T22:00:00Z",
+    "export_version": "example-run-1101",
+    "sources": [
+      "radio_program_sessions#1234",
+      "radio_programs#11",
+      "llm_output#456",
+      "disk:downloads/cleaned/radio-maaref-05-01-01-09-00.srt"
+    ]
+  },
+  "quality": {
+    "missing": [],
+    "warnings": [],
+    "text_normalized": "NFC"
+  },
+  "linkage": {
+    "linkage_version": "1.1",
+    "timezone": "Asia/Tehran",
+    "links": [
+      {
+        "type": "episode",
+        "url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=10000001",
+        "url_normalized": null,
+        "status": "eligible",
+        "reason": null
+      },
+      {
+        "type": "day_archive",
+        "url": "https://radio.iranseda.ir/timeArchive/?VALID=TRUE&ch=14&d=3/21/2026",
+        "url_normalized": null,
+        "status": "eligible",
+        "reason": null
+      },
+      {
+        "type": "time_slot",
+        "url": "https://radio.iranseda.ir/timeArchivePart/?VALID=TRUE&ch=14&ti=09:00&d=3/21/2026",
+        "url_normalized": null,
+        "status": "eligible",
+        "reason": null
+      },
+      {
+        "type": "program_page",
+        "url": "https://radio.iranseda.ir/program?ch=14&m=001100",
+        "url_normalized": "https://radio.iranseda.ir/program/?ch=14&m=001100",
+        "status": "eligible",
+        "reason": null
+      }
+    ],
+    "air_date_status": "unverified",
+    "validity": {
+      "status": "unverified",
+      "reasons": []
+    },
+    "day_of_week": 6,
+    "quarantined": false,
+    "last_verified_at": null,
+    "asset_summary": {
+      "total": 4,
+      "by_type": {
+        "audio": 1,
+        "corrected_srt": 1,
+        "raw_srt": 1,
+        "summary_en": 1
+      },
+      "on_disk": 3,
+      "in_git_tree": 4,
+      "published": 3,
+      "not_published": 0,
+      "missing": 1,
+      "unknown": 0,
+      "excluded": 0
+    },
+    "assets_ref": "asset_manifest.jsonl"
+  }
+}

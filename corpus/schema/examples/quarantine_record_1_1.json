@@ -1,0 +1,193 @@
+{
+  "_note": "v1.1 example of a quarantined (Class B) record: line shape {record, problems, quarantine} as written to data/corpus/quarantine.jsonl. The record is structurally valid on its own (v1.1); it is quarantined because its record_id collides with another session (same (ch,e) EPG reference, different actual session). R4 (spec 10.1): the v1.1 linkage surface carries NO public links (all links status 'excluded', urls null, asset_summary excluded==total); the identity uids remain; pre-existing v1.0 fields (audio.url, source_metadata.*) are intentionally untouched for byte-invariance. Modelled on the live case ch14:e153278467 (sessions 5038 pid 3 / 6217 pid 31).",
+  "record": {
+    "schema_version": "1.1",
+    "record_id": "iranseda:ch14:e10000001",
+    "session_uid": "iranseda:ch14:e10000001",
+    "session_uid_status": "link",
+    "episode_key": {
+      "ch": 14,
+      "e": "10000001",
+      "m": "001100",
+      "source": "link"
+    },
+    "database_refs": {
+      "session_id": 6217,
+      "program_id": 31,
+      "program_ids_all": [11, 31],
+      "tables": {
+        "radio_program_sessions": 6217,
+        "radio_programs": [31],
+        "llm_output": [],
+        "crop_detection": null,
+        "asr_output": []
+      }
+    },
+    "program": {
+      "name": "رادیو فرهنگ",
+      "name_raw": "رادیو فرهنگ",
+      "url": "https://radio.iranseda.ir/program?ch=14&m=001100",
+      "ch": 14,
+      "m": "001100",
+      "radio": "FM 98.5",
+      "description": "برنامهٔ عمومی رادیو فرهنگ",
+      "schedule": null,
+      "crop": null
+    },
+    "program_uid": "iranseda:prog:ch14:m001100",
+    "program_uid_status": "ok",
+    "broadcast": {
+      "jalali": {
+        "date": "1405-01-01",
+        "time": "09:00:00",
+        "source": "filename"
+      },
+      "gregorian": {
+        "date": "2026-03-21",
+        "time": "09:00:00",
+        "source": "derived_from_jalali_filename",
+        "conversion": "corpus.jalali (vendored jalali_core / jdatetime 6.1.1 algorithm)"
+      },
+      "filename_stem": "radio-maaref-05-01-01-09-00",
+      "timezone": "Asia/Tehran",
+      "validity": {
+        "status": "unverified",
+        "reasons": []
+      },
+      "day_of_week": 6
+    },
+    "audio": {
+      "url": "https://radio.iranseda.ir/radio/mp3/radio-maaref-05-01-01-09-00.mp3",
+      "link_raw": "radio/mp3/radio-maaref-05-01-01-09-00.mp3",
+      "filename": "radio-maaref-05-01-01-09-00.mp3",
+      "local_exists": true
+    },
+    "speakers": {
+      "items": [],
+      "missing_reason": "no verified source table in database (stage-1 finding #9)"
+    },
+    "transcripts": {
+      "originals": {
+        "srt": {
+          "exists": true,
+          "db_filename": "radio-maaref-05-01-01-09-00.srt",
+          "relpath": "downloads/cleaned/radio-maaref-05-01-01-09-00.srt",
+          "content": "1\n00:00:01,000 --> 00:00:04,500\nسلام دنیا\n\n2\n00:00:05,000 --> 00:00:10,000\nاین یک نمونه زیرنویس است",
+          "sha256": null,
+          "char_count": 99,
+          "segment_count": 2,
+          "duration_sec": 10.0
+        },
+        "txt": {
+          "exists": true,
+          "relpath": "downloads/cleaned/radio-maaref-05-01-01-09-00.txt",
+          "content": "سلام دنیا\nاین یک نمونه زیرنویس است",
+          "sha256": null,
+          "char_count": 33
+        }
+      },
+      "llm_outputs": [],
+      "asr_outputs": [],
+      "whisper_provenance": {
+        "provider": "whisper (local pipeline, output not registered in asr_output)",
+        "details_available": false
+      }
+    },
+    "crop": null,
+    "source_metadata": {
+      "episode_url": "https://radio.iranseda.ir/episode?ch=14&e=10000001",
+      "program_url": "https://radio.iranseda.ir/program?ch=14&m=001100",
+      "site_base": "https://radio.iranseda.ir/"
+    },
+    "pipeline_state": {
+      "status": "subtitled",
+      "is_downloaded": true,
+      "attempts": 1,
+      "last_error": null
+    },
+    "provenance": {
+      "exported_at": "2026-11-05T22:00:00Z",
+      "export_version": "example-run-1102",
+      "sources": [
+        "radio_program_sessions#6217",
+        "radio_programs#31",
+        "disk:downloads/cleaned/radio-maaref-05-01-01-09-00.srt"
+      ]
+    },
+    "quality": {
+      "missing": [],
+      "warnings": ["quarantined_no_public_links"],
+      "text_normalized": "NFC"
+    },
+    "linkage": {
+      "linkage_version": "1.1",
+      "timezone": "Asia/Tehran",
+      "links": [
+        {
+          "type": "episode",
+          "url": null,
+          "url_normalized": null,
+          "status": "excluded",
+          "reason": "quarantined_no_public_links"
+        },
+        {
+          "type": "day_archive",
+          "url": null,
+          "url_normalized": null,
+          "status": "excluded",
+          "reason": "quarantined_no_public_links"
+        },
+        {
+          "type": "time_slot",
+          "url": null,
+          "url_normalized": null,
+          "status": "excluded",
+          "reason": "quarantined_no_public_links"
+        },
+        {
+          "type": "program_page",
+          "url": null,
+          "url_normalized": null,
+          "status": "excluded",
+          "reason": "quarantined_no_public_links"
+        }
+      ],
+      "air_date_status": "unverified",
+      "validity": {
+        "status": "unverified",
+        "reasons": []
+      },
+      "day_of_week": 6,
+      "quarantined": true,
+      "last_verified_at": null,
+      "asset_summary": {
+        "total": 3,
+        "by_type": {
+          "audio": 1,
+          "raw_srt": 1,
+          "summary_en": 1
+        },
+        "on_disk": 3,
+        "in_git_tree": 3,
+        "published": 0,
+        "not_published": 0,
+        "missing": 0,
+        "unknown": 0,
+        "excluded": 3
+      },
+      "assets_ref": "asset_manifest.jsonl"
+    }
+  },
+  "problems": [
+    "record_id: duplicate record_id in batch: iranseda:ch14:e10000001"
+  ],
+  "quarantine": {
+    "policy": "PERMANENT_UNTIL_IDENTITY_PROVEN",
+    "class": "B",
+    "reason": "identity collision (duplicate record_id)",
+    "session_id": 6217,
+    "record_id": "iranseda:ch14:e10000001",
+    "investigation_ref": "reports/corpus/STAGE_1_CLASS_B_IDENTITY_REPORT.md",
+    "quarantined_at": "2026-11-05T22:00:00Z"
+  }
+}

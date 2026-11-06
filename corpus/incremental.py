@@ -56,19 +56,29 @@ class IncrementalExporter(object):
                       json.dumps(state, indent=2, ensure_ascii=False))
 
     # ------------------------------------------------------------------
-    def run(self, force_full=False):
-        """One incremental cycle. Returns the manifest."""
+    def run(self, force_full=False, run_id=None, exported_at=None,
+            linkage_ctx=None):
+        """One incremental cycle. Returns the manifest.
+
+        Stage 4: the watermark run is an upsert-MERGE against the live
+        corpus (exporter merge mode). run_id / exported_at can be pinned
+        to the live manifest (cli --pin) so that a no-change merge is a
+        byte-identical no-op (records embed provenance.exported_at and
+        provenance.export_version=run_id).
+        """
         state = self._load_state()
         overlap_sec = int(self.cfg.overlap_hours * 3600)
         if force_full or state is None or not state.get("watermark"):
             self.ex.log("incremental: no prior watermark — running FULL export")
-            wm_before = self.db.high_watermark()
-            manifest = self.ex.run()
+            manifest = self.ex.run(run_id=run_id, exported_at=exported_at,
+                                   linkage_ctx=linkage_ctx)
         else:
             wm = state["watermark"]
             clause, params = self.db.watermark_clause(wm, overlap_sec)
             self.ex.log("incremental: WHERE %s params=%s" % (clause, params))
-            manifest = self.ex.run(where=clause, params=params)
+            manifest = self.ex.run(where=clause, params=params,
+                                   run_id=run_id, exported_at=exported_at,
+                                   linkage_ctx=linkage_ctx)
         wm_after = self.db.high_watermark()
         self._save_state(wm_after, manifest)
         return manifest
