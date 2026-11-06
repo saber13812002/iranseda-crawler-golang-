@@ -199,6 +199,10 @@ def neo4j_query(creds, database="radio", statement=_NEOMATCH, timeout=60):
         method="POST")
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         payload = json.loads(resp.read().decode("utf-8") or "{}")
+    errors = payload.get("errors") or []
+    if errors:
+        raise RuntimeError(
+            "neo4j query failed: %s" % json.dumps(errors, ensure_ascii=False))
     results = payload.get("results") or []
     if not results:
         return []

@@ -12,6 +12,11 @@ Usage (from the project root; the dashboard venv on 53 has pymysql):
                                # exported_at+run_id to the live manifest
                                # (no-change merge = byte-identical no-op)
   python -m corpus.cli rag-linkage           # asset manifest + RAG linkage
+  python -m corpus.cli neo4j-linkage snapshot [--out DIR]
+  python -m corpus.cli neo4j-linkage dry-run --snapshot DIR
+  python -m corpus.cli neo4j-linkage apply   --snapshot DIR
+  python -m corpus.cli neo4j-linkage post    --snapshot DIR
+  python -m corpus.cli neo4j-linkage rollback --snapshot DIR
   python -m corpus.cli reconcile             # full re-scan + diff report
   python -m corpus.cli validate              # validate the current output
   python -m corpus.cli publish               # build the HF local bundle
@@ -148,6 +153,14 @@ def cmd_rag_linkage(cfg):
     return 0
 
 
+def cmd_neo4j_linkage(cfg, argv):
+    """Stage 5: in-place K1-K22 linkage propagation to existing Chunk
+    nodes (snapshot / dry-run / apply / post / rollback). No re-embed,
+    no re-chunk, no index rebuild — additive properties only."""
+    from . import neo4j_linkage as _neo4j_linkage
+    return _neo4j_linkage.main(cfg, argv, log=print)
+
+
 def cmd_reconcile(cfg):
     with _database.Database(cfg) as db:
         ex = _exporter.Exporter(db, cfg, log=print)
@@ -262,6 +275,8 @@ def main(argv=None):
                                assets="--assets" in argv)
     if cmd == "rag-linkage":
         return cmd_rag_linkage(cfg)
+    if cmd == "neo4j-linkage":
+        return cmd_neo4j_linkage(cfg, argv[1:])
     if cmd == "reconcile":
         return cmd_reconcile(cfg)
     if cmd == "validate":
