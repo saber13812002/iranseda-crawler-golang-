@@ -240,4 +240,6 @@ isolated-dir exports remain the safe production mode.
 - Report: `reports/corpus/STAGE_4_PRODUCTION_ACCEPTANCE.md` on branch `download-db`
   (main workspace `iranseda`), same relay as STAGE 1/2/3 reports.
 - Remote SHA verified via `git ls-remote origin refs/heads/download-db` after push:
-  `__REMOTE_SHA__` (== local commit SHA recorded at push time).
+  `13446f5c5e33fc4106f555f490613bdb11f63aaf` (== local commit `13446f5c5` that created
+  this report). This SHA-recording commit is the follow-up on the same branch
+  (same relay as STAGE 1's section-13 commit).
