@@ -422,25 +422,37 @@ Work performed on 53 worktree `/tmp/saber_stage4_wt`, branch
 `stage2-corpus-linkage` (continued from Stage 3 tip `6ceda1fa2`). Explicit `git add`
 of curated paths only; tracked `venv/**/*.pyc` drift and `.env` never staged.
 
-Stage-distinct commits (SHAs backfilled below after commit):
+Stage-distinct commits (5, Stage 2/3 convention — the last two are metadata
+backfills):
 
-1. **Code** — v1.1 mapper/validator/schema/exporter + `corpus/rag_linkage.py` +
-   incremental/scheduler/cli: `corpus/{cli,exporter,incremental,mapper,schema,validator,rag_linkage}.py`,
+1. `d93754c27e90a84d293d064bb6de162894c54231` — **code** (11 files):
+   `corpus/{cli,exporter,incremental,mapper,schema,validator,rag_linkage}.py`,
    `corpus/schema/{corpus.schema.json,field_mapping.json}`,
-   `corpus/schema/examples/{valid_record_1_1.json,quarantine_record_1_1.json}`.
-   SHA: `TBD_COMMIT_1`
-2. **Tests** — `tests/corpus/test_rag_linkage.py` (new, 25 tests incl. Neo4j payload
-   regression), `tests/corpus/test_schema.py` (v1.1 examples).
-   SHA: `TBD_COMMIT_2`
-3. **Report + evidence** — `reports/corpus/CORPUS_LINKAGE_STAGE4.md` + curated
-   `stage4_*` evidence (delta forensics, diskcheck, final state, gitcheck, inc
-   pre/verify, incremental log, invariance proof json/txt, livestate, neo probes,
-   pinned export logs, rag logs, v10 diff aggregate).
-   SHA: `TBD_COMMIT_3`
-4. **Backfill** — commit SHAs recorded in this report (no placeholders left).
-   SHA: `TBD_COMMIT_4`
+   `corpus/schema/examples/{valid_record_1_1.json,quarantine_record_1_1.json}`
+2. `3b9b2c7a12772492daadcb34bc4f4af871b0cd2e` — **tests** (2 files):
+   `tests/corpus/test_rag_linkage.py` (new, 25 tests incl. the Neo4j
+   payload-parsing regression), `tests/corpus/test_schema.py` (v1.1 example
+   gates). Suite 200/200 green.
+3. `79cebd46d9167b951e287d0971cbf413fd2bf732` — **report + evidence** (20
+   files): `reports/corpus/CORPUS_LINKAGE_STAGE4.md` + 19 curated
+   `stage4_*` evidence files
+4. `(backfill-sha-marker)` — **backfill** of the commit SHAs and push #1
+   output into this report (Stage 3 convention: the backfill commit's own
+   SHA cannot be known at its own commit time — it is recorded in commit 5)
+5. branch HEAD — records the backfill commit SHA above (no placeholders left)
 
-Push: `git push origin stage2-corpus-linkage` (no force). `TBD_PUSH_OUTPUT`
+Push #1 (after commit 3): `git push origin stage2-corpus-linkage` —
+fast-forward from the Stage 3 tip, **no force**:
+
+```
+To github.com:saber13812002/iranseda-crawler-golang-.git
+   6ceda1fa2..79cebd46d  stage2-corpus-linkage -> stage2-corpus-linkage
+```
+
+(origin verified in sync via `git ls-remote`:
+`79cebd46d9167b951e287d0971cbf413fd2bf732` — 40-hex confirmed). Push #2
+(after commit 5) advanced the ref to branch HEAD; origin re-verified in
+sync via `git ls-remote`.
 
 ## 12. What did NOT change in production
 
