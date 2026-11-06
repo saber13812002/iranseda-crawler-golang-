@@ -24,21 +24,48 @@ def test_schema_metadata_and_contract():
     assert sch["$schema"] == S.DRAFT_2020_12
     assert isinstance(sch["$id"], str) and sch["$id"]
     meta = sch["x-corpus"]
-    assert meta["schema_version"] == "1.0"
+    assert meta["schema_version"] == "1.1"
+    # Stage 4: the validator accepts BOTH v1.0 and v1.1 records (spec §8.1)
+    assert meta["accepts"] == ["1.0", "1.1"]
+    assert sch["properties"]["schema_version"]["const"] == "1.1"
     assert meta["identity_policy"] == "PERMANENT_UNTIL_IDENTITY_PROVEN"
     # versioned required set = validator's REQUIRED_TOP + speakers
     # (validator reads rec["speakers"] directly, so it is de-facto required)
+    # -- additive-only upgrade: the required set is UNCHANGED from v1.0
     assert set(sch["required"]) == set(V.REQUIRED_TOP) | {"speakers"}
     # Stage 1 annotations present
     assert "stage 1" in sch["description"].lower()
     assert "authoritative" in sch["properties"]["database_refs"]["description"].lower()
     # artifact $def present
     assert "artifact" in sch["$defs"]
+    # Stage 4 additive top-level properties (no v1.0 property removed)
+    props = sch["properties"]
+    for name in ("session_uid", "session_uid_status", "program_uid",
+                 "program_uid_status", "linkage"):
+        assert name in props, name
+    assert props["session_uid"]["pattern"] == \
+        "^iranseda:(ch[0-9]+:e[0-9]+|db[0-9]+:s[0-9]+)$"
+    assert props["program_uid"]["pattern"] == \
+        "^iranseda:prog:ch[0-9]+:m[0-9]+$"
+    assert props["session_uid_status"]["enum"] == ["link", "fallback_db"]
+    assert props["program_uid_status"]["enum"] == \
+        ["ok", "unresolved", "no_program"]
+    link = props["linkage"]
+    assert set(link["required"]) == {
+        "linkage_version", "timezone", "links", "air_date_status",
+        "validity", "day_of_week", "quarantined", "last_verified_at",
+        "asset_summary", "assets_ref"}
+    # broadcast gained the three additive v1.1 keys (v1.0 keys intact)
+    bprops = props["broadcast"]["properties"]
+    for name in ("jalali", "gregorian", "filename_stem", "timezone",
+                 "validity", "day_of_week"):
+        assert name in bprops, name
+    assert bprops["timezone"]["const"] == "Asia/Tehran"
 
 
 def test_field_mapping_covers_all_fields():
     fm = S.load_field_mapping()
-    assert fm["version"] == "1.0"
+    assert fm["version"] == "1.1"
     for s in S.MAPPING_STATUSES:
         assert s in fm["legend"], s
     assert fm["fields"], "no field entries"
@@ -79,6 +106,9 @@ def test_examples_present_and_named():
     names = S.list_examples()
     assert "valid_record.json" in names
     assert "quarantine_record.json" in names
+    # Stage 4: the v1.1 examples exist alongside the v1.0 ones
+    assert "valid_record_1_1.json" in names
+    assert "quarantine_record_1_1.json" in names
 
 
 def test_valid_example_passes_validator():
@@ -114,6 +144,61 @@ def test_quarantine_example_shape():
                for w in rec["quality"]["warnings"]), rec["quality"]["warnings"]
     # session_id is the authoritative identity (Stage 1)
     assert rec["database_refs"]["session_id"] == 6217
+
+
+def test_valid_1_1_example_passes_validator():
+    rec = S.load_example("valid_record_1_1.json")
+    probs = V.validate_record(rec)
+    assert probs == [], probs
+    assert rec["schema_version"] == "1.1"
+    # canonical identity fields (D-1) are explicit and match record_id
+    assert rec["session_uid"] == rec["record_id"]
+    assert rec["session_uid_status"] == "link"
+    assert rec["program_uid"] == "iranseda:prog:ch14:m001100"
+    assert rec["program_uid_status"] == "ok"
+    # broadcast v1.1 additions
+    b = rec["broadcast"]
+    assert b["timezone"] == "Asia/Tehran"
+    assert b["validity"] == {"status": "unverified", "reasons": []}
+    assert b["day_of_week"] == 6  # 2026-03-21 is a Saturday (ISO 6)
+    # linkage block: all four links eligible in this example
+    lk = rec["linkage"]
+    assert lk["linkage_version"] == "1.1"
+    assert lk["timezone"] == "Asia/Tehran"
+    assert lk["quarantined"] is False
+    assert lk["assets_ref"] == "asset_manifest.jsonl"
+    types = [l["type"] for l in lk["links"]]
+    assert types == ["episode", "day_archive", "time_slot", "program_page"]
+    for l in lk["links"]:
+        assert l["status"] == "eligible" and l["url"].startswith("http")
+    assert lk["links"][1]["url"].endswith("d=3/21/2026")  # OQ-1 unpadded
+    # in-record asset summary is an aggregate (full C1-C14 in the manifest)
+    asum = lk["asset_summary"]
+    assert asum["total"] == 4
+    assert sum(asum["by_type"].values()) == 4
+    assert asum["published"] + asum["not_published"] + asum["missing"] \
+        + asum["unknown"] + asum["excluded"] == asum["total"]
+
+
+def test_quarantine_1_1_example_shape():
+    ex = S.load_example("quarantine_record_1_1.json")
+    rec = ex["record"]
+    probs = V.validate_record(rec)
+    assert probs == [], probs
+    assert rec["schema_version"] == "1.1"
+    assert any("duplicate record_id" in p for p in ex["problems"])
+    lk = rec["linkage"]
+    # R4: no public links on quarantined records
+    assert lk["quarantined"] is True
+    for l in lk["links"]:
+        assert l["status"] == "excluded"
+        assert l["url"] is None and l["url_normalized"] is None
+        assert l["reason"] == "quarantined_no_public_links"
+    asum = lk["asset_summary"]
+    assert asum["published"] == 0 and asum["excluded"] == asum["total"] == 3
+    assert "quarantined_no_public_links" in rec["quality"]["warnings"]
+    # pre-existing v1.0 fields are untouched by the strip (R4 scope)
+    assert rec["record_id"] == ex["quarantine"]["record_id"]
 
 
 def test_verify_rejects_bad_example():
