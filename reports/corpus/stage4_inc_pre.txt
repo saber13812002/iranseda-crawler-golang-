@@ -1,0 +1,22 @@
+=== pre-incremental live SHAs ===
+corpus.jsonl        926663870  0cdddca25146d71adb1983352465a185272cc257821a141fdb3da4e8cd957211
+quarantine.jsonl     79145066  ff07659990f8e04543f8e47cd2fb6839acb2b1f791d942ddce235a561a1208c1
+stats.json              21052  2c6925ba9d378d7cc3a573dbfeb6979d1500d559bdc1a218e79d64fbcc287485
+manifest.json            2995  c3f66923fe5a5dfc974d8ed3f62ccd67e0a243fd9045a360af7312a894cf69ec
+corpus.jsonl: 9746 lines, 9746 distinct sessions
+quarantine.jsonl: 1147 lines, 1147 distinct sessions
+incremental_state.json exists before: False
+high_watermark BEFORE: {"sessions_updated_at": "2026-11-06T02:45:49", "sessions_max_id": 10896, "llm_finished_at": "2026-10-11T11:30:01", "llm_max_id": 15324}
+wrote /home/saber/saberprojects/iranseda-crawler-golang-/data/corpus/incremental_state.json sha256: eb6389c4f1968b93437f1760bbbf75e650ce8adb6e97c3f6d93a620a28123650
+{
+  "updated_at": "2026-11-06 02:59:13",
+  "watermark": {
+    "sessions_updated_at": "2026-11-06T02:45:49",
+    "sessions_max_id": 10896,
+    "llm_finished_at": "2026-10-11T11:30:01",
+    "llm_max_id": 15324
+  },
+  "last_run_id": "corpus-det-2026-11-05T00-53-14",
+  "last_records_written": 9746
+}
+snapshot saved to /tmp/saber_stage4_wt/reports/corpus/stage4_inc_pre.json

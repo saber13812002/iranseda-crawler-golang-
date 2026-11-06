@@ -1,0 +1,30 @@
+=== live data/corpus ===
+asset_manifest.jsonl             32624442  8a43dca52f7f06494b4113fb1156a364dd6809f80a8ff319231c1a32d24f99c5
+checksums.sha256                      239  facffb3340e6c0d68058d6b9f6d75bd8bafda85776c7d4d1044a1fd9b67f7bcb
+class_b_investigation.jsonl       2796439  da9b2a07b57cbc78f25a054e6d55b8616a63e95937d4a4bc351e14fac78a510f
+corpus.jsonl                    926667693  753fb9deff885d33473e453e8006a9e77a87126ae2c21c9b2eeedd398d9196fb
+incremental_state.json                296  d045e37431da23b6b8a18c00c74632cfc715d1f05cc3e630a7fcad776efe42ab
+manifest.json                        3392  d5a53f7d6425a08c3c0d8ce3de6ba68e92ec98e6476355ca3f927c38f29887f8
+metrics.prom                         1727  be48a01f489ce9242e7db294a5ebae841920b929ae8e5c6d495d312289256fce
+previous                     <dir>
+quarantine.jsonl                 79145066  ff07659990f8e04543f8e47cd2fb6839acb2b1f791d942ddce235a561a1208c1
+rag_linkage.jsonl                12226280  05caa88dfa6afc965d7a36be6f63f5c8f118da66f2727cbc4b72c68492c0ebd8
+reconcile_report.json                 291  ff9d46a29042dafaa274cb3198040ea36e8c043bed94c581ebb2ae90cdf8adbc
+stats.json                          21052  f29f0dfc345af05e24dcb6f1da86a6b1f10343457f5a16664f8e3c6c73c369d4
+=== backup pre-stage4-20261106-0204 ===
+SHASUMS256.txt                        402  97cd52e1c23cc6fac1769b8218d895e637598b437227d5088adc47dfa9bb11ce
+SIZES.txt                             136  e352413c8e1595e469fecee33df49e2424cc56b052cb1e5298d700160c430c2f
+checksums.sha256                      239  86296f6c0160e93349afcc54cf5b1aae6d77c9c72ca9578c811d6e94b9c6d259
+corpus.jsonl                    911707256  60d482c9ed30ee19e70d5189714ba14173dd6220099d4fd73bd4599f5dce1ee3
+manifest.json                        1987  4d6a0c98b45721d740b3239dd95d6ffe18eec75ea0a197b03ed20fe0c378cf69
+quarantine.jsonl                 77525494  7e0e6276be406281faaa7b30ee5c28572a247d60815100f686c1dc96f665d24b
+stats.json                          21052  4c595dd19b99f3f82e7e017e564aa798c9a829dde9b2c7a5fb5a9976088c36ed
+=== manifest refs ===
+{
+  "run_id": "corpus-det-2026-11-05T00-53-14",
+  "exported_at": "2026-11-05T00:53:14",
+  "mode": "incremental-merge",
+  "records_written": 9747,
+  "asset_manifest_ref": "asset_manifest.jsonl",
+  "rag_linkage_ref": "rag_linkage.jsonl"
+}

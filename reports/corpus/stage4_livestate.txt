@@ -1,0 +1,99 @@
+=== live files (post-stage4 v1.1) ===
+corpus.jsonl            926663870  0cdddca25146d71adb1983352465a185272cc257821a141fdb3da4e8cd957211
+quarantine.jsonl         79145066  ff07659990f8e04543f8e47cd2fb6839acb2b1f791d942ddce235a561a1208c1
+stats.json                  21052  2c6925ba9d378d7cc3a573dbfeb6979d1500d559bdc1a218e79d64fbcc287485
+manifest.json                2995  c3f66923fe5a5dfc974d8ed3f62ccd67e0a243fd9045a360af7312a894cf69ec
+checksums.sha256              239  09a25f7b9c0cd71d599f30372ce2439064a42439b3df92ac50fa13275e96a497
+=== previous/ slots ===
+corpus-det-2026-11-05T00-53-14: {"corpus.jsonl": 911707256, "manifest.json": 1979, "quarantine.jsonl": 77525494, "stats.json": 21052}
+corpus-det-2026-11-05T00-53-14-2: {"corpus.jsonl": 911707256, "manifest.json": 1987, "quarantine.jsonl": 77525494, "stats.json": 21052}
+corpus-det-2026-11-05T00-53-14-3: {"corpus.jsonl": 926663865, "manifest.json": 2995, "quarantine.jsonl": 79145066, "stats.json": 21052}
+=== manifest (key fields) ===
+{
+  "manifest_version": "1.1",
+  "schema_version": "1.1",
+  "run_id": "corpus-det-2026-11-05T00-53-14",
+  "exported_at": "2026-11-05T00:53:14",
+  "produced_at": "2026-11-06 02:36:15",
+  "mode": "full",
+  "deterministic": true,
+  "records_written": 9746,
+  "records_invalid": 0,
+  "records_quarantined": 1147,
+  "sessions_seen": 10893,
+  "sessions_total_in_db": 10893,
+  "source_db_row_count": 10893,
+  "previous_export": "previous/corpus-det-2026-11-05T00-53-14-3",
+  "previous_manifest": "corpus-det-2026-11-05T00-53-14",
+  "asset_manifest_ref": null,
+  "rag_linkage_ref": null,
+  "quarantine_policy": "PERMANENT_UNTIL_IDENTITY_PROVEN",
+  "duration_sec": 132.1
+}
+=== field_coverage (manifest) ===
+audio.local_exists                100.00%
+audio.url                         100.00%
+broadcast                          96.98%
+broadcast.day_of_week              95.91%
+broadcast.gregorian                96.98%
+broadcast.jalali                   96.98%
+broadcast.timezone                 96.98%
+broadcast.validity                 96.98%
+crop                                0.23%
+database_refs.program_id          100.00%
+database_refs.session_id          100.00%
+episode_key.source                100.00%
+linkage                           100.00%
+linkage.air_date_status           100.00%
+linkage.asset_summary             100.00%
+linkage.links                     100.00%
+program                           100.00%
+program.schedule                  100.00%
+program_uid                       100.00%
+record_id                         100.00%
+session_uid                       100.00%
+transcripts.llm_outputs           100.00%
+transcripts.originals.srt         100.00%
+transcripts.originals.txt         100.00%
+=== field_coverage (proof, filled/pct) ===
+record_id                          9746   100.00%
+episode_key.source                 9746   100.00%
+database_refs.session_id           9746   100.00%
+database_refs.program_id           9746   100.00%
+program                            9746   100.00%
+program.schedule                   9746   100.00%
+broadcast                          9452    96.98%
+broadcast.jalali                   9452    96.98%
+broadcast.gregorian                9452    96.98%
+broadcast.timezone                 9452    96.98%
+broadcast.validity                 9452    96.98%
+broadcast.day_of_week              9347    95.91%
+audio.url                          9746   100.00%
+audio.local_exists                 9746   100.00%
+transcripts.originals.srt          9746   100.00%
+transcripts.originals.txt          9746   100.00%
+transcripts.llm_outputs            4251    43.62%
+crop                                 22     0.23%
+session_uid                        9746   100.00%
+program_uid                        9746   100.00%
+linkage                            9746   100.00%
+linkage.links                      9746   100.00%
+linkage.air_date_status            9746   100.00%
+linkage.asset_summary              9746   100.00%
+=== stats headline ===
+by_status: {"subtitled": 9118, "pending_download": 573, "failed_permanent": 55}
+audio_local_exists: 2650
+records_with_broadcast: 9452
+records_without_broadcast: 294
+episode_key_fallback: 0
+episode_key_link: 9746
+program_missing: 0
+records_complete: 9410
+records_with_corrected_srt: 4245
+records_with_corrected_txt: 4212
+records_with_full_text: 923
+records_with_original_srt: 9411
+records_with_original_txt: 9411
+records_with_qa: 1
+records_with_summary: 4212
+records_with_warnings: 9456

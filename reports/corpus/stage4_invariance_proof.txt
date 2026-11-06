@@ -1,0 +1,10 @@
+[PASS] a_post_superset_of_pre removed=0
+[PASS] a_additions_eq_delta_session_ids added_rids=15 added_sessions=[10881, 10882, 10883, 10884, 10885, 10886, 10887, 10888, 10889, 10890, 10891, 10892, 10893, 10894, 10895]
+[PASS] b_pre_v10_fields_byte_identical compared=9731 unexplained_diffs=0
+[PASS] b2_audio_local_exists_flips_explained_by_disk flips=250 distinct_files=250 gone_from_disk=250 still_on_disk=0
+[PASS] c_quarantine_membership_and_policy_identical pre=1147 post=1147 policy=['PERMANENT_UNTIL_IDENTITY_PROVEN'] unexplained=0
+[PASS] c2_quarantine_local_exists_flips_explained flips=7 gone_from_disk=7 still_on_disk=0
+[PASS] d_coverage_table_computed fields=24 (see report json)
+[PASS] e_counts_reconcile pre=9731 + delta15 -> post=9746 ; post+1147 quar = 10893 ; db=10893
+report: /tmp/saber_stage4_wt/reports/corpus/stage4_invariance_proof.json
+RESULT: ALL PASS

@@ -1,0 +1,1191 @@
+{
+  "t0_utc": "2026-11-06T02:42:29Z",
+  "a_post_superset_of_pre": {
+    "pass": true,
+    "detail": "removed=0"
+  },
+  "a_additions_eq_delta_session_ids": {
+    "pass": true,
+    "detail": "added_rids=15 added_sessions=[10881, 10882, 10883, 10884, 10885, 10886, 10887, 10888, 10889, 10890, 10891, 10892, 10893, 10894, 10895]"
+  },
+  "b_pre_v10_fields_byte_identical": {
+    "pass": true,
+    "detail": "compared=9731 unexplained_diffs=0"
+  },
+  "b2_audio_local_exists_flips_explained_by_disk": {
+    "pass": true,
+    "detail": "flips=250 distinct_files=250 gone_from_disk=250 still_on_disk=0"
+  },
+  "b2_flipped_records": [
+    {
+      "record_id": "iranseda:ch14:e152781266",
+      "filename": "radio-maaref-04-01-08-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e152769557",
+      "filename": "radio-maaref-04-01-01-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e152655464",
+      "filename": "radio-maaref-03-10-28-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e152944327",
+      "filename": "radio-maaref-04-03-30-15-00.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153031619",
+      "filename": "radio-maaref-04-05-24-15-00.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153067327",
+      "filename": "radio-maaref-04-06-07-15-00.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153196122",
+      "filename": "radio-maaref-04-08-02-15-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153976352",
+      "filename": "radio-maaref-05-05-29-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153976433",
+      "filename": "radio-maaref-05-05-28-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153976513",
+      "filename": "radio-maaref-05-05-27-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153976594",
+      "filename": "radio-maaref-05-05-26-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153967591",
+      "filename": "radio-maaref-05-05-25-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153948953",
+      "filename": "radio-maaref-05-05-24-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153949029",
+      "filename": "radio-maaref-05-05-23-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153949104",
+      "filename": "radio-maaref-05-05-22-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153949179",
+      "filename": "radio-maaref-05-05-21-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153949258",
+      "filename": "radio-maaref-05-05-20-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153949339",
+      "filename": "radio-maaref-05-05-19-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153949419",
+      "filename": "radio-maaref-05-05-18-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153950072",
+      "filename": "radio-maaref-05-05-09-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153950144",
+      "filename": "radio-maaref-05-05-08-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153950215",
+      "filename": "radio-maaref-05-05-07-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153950289",
+      "filename": "radio-maaref-05-05-06-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153950363",
+      "filename": "radio-maaref-05-05-05-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153950437",
+      "filename": "radio-maaref-05-05-04-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153950512",
+      "filename": "radio-maaref-05-05-03-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153950582",
+      "filename": "radio-maaref-05-05-02-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153950656",
+      "filename": "radio-maaref-05-05-01-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153950727",
+      "filename": "radio-maaref-05-04-31-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153950798",
+      "filename": "radio-maaref-05-04-30-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153950872",
+      "filename": "radio-maaref-05-04-29-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153950945",
+      "filename": "radio-maaref-05-04-28-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153951018",
+      "filename": "radio-maaref-05-04-27-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153951087",
+      "filename": "radio-maaref-05-04-26-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153951165",
+      "filename": "radio-maaref-05-04-25-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153951242",
+      "filename": "radio-maaref-05-04-24-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153951319",
+      "filename": "radio-maaref-05-04-23-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153951396",
+      "filename": "radio-maaref-05-04-22-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153951473",
+      "filename": "radio-maaref-05-04-21-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153951550",
+      "filename": "radio-maaref-05-04-20-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153951613",
+      "filename": "radio-maaref-05-04-19-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153951678",
+      "filename": "radio-maaref-05-04-18-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153951743",
+      "filename": "radio-maaref-05-04-17-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153951809",
+      "filename": "radio-maaref-05-04-16-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153951873",
+      "filename": "radio-maaref-05-04-15-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153951934",
+      "filename": "radio-maaref-05-04-14-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153951995",
+      "filename": "radio-maaref-05-04-13-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153952064",
+      "filename": "radio-maaref-05-04-12-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153952142",
+      "filename": "radio-maaref-05-04-11-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153952220",
+      "filename": "radio-maaref-05-04-10-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153952298",
+      "filename": "radio-maaref-05-04-09-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153952375",
+      "filename": "radio-maaref-05-04-08-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153869606",
+      "filename": "radio-maaref-05-04-07-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153869681",
+      "filename": "radio-maaref-05-04-06-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153869750",
+      "filename": "radio-maaref-05-04-05-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153869801",
+      "filename": "radio-maaref-05-04-04-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153869847",
+      "filename": "radio-maaref-05-04-03-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153869908",
+      "filename": "radio-maaref-05-04-02-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153869978",
+      "filename": "radio-maaref-05-04-01-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153870048",
+      "filename": "radio-maaref-05-03-31-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153870118",
+      "filename": "radio-maaref-05-03-30-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153870185",
+      "filename": "radio-maaref-05-03-29-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153870256",
+      "filename": "radio-maaref-05-03-28-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153690625",
+      "filename": "radio-maaref-05-03-27-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153690695",
+      "filename": "radio-maaref-05-03-26-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153690766",
+      "filename": "radio-maaref-05-03-25-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153680789",
+      "filename": "radio-maaref-05-03-24-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153672565",
+      "filename": "radio-maaref-05-03-23-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153671944",
+      "filename": "radio-maaref-05-03-22-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153672011",
+      "filename": "radio-maaref-05-03-21-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153662857",
+      "filename": "radio-maaref-05-03-20-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153662925",
+      "filename": "radio-maaref-05-03-19-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153657952",
+      "filename": "radio-maaref-05-03-18-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153657456",
+      "filename": "radio-maaref-05-03-17-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153655913",
+      "filename": "radio-maaref-05-03-16-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153651754",
+      "filename": "radio-maaref-05-03-15-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153651810",
+      "filename": "radio-maaref-05-03-14-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153649373",
+      "filename": "radio-maaref-05-03-13-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153646281",
+      "filename": "radio-maaref-05-03-12-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153644610",
+      "filename": "radio-maaref-05-03-11-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153642052",
+      "filename": "radio-maaref-05-03-10-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153641242",
+      "filename": "radio-maaref-05-03-09-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153641312",
+      "filename": "radio-maaref-05-03-08-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153636472",
+      "filename": "radio-maaref-05-03-07-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153635669",
+      "filename": "radio-maaref-05-03-06-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153635729",
+      "filename": "radio-maaref-05-03-05-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153635799",
+      "filename": "radio-maaref-05-03-04-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153635865",
+      "filename": "radio-maaref-05-03-03-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153626896",
+      "filename": "radio-maaref-05-03-02-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153626098",
+      "filename": "radio-maaref-05-03-01-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153626166",
+      "filename": "radio-maaref-05-02-31-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153623517",
+      "filename": "radio-maaref-05-02-30-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153621644",
+      "filename": "radio-maaref-05-02-29-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153620385",
+      "filename": "radio-maaref-05-02-28-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153618588",
+      "filename": "radio-maaref-05-02-27-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153618174",
+      "filename": "radio-maaref-05-02-26-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153615440",
+      "filename": "radio-maaref-05-02-25-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153615022",
+      "filename": "radio-maaref-05-02-24-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153613911",
+      "filename": "radio-maaref-05-02-23-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153612813",
+      "filename": "radio-maaref-05-02-22-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153610741",
+      "filename": "radio-maaref-05-02-21-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153609883",
+      "filename": "radio-maaref-05-02-20-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153605143",
+      "filename": "radio-maaref-05-02-19-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153605210",
+      "filename": "radio-maaref-05-02-18-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153605281",
+      "filename": "radio-maaref-05-02-17-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153601138",
+      "filename": "radio-maaref-05-02-16-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153598370",
+      "filename": "radio-maaref-05-02-15-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153598441",
+      "filename": "radio-maaref-05-02-14-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153597067",
+      "filename": "radio-maaref-05-02-13-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153597138",
+      "filename": "radio-maaref-05-02-12-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153597205",
+      "filename": "radio-maaref-05-02-11-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153597276",
+      "filename": "radio-maaref-05-02-10-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153597345",
+      "filename": "radio-maaref-05-02-09-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153597410",
+      "filename": "radio-maaref-05-02-08-01-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153494444",
+      "filename": "radio-maaref-04-11-24-15-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153475969",
+      "filename": "radio-maaref-04-11-17-15-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153444502",
+      "filename": "radio-maaref-04-11-10-15-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153421793",
+      "filename": "radio-maaref-04-11-03-15-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153417475",
+      "filename": "radio-maaref-04-10-26-15-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153417950",
+      "filename": "radio-maaref-04-10-19-15-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153418405",
+      "filename": "radio-maaref-04-10-12-15-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153418884",
+      "filename": "radio-maaref-04-10-05-15-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153336596",
+      "filename": "radio-maaref-04-09-28-15-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153324937",
+      "filename": "radio-maaref-04-09-21-15-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153302660",
+      "filename": "radio-maaref-04-09-14-15-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e152606769",
+      "filename": "radio-maaref-03-10-07-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e152595549",
+      "filename": "radio-maaref-03-09-30-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e152578447",
+      "filename": "radio-maaref-03-09-23-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e152565820",
+      "filename": "radio-maaref-03-09-16-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e152559263",
+      "filename": "radio-maaref-03-09-09-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e152535795",
+      "filename": "radio-maaref-03-09-02-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e152525497",
+      "filename": "radio-maaref-03-08-25-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e152510148",
+      "filename": "radio-maaref-03-08-18-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e152496903",
+      "filename": "radio-maaref-03-08-11-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e152482309",
+      "filename": "radio-maaref-03-08-04-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e152466473",
+      "filename": "radio-maaref-03-07-27-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e152452598",
+      "filename": "radio-maaref-03-07-20-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e152453043",
+      "filename": "radio-maaref-03-07-13-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e152438080",
+      "filename": "radio-maaref-03-07-11-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e152436225",
+      "filename": "radio-maaref-03-07-10-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e152431233",
+      "filename": "radio-maaref-03-07-09-15-00.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e152431176",
+      "filename": "radio-maaref-03-07-08-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e152426205",
+      "filename": "radio-maaref-03-07-06-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e152412521",
+      "filename": "radio-maaref-03-06-30-15-00.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e152396152",
+      "filename": "radio-maaref-03-06-23-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e152383546",
+      "filename": "radio-maaref-03-06-16-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e152369904",
+      "filename": "radio-maaref-03-06-09-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e152354699",
+      "filename": "radio-maaref-03-06-02-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e152342238",
+      "filename": "radio-maaref-03-05-26-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e152333807",
+      "filename": "radio-maaref-03-05-19-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e152322426",
+      "filename": "radio-maaref-03-05-12-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e152319273",
+      "filename": "radio-maaref-03-05-05-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e152298265",
+      "filename": "radio-maaref-03-04-29-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e152248078",
+      "filename": "radio-maaref-03-03-25-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e152239870",
+      "filename": "radio-maaref-03-03-18-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e152231043",
+      "filename": "radio-maaref-03-03-11-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e152219746",
+      "filename": "radio-maaref-03-03-04-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e152168419",
+      "filename": "radio-maaref-03-01-31-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e152154882",
+      "filename": "radio-maaref-03-01-24-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e152091523",
+      "filename": "radio-maaref-02-12-15-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e152039745",
+      "filename": "radio-maaref-02-11-17-15-00.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e152023803",
+      "filename": "radio-maaref-02-11-10-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e151998475",
+      "filename": "radio-maaref-02-10-26-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e151920687",
+      "filename": "radio-maaref-02-09-07-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e151838142",
+      "filename": "radio-maaref-02-07-18-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e151825269",
+      "filename": "radio-maaref-02-07-11-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e151789935",
+      "filename": "radio-maaref-02-07-04-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e151611422",
+      "filename": "radio-maaref-02-05-11-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e151610840",
+      "filename": "radio-maaref-02-05-10-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e151570908",
+      "filename": "radio-maaref-02-04-20-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e151500431",
+      "filename": "radio-maaref-02-03-16-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e151492065",
+      "filename": "radio-maaref-02-03-09-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e151295614",
+      "filename": "radio-maaref-01-12-02-19-30.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e151232039",
+      "filename": "radio-maaref-01-10-27-19-30.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e149577405",
+      "filename": "radio-maaref-00-11-02-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e149434488",
+      "filename": "radio-maaref-00-10-04-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e149342500",
+      "filename": "radio-maaref-00-08-22-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e149322531",
+      "filename": "radio-maaref-00-08-15-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e149028926",
+      "filename": "radio-maaref-00-06-06-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e148882427",
+      "filename": "radio-maaref-00-05-09-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e148758473",
+      "filename": "radio-maaref-00-04-06-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e148695008",
+      "filename": "radio-maaref-00-03-26-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e148684480",
+      "filename": "radio-maaref-00-03-25-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e148414063",
+      "filename": "radio-maaref-00-01-14-22-30.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e148413106",
+      "filename": "radio-maaref-99-12-23-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e147907575",
+      "filename": "radio-maaref-99-10-20-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e147872736",
+      "filename": "radio-maaref-99-10-13-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e147693258",
+      "filename": "radio-maaref-99-08-10-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e147693587",
+      "filename": "radio-maaref-99-08-03-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e147308512",
+      "filename": "radio-maaref-99-05-06-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e147304267",
+      "filename": "radio-maaref-99-05-04-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e146825447",
+      "filename": "radio-maaref-99-01-23-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e146790723",
+      "filename": "radio-maaref-99-01-16-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e146137510",
+      "filename": "radio-maaref-98-09-02-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e146109673",
+      "filename": "radio-maaref-98-08-25-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch18:e154100472",
+      "filename": "radio-varzesh-05-08-01-07-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153830716",
+      "filename": "radio-varzesh-05-05-23-07-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153830734",
+      "filename": "radio-varzesh-05-05-22-23-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153829645",
+      "filename": "radio-varzesh-05-05-20-23-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153822377",
+      "filename": "radio-varzesh-05-05-19-23-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153811919",
+      "filename": "radio-varzesh-05-05-16-23-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153811955",
+      "filename": "radio-varzesh-05-05-16-07-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153811974",
+      "filename": "radio-varzesh-05-05-15-23-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153786195",
+      "filename": "radio-varzesh-05-05-06-23-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153780248",
+      "filename": "radio-varzesh-05-05-05-23-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153776883",
+      "filename": "radio-varzesh-05-05-04-23-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153614776",
+      "filename": "radio-varzesh-05-02-25-07-00.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153614830",
+      "filename": "radio-varzesh-05-02-24-07-00.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153602754",
+      "filename": "radio-varzesh-05-02-16-07-00.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153598632",
+      "filename": "radio-varzesh-05-02-14-07-00.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153592395",
+      "filename": "radio-varzesh-05-02-12-07-00.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153591293",
+      "filename": "radio-varzesh-05-02-11-07-00.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153591349",
+      "filename": "radio-varzesh-05-02-10-07-00.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153590359",
+      "filename": "radio-varzesh-05-02-08-07-00.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153588220",
+      "filename": "radio-varzesh-05-02-07-07-00.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153585619",
+      "filename": "radio-varzesh-05-02-04-07-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153585642",
+      "filename": "radio-varzesh-05-02-03-22-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153584637",
+      "filename": "radio-varzesh-05-02-03-07-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153584160",
+      "filename": "radio-varzesh-05-02-02-07-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153582887",
+      "filename": "radio-varzesh-05-02-01-07-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153581317",
+      "filename": "radio-varzesh-05-01-31-22-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153581348",
+      "filename": "radio-varzesh-05-01-31-07-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153580499",
+      "filename": "radio-varzesh-05-01-30-07-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153574598",
+      "filename": "radio-varzesh-05-01-28-07-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153574652",
+      "filename": "radio-varzesh-05-01-27-07-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153574705",
+      "filename": "radio-varzesh-05-01-26-07-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153574751",
+      "filename": "radio-varzesh-05-01-25-07-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153515284",
+      "filename": "radio-varzesh-04-12-01-13-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153515312",
+      "filename": "radio-varzesh-04-11-30-22-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153513440",
+      "filename": "radio-varzesh-04-11-29-03-00.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153492182",
+      "filename": "radio-varzesh-04-11-23-03-00.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153489119",
+      "filename": "radio-varzesh-04-11-22-03-00.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153485520",
+      "filename": "radio-varzesh-04-11-21-03-00.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153483526",
+      "filename": "radio-varzesh-04-11-20-03-00.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153475294",
+      "filename": "radio-varzesh-04-11-19-03-00.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153471379",
+      "filename": "radio-varzesh-04-11-18-03-00.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153469219",
+      "filename": "radio-varzesh-04-11-17-13-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153469296",
+      "filename": "radio-varzesh-04-11-16-03-00.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153468196",
+      "filename": "radio-varzesh-04-11-15-03-00.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153451856",
+      "filename": "radio-varzesh-04-11-12-03-00.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153446563",
+      "filename": "radio-varzesh-04-11-11-03-00.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153446576",
+      "filename": "radio-varzesh-04-11-10-22-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153442940",
+      "filename": "radio-varzesh-04-11-10-13-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153442965",
+      "filename": "radio-varzesh-04-11-10-03-00.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153442978",
+      "filename": "radio-varzesh-04-11-09-22-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153443026",
+      "filename": "radio-varzesh-04-11-09-03-00.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153441685",
+      "filename": "radio-varzesh-04-11-08-03-00.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153437912",
+      "filename": "radio-varzesh-04-11-07-03-00.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153435119",
+      "filename": "radio-varzesh-04-11-06-03-00.mp4"
+    },
+    {
+      "record_id": "iranseda:ch18:e153428599",
+      "filename": "radio-varzesh-04-11-05-03-00.mp4"
+    }
+  ],
+  "c_quarantine_membership_and_policy_identical": {
+    "pass": true,
+    "detail": "pre=1147 post=1147 policy=['PERMANENT_UNTIL_IDENTITY_PROVEN'] unexplained=0"
+  },
+  "c2_quarantine_local_exists_flips_explained": {
+    "pass": true,
+    "detail": "flips=7 gone_from_disk=7 still_on_disk=0"
+  },
+  "c2_quarantine_flipped_records": [
+    {
+      "record_id": "iranseda:ch14:e153196122",
+      "filename": "radio-maaref-04-08-02-15-30.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153067327",
+      "filename": "radio-maaref-04-06-07-15-00.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e153031619",
+      "filename": "radio-maaref-04-05-24-15-00.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e152944327",
+      "filename": "radio-maaref-04-03-30-15-00.mp4"
+    },
+    {
+      "record_id": "iranseda:ch14:e152781266",
+      "filename": "radio-maaref-04-01-08-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e152769557",
+      "filename": "radio-maaref-04-01-01-15-00.mp3"
+    },
+    {
+      "record_id": "iranseda:ch14:e152655464",
+      "filename": "radio-maaref-03-10-28-15-00.mp3"
+    }
+  ],
+  "d_field_coverage": {
+    "record_id": {
+      "filled": 9746,
+      "pct": 100.0
+    },
+    "episode_key.source": {
+      "filled": 9746,
+      "pct": 100.0
+    },
+    "database_refs.session_id": {
+      "filled": 9746,
+      "pct": 100.0
+    },
+    "database_refs.program_id": {
+      "filled": 9746,
+      "pct": 100.0
+    },
+    "program": {
+      "filled": 9746,
+      "pct": 100.0
+    },
+    "program.schedule": {
+      "filled": 9746,
+      "pct": 100.0
+    },
+    "broadcast": {
+      "filled": 9452,
+      "pct": 96.98
+    },
+    "broadcast.jalali": {
+      "filled": 9452,
+      "pct": 96.98
+    },
+    "broadcast.gregorian": {
+      "filled": 9452,
+      "pct": 96.98
+    },
+    "broadcast.timezone": {
+      "filled": 9452,
+      "pct": 96.98
+    },
+    "broadcast.validity": {
+      "filled": 9452,
+      "pct": 96.98
+    },
+    "broadcast.day_of_week": {
+      "filled": 9347,
+      "pct": 95.91
+    },
+    "audio.url": {
+      "filled": 9746,
+      "pct": 100.0
+    },
+    "audio.local_exists": {
+      "filled": 9746,
+      "pct": 100.0
+    },
+    "transcripts.originals.srt": {
+      "filled": 9746,
+      "pct": 100.0
+    },
+    "transcripts.originals.txt": {
+      "filled": 9746,
+      "pct": 100.0
+    },
+    "transcripts.llm_outputs": {
+      "filled": 4251,
+      "pct": 43.62
+    },
+    "crop": {
+      "filled": 22,
+      "pct": 0.23
+    },
+    "session_uid": {
+      "filled": 9746,
+      "pct": 100.0
+    },
+    "program_uid": {
+      "filled": 9746,
+      "pct": 100.0
+    },
+    "linkage": {
+      "filled": 9746,
+      "pct": 100.0
+    },
+    "linkage.links": {
+      "filled": 9746,
+      "pct": 100.0
+    },
+    "linkage.air_date_status": {
+      "filled": 9746,
+      "pct": 100.0
+    },
+    "linkage.asset_summary": {
+      "filled": 9746,
+      "pct": 100.0
+    }
+  },
+  "d_coverage_table_computed": {
+    "pass": true,
+    "detail": "fields=24 (see report json)"
+  },
+  "e_counts_reconcile": {
+    "pass": true,
+    "detail": "pre=9731 + delta15 -> post=9746 ; post+1147 quar = 10893 ; db=10893"
+  },
+  "disk_scan": {
+    "pre": {
+      "scanned_at": "frozen: pinned to run's disk scan (deterministic)",
+      "files_indexed": 42368,
+      "stems_indexed": 24661,
+      "scan_errors": 0
+    },
+    "post": {
+      "scanned_at": "frozen: pinned to run's disk scan (deterministic)",
+      "files_indexed": 42155,
+      "stems_indexed": 24674,
+      "scan_errors": 0
+    }
+  },
+  "summary": {
+    "pre_corpus": 9731,
+    "post_corpus": 9746,
+    "added": 15,
+    "removed": 0,
+    "pre_quarantine": 1147,
+    "post_quarantine": 1147,
+    "corpus_local_exists_flips": 250,
+    "quarantine_local_exists_flips": 7,
+    "all_pass": true,
+    "duration_s": 15.9
+  }
+}

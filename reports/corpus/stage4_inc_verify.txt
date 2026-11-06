@@ -1,0 +1,51 @@
+=== previous/ slots (post-run) ===
+corpus-det-2026-11-05T00-53-14-2: {"corpus.jsonl": 911707256, "manifest.json": 1987, "quarantine.jsonl": 77525494, "stats.json": 21052}
+corpus-det-2026-11-05T00-53-14-3: {"corpus.jsonl": 926663865, "manifest.json": 2995, "quarantine.jsonl": 79145066, "stats.json": 21052}
+corpus-det-2026-11-05T00-53-14-4: {"corpus.jsonl": 926663870, "manifest.json": 2995, "quarantine.jsonl": 79145066, "stats.json": 21052}
+pre-run live slot used for comparison: corpus-det-2026-11-05T00-53-14-4
+=== post SHAs ===
+corpus.jsonl        926667693  753fb9deff885d33473e453e8006a9e77a87126ae2c21c9b2eeedd398d9196fb  [CHANGED]
+quarantine.jsonl     79145066  ff07659990f8e04543f8e47cd2fb6839acb2b1f791d942ddce235a561a1208c1  [UNCHANGED]
+stats.json              21052  f29f0dfc345af05e24dcb6f1da86a6b1f10343457f5a16664f8e3c6c73c369d4  [CHANGED]
+manifest.json            3392  d5a53f7d6425a08c3c0d8ce3de6ba68e92ec98e6476355ca3f927c38f29887f8  [CHANGED]
+=== corpus.jsonl ===
+pre lines: 9746   post lines: 9747   subsequence-preserving: True
+added lines: 1   new distinct sessions: [10896]
+  + sid=10896 rid=iranseda:ch14:e154151476 status=pending_download
+=== quarantine.jsonl ===
+pre lines: 1147   post lines: 1147   subsequence-preserving: True
+added lines: 0   new distinct sessions: []
+=== incremental_state.json (post) ===
+{
+  "updated_at": "2026-11-06 03:00:16",
+  "watermark": {
+    "sessions_updated_at": "2026-11-06T02:45:49",
+    "sessions_max_id": 10896,
+    "llm_finished_at": "2026-10-11T11:30:01",
+    "llm_max_id": 15324
+  },
+  "last_run_id": "corpus-det-2026-11-05T00-53-14",
+  "last_records_written": 9747
+}
+state sha256 post: d045e37431da23b6b8a18c00c74632cfc715d1f05cc3e630a7fcad776efe42ab
+watermark advanced: False
+=== manifest (post) key fields ===
+{
+  "manifest_version": "1.1",
+  "schema_version": "1.1",
+  "run_id": "corpus-det-2026-11-05T00-53-14",
+  "exported_at": "2026-11-05T00:53:14",
+  "produced_at": "2026-11-06 02:59:33",
+  "mode": "incremental-merge",
+  "deterministic": true,
+  "records_written": 9747,
+  "records_invalid": 0,
+  "records_quarantined": 1147,
+  "sessions_seen": 8,
+  "sessions_total_in_db": 8,
+  "source_db_row_count": 10894,
+  "previous_export": "previous/corpus-det-2026-11-05T00-53-14-4",
+  "previous_manifest": "corpus-det-2026-11-05T00-53-14",
+  "duration_sec": 53.5
+}
+RESULT: PASS

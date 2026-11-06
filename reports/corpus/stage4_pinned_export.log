@@ -1,0 +1,126 @@
+root:      /home/saber/saberprojects/iranseda-crawler-golang-
+out_dir:   /home/saber/saberprojects/iranseda-crawler-golang-/data/corpus
+downloads: /home/saber/saberprojects/iranseda-crawler-golang-/downloads
+safeguards: live manifest + corpus/quarantine SHAs match the pre-stage4 backup
+db watermark NOW: {"sessions_updated_at": "2026-11-06T01:22:00", "sessions_max_id": 10895, "llm_finished_at": "2026-10-11T11:30:01", "llm_max_id": 15324}
+assets: git ls-tree download-db -> 37747 paths
+exporter: 500/10893 sessions...
+exporter: 1000/10893 sessions...
+exporter: 1500/10893 sessions...
+exporter: 2000/10893 sessions...
+exporter: 2500/10893 sessions...
+exporter: 3000/10893 sessions...
+exporter: 3500/10893 sessions...
+exporter: 4000/10893 sessions...
+exporter: 4500/10893 sessions...
+exporter: 5000/10893 sessions...
+exporter: 5500/10893 sessions...
+exporter: 6000/10893 sessions...
+exporter: 6500/10893 sessions...
+exporter: 7000/10893 sessions...
+exporter: 8000/10893 sessions...
+exporter: 8500/10893 sessions...
+exporter: 9000/10893 sessions...
+exporter: 10500/10893 sessions...
+exporter: done in 133.5s — 9746 ok, 0 invalid, 1147 quarantined, 10893 seen (total 10893)
+pinned export finished in 134.3s
+MANIFEST:
+{
+  "manifest_version": "1.1",
+  "schema_version": "1.1",
+  "run_id": "corpus-det-2026-11-05T00-53-14",
+  "exported_at": "2026-11-05 00:53:14",
+  "produced_at": "2026-11-06 02:26:54",
+  "mode": "full",
+  "deterministic": true,
+  "records_written": 9746,
+  "records_invalid": 0,
+  "records_quarantined": 1147,
+  "sessions_seen": 10893,
+  "sessions_total_in_db": 10893,
+  "source_db_row_count": 10893,
+  "field_coverage": {
+    "audio.local_exists": 100.0,
+    "audio.url": 100.0,
+    "broadcast": 96.98,
+    "broadcast.day_of_week": 95.91,
+    "broadcast.gregorian": 96.98,
+    "broadcast.jalali": 96.98,
+    "broadcast.timezone": 96.98,
+    "broadcast.validity": 96.98,
+    "crop": 0.23,
+    "database_refs.program_id": 100.0,
+    "database_refs.session_id": 100.0,
+    "episode_key.source": 100.0,
+    "linkage": 100.0,
+    "linkage.air_date_status": 100.0,
+    "linkage.asset_summary": 100.0,
+    "linkage.links": 100.0,
+    "program": 100.0,
+    "program.schedule": 100.0,
+    "program_uid": 100.0,
+    "record_id": 100.0,
+    "session_uid": 100.0,
+    "transcripts.llm_outputs": 100.0,
+    "transcripts.originals.srt": 100.0,
+    "transcripts.originals.txt": 100.0
+  },
+  "output_files": [
+    "/home/saber/saberprojects/iranseda-crawler-golang-/data/corpus/corpus.jsonl"
+  ],
+  "shard_lines": 0,
+  "quarantine_file": "quarantine.jsonl",
+  "invalid_file": null,
+  "quarantine_policy": "PERMANENT_UNTIL_IDENTITY_PROVEN",
+  "quarantine_ref": "reports/corpus/STAGE_1_CLASS_B_IDENTITY_REPORT.md",
+  "checksums_file": "checksums.sha256",
+  "previous_export": "previous/corpus-det-2026-11-05T00-53-14-2",
+  "previous_manifest": "corpus-det-2026-11-05T00-53-14",
+  "asset_manifest_ref": null,
+  "rag_linkage_ref": null,
+  "merge": null,
+  "db_counts_at_run": {
+    "radio_programs": 59,
+    "radio_program_sessions": 10893,
+    "llm_output": 13603,
+    "asr_output": 1,
+    "crop_detection": 22
+  },
+  "watermark": {
+    "sessions_updated_at": "2026-11-06T01:22:00",
+    "sessions_max_id": 10895,
+    "llm_finished_at": "2026-10-11T11:30:01",
+    "llm_max_id": 15324,
+    "note": "frozen: deterministic build pinned to DB high watermark"
+  },
+  "disk": {
+    "scanned_at": "frozen: pinned to run's disk scan (deterministic)",
+    "files_indexed": 42160,
+    "stems_indexed": 24674,
+    "scan_errors": 0
+  },
+  "config": {
+    "root": "/home/saber/saberprojects/iranseda-crawler-golang-",
+    "downloads_dir": "/home/saber/saberprojects/iranseda-crawler-golang-/downloads",
+    "out_dir": "/home/saber/saberprojects/iranseda-crawler-golang-/data/corpus",
+    "db_host": "127.0.0.1",
+    "db_port": 3308,
+    "db_user": "n8nuser",
+    "db_name": "radio",
+    "db_pass": "<redacted>",
+    "inline_originals": true,
+    "inline_llm": true,
+    "shard_lines": 0,
+    "incremental_hours": 6.0,
+    "overlap_hours": 12.0,
+    "export_enabled": false,
+    "site_base": "https://radio.iranseda.ir/"
+  },
+  "fingerprint_note": "per-record fingerprints in stats.fingerprints_sample",
+  "duration_sec": 133.5,
+  "checksums_files": [
+    "corpus.jsonl",
+    "quarantine.jsonl",
+    "stats.json"
+  ]
+}

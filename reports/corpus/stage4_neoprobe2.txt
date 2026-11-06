@@ -1,0 +1,2 @@
+payload bytes: 193
+{"results":[{"columns":["doc_id","session_id"],"data":[{"row":["radio-maaref-03-09-06-06-00__s26",26],"meta":[null,null]}]}],"errors":[],"lastBookmarks":["FB:kcwQmBru22JVQc2Fr7rygptFWskEb5A="]}

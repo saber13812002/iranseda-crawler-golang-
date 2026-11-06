@@ -1,0 +1,40 @@
+rag-linkage: corpus records=9747, quarantine ids=1147, validation cache urls=0
+rag-linkage: db sessions=10894, llm rows=13603
+rag-linkage: Neo4j radio -> 4148 distinct doc_id (4148 rows)
+rag-linkage: git ls-tree download-db -> 37747 paths
+rag-linkage: registry sessions=10894, assets=39447
+{
+  "module": "corpus.rag_linkage",
+  "generated_at": "2026-11-06T03:12:32Z",
+  "duration_s": 43.2,
+  "map_id": "05caa88dfa6afc965d7a36be6f63f5c8f118da66f2727cbc4b72c68492c0ebd8",
+  "linkage_version": "1.1",
+  "sessions_total": 10894,
+  "rag_rows": 10894,
+  "rag_quarantined": 2294,
+  "corpus_records_read": 9747,
+  "db_sessions": 10894,
+  "doc_id": {
+    "source": "neo4j",
+    "neo4j_distinct": 4148,
+    "from_neo4j": 4148,
+    "from_db_derived": 6420,
+    "missing": 326,
+    "warning": null
+  },
+  "air_date_status_counts": {
+    "impossible": 105,
+    "none": 1442,
+    "unverified": 9347
+  },
+  "git_branch": "download-db",
+  "git_tree_paths": 37747,
+  "sha_cap": 31457280,
+  "asset_manifest_rows": 39447,
+  "asset_published": 16265,
+  "asset_excluded": 7719,
+  "outputs": {
+    "rag_linkage": "/home/saber/saberprojects/iranseda-crawler-golang-/data/corpus/rag_linkage.jsonl",
+    "asset_manifest": "/home/saber/saberprojects/iranseda-crawler-golang-/data/corpus/asset_manifest.jsonl"
+  }
+}

@@ -1,0 +1,39 @@
+=== rag_linkage.jsonl ===
+lines: 10894
+bytes: 12226280
+sha256: 05caa88dfa6afc965d7a36be6f63f5c8f118da66f2727cbc4b72c68492c0ebd8
+first: {"record_id": "iranseda:ch14:e152507883", "session_id": 3, "session_uid": "iranseda:ch14:e152507883", "program_id": 1, "program_title": "بر كرانه نور", "program_uid": "iranseda:prog:ch14:m044116", "broadcast_date_persian": "1403-08-17", "broadcast_date_gregorian": "2024-11-07", "broadcast_time": "21:30:00", "timezone": "Asia/Tehran", "program_page_url": "https://radio.iranseda.ir/Program/?VALID=TR
+last:  {"record_id": "iranseda:ch14:e154151476", "session_id": 10896, "session_uid": "iranseda:ch14:e154151476", "program_id": 53, "program_title": "مبنا", "program_uid": "iranseda:prog:ch14:m040125", "timezone": "Asia/Tehran", "program_page_url": "https://radio.iranseda.ir/Program/?VALID=TRUE&ch=14&m=040125", "archive_episode_url": "https://radio.iranseda.ir/epgarchivePart/?VALID=TRUE&ch=14&e=154151476"
+=== asset_manifest.jsonl ===
+lines: 39447
+bytes: 32624442
+sha256: 8a43dca52f7f06494b4113fb1156a364dd6809f80a8ff319231c1a32d24f99c5
+first: {"session_id": 3, "program_id": 1, "session_uid": "iranseda:ch14:e152507883", "quarantined": false, "asset_type": "audio", "filename": "radio-maaref-03-08-17-21-30.mp3", "relpath": "downloads/radio-maaref-03-08-17-21-30.mp3", "branch": "download-db", "raw_url": null, "blob_url": null, "sha256": null, "size_bytes": null, "exists_on_disk": false, "exists_in_git_tree": false, "published": "missing", 
+last:  {"session_id": 10895, "program_id": 41, "session_uid": "iranseda:ch14:e154151483", "quarantined": false, "asset_type": "summary_en", "filename": "radio-maaref-05-08-15-03-30.summary.en.txt", "relpath": "downloads/cleaned/radio-maaref-05-08-15-03-30.summary.en.txt", "branch": "download-db", "raw_url": null, "blob_url": null, "sha256": null, "size_bytes": null, "exists_on_disk": false, "exists_in_gi
+=== sample quarantined row ===
+{
+ "record_id": "iranseda:ch14:e152802657",
+ "session_id": 88,
+ "session_uid": "iranseda:ch14:e152802657",
+ "program_id": 2,
+ "program_title": "گنج سعادت",
+ "program_uid": "iranseda:prog:ch14:m046104",
+ "broadcast_date_persian": "1404-01-20",
+ "broadcast_date_gregorian": "2025-04-09",
+ "broadcast_time": "16:30:00",
+ "timezone": "Asia/Tehran",
+ "air_date_status": "unverified",
+ "quarantined": true,
+ "linkage_version": "1.1",
+ "linkage_validated_at": "2026-11-06T03:12:32Z",
+ "session_uid_status": "link",
+ "program_uid_status": "ok",
+ "doc_id": "radio-maaref-04-01-20-16-30__s88",
+ "doc_id_mapped_from": "db_derived"
+}
+=== sample doc_id-missing row ===
+<none>
+=== manifest refs (after rag-linkage) ===
+rag_linkage_ref: rag_linkage.jsonl
+asset_manifest_ref: asset_manifest.jsonl
+run_id: corpus-det-2026-11-05T00-53-14 exported_at: 2026-11-05T00:53:14

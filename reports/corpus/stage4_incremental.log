@@ -1,0 +1,117 @@
+incremental: pinned exported_at=2026-11-05T00:53:14 run_id=corpus-det-2026-11-05T00-53-14 (live manifest)
+assets: git ls-tree download-db -> 37747 paths
+incremental: WHERE ((updated_at IS NULL) OR updated_at >= %s OR id > 10896) params=[datetime.datetime(2026, 11, 5, 14, 45, 49)]
+exporter: merge mode — 9746 live records, 1147 live quarantine lines, 0 live invalid lines
+exporter: done in 53.5s — 9747 ok, 0 invalid, 1147 quarantined, 8 seen (total 8) [merge: +7 updated, +1 appended, +0 invalid, +0 quarantined]
+{
+  "manifest_version": "1.1",
+  "schema_version": "1.1",
+  "run_id": "corpus-det-2026-11-05T00-53-14",
+  "exported_at": "2026-11-05T00:53:14",
+  "produced_at": "2026-11-06 02:59:33",
+  "mode": "incremental-merge",
+  "deterministic": true,
+  "records_written": 9747,
+  "records_invalid": 0,
+  "records_quarantined": 1147,
+  "sessions_seen": 8,
+  "sessions_total_in_db": 8,
+  "source_db_row_count": 10894,
+  "field_coverage": {
+    "audio.local_exists": 100.0,
+    "audio.url": 100.0,
+    "broadcast": 96.97,
+    "broadcast.day_of_week": 95.9,
+    "broadcast.gregorian": 96.97,
+    "broadcast.jalali": 96.97,
+    "broadcast.timezone": 96.97,
+    "broadcast.validity": 96.97,
+    "crop": 0.23,
+    "database_refs.program_id": 100.0,
+    "database_refs.session_id": 100.0,
+    "episode_key.source": 100.0,
+    "linkage": 100.0,
+    "linkage.air_date_status": 100.0,
+    "linkage.asset_summary": 100.0,
+    "linkage.links": 100.0,
+    "program": 100.0,
+    "program.schedule": 100.0,
+    "program_uid": 100.0,
+    "record_id": 100.0,
+    "session_uid": 100.0,
+    "transcripts.llm_outputs": 100.0,
+    "transcripts.originals.srt": 100.0,
+    "transcripts.originals.txt": 100.0
+  },
+  "output_files": [
+    "/home/saber/saberprojects/iranseda-crawler-golang-/data/corpus/corpus.jsonl"
+  ],
+  "shard_lines": 0,
+  "quarantine_file": "quarantine.jsonl",
+  "invalid_file": null,
+  "quarantine_policy": "PERMANENT_UNTIL_IDENTITY_PROVEN",
+  "quarantine_ref": "reports/corpus/STAGE_1_CLASS_B_IDENTITY_REPORT.md",
+  "checksums_file": "checksums.sha256",
+  "previous_export": "previous/corpus-det-2026-11-05T00-53-14-4",
+  "previous_manifest": "corpus-det-2026-11-05T00-53-14",
+  "asset_manifest_ref": "asset_manifest.jsonl",
+  "rag_linkage_ref": "rag_linkage.jsonl",
+  "merge": {
+    "mode": "upsert-merge",
+    "live_records": 9746,
+    "live_quarantine_lines": 1147,
+    "live_invalid_lines": 0,
+    "batch_sessions_seen": 8,
+    "batch_records_updated": 7,
+    "batch_records_appended": 1,
+    "batch_records_invalid": 0,
+    "batch_records_quarantined": 0,
+    "corpus_after": 9747,
+    "quarantine_after": 1147,
+    "invalid_after": 0
+  },
+  "db_counts_at_run": {
+    "radio_programs": 59,
+    "radio_program_sessions": 10894,
+    "llm_output": 13603,
+    "asr_output": 1,
+    "crop_detection": 22
+  },
+  "watermark": {
+    "sessions_updated_at": "2026-11-06T02:45:49",
+    "sessions_max_id": 10896,
+    "llm_finished_at": "2026-10-11T11:30:01",
+    "llm_max_id": 15324,
+    "note": "frozen: deterministic build pinned to DB high watermark"
+  },
+  "disk": {
+    "scanned_at": "frozen: pinned to run's disk scan (deterministic)",
+    "files_indexed": 42155,
+    "stems_indexed": 24674,
+    "scan_errors": 0
+  },
+  "config": {
+    "root": "/home/saber/saberprojects/iranseda-crawler-golang-",
+    "downloads_dir": "/home/saber/saberprojects/iranseda-crawler-golang-/downloads",
+    "out_dir": "/home/saber/saberprojects/iranseda-crawler-golang-/data/corpus",
+    "db_host": "127.0.0.1",
+    "db_port": 3308,
+    "db_user": "n8nuser",
+    "db_name": "radio",
+    "db_pass": "<redacted>",
+    "inline_originals": true,
+    "inline_llm": true,
+    "shard_lines": 0,
+    "incremental_hours": 6.0,
+    "overlap_hours": 12.0,
+    "export_enabled": false,
+    "site_base": "https://radio.iranseda.ir/"
+  },
+  "fingerprint_note": "per-record fingerprints in stats.fingerprints_sample",
+  "duration_sec": 53.5,
+  "checksums_files": [
+    "corpus.jsonl",
+    "quarantine.jsonl",
+    "stats.json"
+  ]
+}

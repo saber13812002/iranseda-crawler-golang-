@@ -1,0 +1,15 @@
+corpus mismatching records: 250
+--- diff path aggregation ---
+ 250  .audio.local_exists   e.g. iranseda:ch14:e152781266: pre=True post=False
+quarantine mismatching records: 7
+--- quarantine diff path aggregation ---
+   7  .record.audio.local_exists   e.g. iranseda:ch14:e153196122: pre=True post=False
+   7  .record.broadcast.day_of_week   e.g. iranseda:ch14:e153196122: pre=<absent> post=5
+   7  .record.broadcast.timezone   e.g. iranseda:ch14:e153196122: pre=<absent> post='Asia/Tehran'
+   7  .record.broadcast.validity   e.g. iranseda:ch14:e153196122: pre=<absent> post={'status': 'unverified', 'reasons': []}
+   7  .record.linkage   e.g. iranseda:ch14:e153196122: pre=<absent> post={'linkage_version': '1.1', 'timezone': 'Asia/Tehran', 'links
+   7  .record.program_uid   e.g. iranseda:ch14:e153196122: pre=<absent> post='iranseda:prog:ch14:m044210'
+   7  .record.program_uid_status   e.g. iranseda:ch14:e153196122: pre=<absent> post='ok'
+   7  .record.schema_version   e.g. iranseda:ch14:e153196122: pre='1.0' post='1.1'
+   7  .record.session_uid   e.g. iranseda:ch14:e153196122: pre=<absent> post='iranseda:ch14:e153196122'
+   7  .record.session_uid_status   e.g. iranseda:ch14:e153196122: pre=<absent> post='link'

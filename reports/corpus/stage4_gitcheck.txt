@@ -1,0 +1,150 @@
+branch: stage2-corpus-linkage
+=== git log -5 ===
+6ceda1fa2 corpus: Stage 3 post-note - production refresh drift c855312c->1585c1aa recorded in report
+0be5909f2 corpus: record backfill commit SHA in Stage 3 report (no placeholders left)
+ab61e7115 corpus: backfill Stage 3 report with commit SHAs and push output
+4b421e689 corpus: Stage 3 asset-verification report + run JSON
+063aa7a5c corpus: offline unit tests for Stage 3 asset verification
+
+=== git status --porcelain ===
+ M corpus/cli.py
+ M corpus/exporter.py
+ M corpus/incremental.py
+ M corpus/mapper.py
+ M corpus/schema.py
+ M corpus/schema/corpus.schema.json
+ M corpus/schema/field_mapping.json
+ M corpus/validator.py
+ M tests/corpus/test_schema.py
+ M venv/lib/python3.12/site-packages/pymysql/__pycache__/__init__.cpython-312.pyc
+ M venv/lib/python3.12/site-packages/pymysql/__pycache__/_auth.cpython-312.pyc
+ M venv/lib/python3.12/site-packages/pymysql/__pycache__/charset.cpython-312.pyc
+ M venv/lib/python3.12/site-packages/pymysql/__pycache__/connections.cpython-312.pyc
+ M venv/lib/python3.12/site-packages/pymysql/__pycache__/converters.cpython-312.pyc
+ M venv/lib/python3.12/site-packages/pymysql/__pycache__/cursors.cpython-312.pyc
+ M venv/lib/python3.12/site-packages/pymysql/__pycache__/err.cpython-312.pyc
+ M venv/lib/python3.12/site-packages/pymysql/__pycache__/optionfile.cpython-312.pyc
+ M venv/lib/python3.12/site-packages/pymysql/__pycache__/protocol.cpython-312.pyc
+ M venv/lib/python3.12/site-packages/pymysql/__pycache__/times.cpython-312.pyc
+ M venv/lib/python3.12/site-packages/pymysql/constants/__pycache__/CLIENT.cpython-312.pyc
+ M venv/lib/python3.12/site-packages/pymysql/constants/__pycache__/COMMAND.cpython-312.pyc
+ M venv/lib/python3.12/site-packages/pymysql/constants/__pycache__/CR.cpython-312.pyc
+ M venv/lib/python3.12/site-packages/pymysql/constants/__pycache__/ER.cpython-312.pyc
+ M venv/lib/python3.12/site-packages/pymysql/constants/__pycache__/FIELD_TYPE.cpython-312.pyc
+ M venv/lib/python3.12/site-packages/pymysql/constants/__pycache__/SERVER_STATUS.cpython-312.pyc
+ M venv/lib/python3.12/site-packages/pymysql/constants/__pycache__/__init__.cpython-312.pyc
+?? _delta8_probe.py
+?? _stage4_diff_probe.py
+?? _stage4_diff_probe2.py
+?? _stage4_diskcheck.py
+?? _stage4_final_state.py
+?? _stage4_gitcheck.py
+?? _stage4_inc_pre.py
+?? _stage4_inc_verify.py
+?? _stage4_invariance_proof.py
+?? _stage4_livestate.py
+?? _stage4_pinned_export.py
+?? _stage4_ragcheck.py
+?? corpus/rag_linkage.py
+?? corpus/schema/examples/quarantine_record_1_1.json
+?? corpus/schema/examples/valid_record_1_1.json
+?? reports/corpus/stage4_delta_forensics.txt
+?? reports/corpus/stage4_diskcheck.txt
+?? reports/corpus/stage4_final_state.txt
+?? reports/corpus/stage4_gitcheck.txt
+?? reports/corpus/stage4_inc_pre.json
+?? reports/corpus/stage4_inc_pre.txt
+?? reports/corpus/stage4_inc_verify.txt
+?? reports/corpus/stage4_incremental.log
+?? reports/corpus/stage4_invariance_proof.json
+?? reports/corpus/stage4_invariance_proof.txt
+?? reports/corpus/stage4_livestate.txt
+?? reports/corpus/stage4_pinned_export.log
+?? reports/corpus/stage4_pinned_export_run2.log
+?? reports/corpus/stage4_rag_linkage.log
+?? reports/corpus/stage4_ragcheck.txt
+?? reports/corpus/stage4_v10_diff_aggregate.txt
+?? stage4_invariance_proof.py
+?? stage4_pinned_export.py
+?? tests/corpus/test_rag_linkage.py
+
+HEAD: 6ceda1fa20c0a82fc7d2d3491e27e6d89cd28c2b
+=== test suite (rc=0) ===
+st_derive_doc_id_strips_at_first_dot
+PASS test_rag_linkage::test_derive_doc_id_absent_when_no_filename
+PASS test_rag_linkage::test_neo4j_query_rejects_write_verbs
+PASS test_rag_linkage::test_neo4j_query_allows_read_heads
+PASS test_rag_linkage::test_quarantine_ids_both_shapes
+PASS test_rag_linkage::test_quarantine_ids_missing_file
+PASS test_rag_linkage::test_validation_cache_jsonl_of_objects
+PASS test_rag_linkage::test_validation_cache_single_object
+PASS test_rag_linkage::test_validation_cache_missing_is_empty
+PASS test_rag_linkage::test_archive_urls_eligible_served
+PASS test_rag_linkage::test_archive_urls_cache_invalid_excluded
+PASS test_rag_linkage::test_archive_urls_not_eligible_and_excluded_never_served
+PASS test_rag_linkage::test_build_rag_row_full
+PASS test_rag_linkage::test_build_rag_row_quarantine_strips_all_urls
+PASS test_rag_linkage::test_build_rag_row_asset_urls_injected_published_only
+PASS test_rag_linkage::test_build_rag_row_null_discipline_no_record
+PASS test_rag_linkage::test_build_rag_row_air_status_defaults_none_without_linkage
+PASS test_rag_linkage::test_clean_asset_entry_strips_internal_keeps_c8
+PASS test_rag_linkage::test_clean_asset_entry_normalizes_datetime_obj
+PASS test_rag_linkage::test_build_asset_rows_one_row_per_asset
+PASS test_rag_linkage::test_build_asset_rows_empty_registry
+PASS test_rag_linkage::test_main_end_to_end_fake_deps
+PASS test_schema::test_verify_passes_clean
+PASS test_schema::test_schema_metadata_and_contract
+PASS test_schema::test_field_mapping_covers_all_fields
+PASS test_schema::test_examples_present_and_named
+PASS test_schema::test_valid_example_passes_validator
+PASS test_schema::test_quarantine_example_shape
+PASS test_schema::test_valid_1_1_example_passes_validator
+PASS test_schema::test_quarantine_1_1_example_shape
+PASS test_schema::test_verify_rejects_bad_example
+PASS test_srt::test_original_format_parses
+PASS test_srt::test_corrected_format_no_ms_parses
+PASS test_srt::test_stats
+PASS test_srt::test_garbage_rejected
+PASS test_srt::test_ts_variants
+PASS test_srt::test_srt_to_text
+PASS test_srt::test_bom_and_crlf
+PASS test_srt::test_looks_like_srt
+PASS test_validator::test_valid_record_passes
+PASS test_validator::test_missing_required_key
+PASS test_validator::test_bad_record_id_pattern
+PASS test_validator::test_duplicate_record_id_in_batch
+PASS test_validator::test_broadcast_gregorian_must_match_jalali
+PASS test_validator::test_broadcast_null_is_allowed_with_missing
+PASS test_validator::test_corrected_srt_must_parse
+PASS test_validator::test_original_srt_content_must_parse
+PASS test_validator::test_private_path_leak_detected
+PASS test_validator::test_secret_leak_detected
+PASS test_validator::test_bad_job_type_enum
+PASS test_validator::test_text_normalized_must_be_nfc
+PASS test_validator::test_episode_key_link_requires_ch_e
+PASS test_validator::test_fallback_key_valid_shape
+PASS test_validator::test_validate_batch_counts
+------------------------------------------------------------
+198/198 passed in 0.5s
+
+=== reports/corpus evidence sizes ===
+CORPUS_LINKAGE_STAGE2.md                      15112
+CORPUS_LINKAGE_STAGE3.md                      18017
+stage2_link_validation.json                   109918
+stage3_asset_verification.json                97881
+stage4_delta_forensics.txt                    7762
+stage4_diskcheck.txt                          1267
+stage4_final_state.txt                        2303
+stage4_gitcheck.txt                           0
+stage4_inc_pre.json                           131420
+stage4_inc_pre.txt                            1259
+stage4_inc_verify.txt                         2345
+stage4_incremental.log                        4000
+stage4_invariance_proof.json                  32503
+stage4_invariance_proof.txt                   869
+stage4_livestate.txt                          4456
+stage4_pinned_export.log                      4302
+stage4_pinned_export_run2.log                 4302
+stage4_rag_linkage.log                        1281
+stage4_ragcheck.txt                           2661
+stage4_v10_diff_aggregate.txt                 1220

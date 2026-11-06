@@ -1,0 +1,16 @@
+PRE  disk: {"scanned_at": "frozen: pinned to run's disk scan (deterministic)", "files_indexed": 42368, "stems_indexed": 24661, "scan_errors": 0}
+POST disk: {"scanned_at": "frozen: pinned to run's disk scan (deterministic)", "files_indexed": 42155, "stems_indexed": 24674, "scan_errors": 0}
+flipped True->False: 250
+  iranseda:ch14:e152781266  radio-maaref-04-01-08-15-00.mp3  on_disk=False
+  iranseda:ch14:e152769557  radio-maaref-04-01-01-15-00.mp3  on_disk=False
+  iranseda:ch14:e152655464  radio-maaref-03-10-28-15-00.mp3  on_disk=False
+  iranseda:ch14:e152944327  radio-maaref-04-03-30-15-00.mp4  on_disk=False
+  iranseda:ch14:e153031619  radio-maaref-04-05-24-15-00.mp4  on_disk=False
+  iranseda:ch14:e153067327  radio-maaref-04-06-07-15-00.mp4  on_disk=False
+  iranseda:ch14:e153196122  radio-maaref-04-08-02-15-30.mp4  on_disk=False
+  iranseda:ch14:e153976352  radio-maaref-05-05-29-01-30.mp4  on_disk=False
+  iranseda:ch14:e153976433  radio-maaref-05-05-28-01-30.mp4  on_disk=False
+  iranseda:ch14:e153976513  radio-maaref-05-05-27-01-30.mp4  on_disk=False
+  iranseda:ch14:e153976594  radio-maaref-05-05-26-01-30.mp4  on_disk=False
+  iranseda:ch14:e153967591  radio-maaref-05-05-25-01-30.mp4  on_disk=False
+of 250 flipped: file STILL on disk=0, file GONE=250
