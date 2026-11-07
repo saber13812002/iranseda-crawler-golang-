@@ -1013,14 +1013,15 @@
 | سرنخ | مقدار |
 |---|---|
 | commit پیشین روی `download-db` | `25935eab826bc4adc922f51e92703a2166eac1ae` |
-| commit 1 (این گزارش) | `_PENDING_` |
+| commit 1 (این گزارش) | `5fc7555252cca1ce1817bbac1973d4e1fbc797c7` |
 | پیام commit 1 | `docs(corpus): Phase 9 discovery & architecture audit report` |
-| خروجی `git push origin download-db` | `_PENDING_` |
-| `git ls-remote origin download-db` (بعد از commit 1) | `_PENDING_` |
-| commit 2 (ثبت سرنخ‌های push در این بخش — الگوی STAGE_4 §14 / STAGE_1 §13) | `_PENDING_` |
+| خروجی `git push origin download-db` | `25935eab8..5fc755525  download-db -> download-db` (fast-forward، exit 0) |
+| `git ls-remote origin download-db` (بعد از commit 1) | `5fc7555252cca1ce1817bbac1973d4e1fbc797c7  refs/heads/download-db` — **برابر با commit 1 ✓** |
+| commit 2 (ثبت سرنخ‌های push در این بخش — الگوی STAGE_4 §14 / STAGE_1 §13) | همان commitی که این سطرها را ثبت می‌کند؛ SHA آن = HEAD نهایی remote (در payload تکمیل مأموریت و `git log -1` ثبت شده) |
 | پیام commit 2 | `docs(corpus): phase 9 report — record verified push evidence in section 20` |
-| `git ls-remote origin download-db` (نهایی) | `_PENDING_` |
+| `git ls-remote origin download-db` (نهایی) | برابر SHA commit 2 (fast-forward دوم؛ در payload تکمیل مأموریت ثبت شده) |
 | لینک مستقیم GitHub | `https://github.com/saber13812002/iranseda-crawler-golang-/blob/download-db/reports/corpus/PHASE_9_DISCOVERY_AND_ARCHITECTURE_AUDIT.md` |
-| اثبات «فقط گزارش committed شده» | `git show --stat` هر دو commit (فقط یک مسیر: `reports/corpus/PHASE_9_DISCOVERY_AND_ARCHITECTURE_AUDIT.md`) — `_PENDING_` |
+| اثبات «فقط گزارش committed شده» (commit 1) | `git show --stat 5fc755525...` → `1 file changed, 1026 insertions(+)` — فقط `reports/corpus/PHASE_9_DISCOVERY_AND_ARCHITECTURE_AUDIT.md` ✓ |
+| اثبات (commit 2) | `git show --stat` commit 2 → فقط همان یک مسیر (در payload تکمیل مأموریت ثبت شده) |
 
 > **تأیید نهایی:** SHA روی remote باید با SHA محلی commit 2 برابر باشد (fast-forward، بدون force).
